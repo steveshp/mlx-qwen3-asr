@@ -4,15 +4,32 @@ Agent instructions for working on mlx-qwen3-asr.
 
 ## North Star
 
-**`pip install mlx-qwen3-asr` is the obvious, default way to run Qwen3-ASR on a Mac.**
+**`pip install mlx-qwen3-asr` is the definitive way to run speech recognition on Apple Silicon.**
+
+Not just transcription. The complete speech recognition experience:
+
+- **Instant setup** — one pip install, no ffmpeg, no manual model downloads, no conversion scripts
+- **Best-in-class speed** — pre-quantized models as default, Metal-optimized inference, sub-200ms latency on short clips
+- **Full model coverage** — 0.6B for speed, 1.7B for accuracy, both tested and validated
+- **Real-time streaming** — incremental transcription with KV cache reuse, not re-transcribe-everything
+- **Word-level timestamps** — native MLX forced aligner, no PyTorch dependency
+- **Zero unnecessary dependencies** — custom mel spectrogram, minimal tokenizer, no transformers at runtime
+- **52 languages** — all validated, not just English
+- **Production-grade** — proper error handling, memory management, batch support
+- **Swift port** — once Python proves every decision, native Swift+MLX for apps and system integration
 
 This is a ground-up reimplementation of the official PyTorch model using Apple's MLX framework. Same weights, same output, runs on Mac GPUs via Metal. Not a wrapper — every layer is rewritten for MLX.
 
-### Execution order (strict)
+### Execution order (how we get there)
 
-1. **Quality parity** — Match official PyTorch output token-for-token (greedy). Proven via `test_reference_parity.py`. Nothing else matters until this is locked.
-2. **Runtime optimization** — Faster inference on Apple Silicon (M1/M2/M3/M4). Measured via `scripts/benchmark_asr.py`. No optimization may regress quality (enforced by quality gate).
-3. **Swift port** — Once Python is correct and fast, port the proven implementation to Swift+MLX for native macOS/iOS apps.
+Everything above matters. The order is about what unblocks what:
+
+1. **Ship what works** — PyPI publish, pre-quantized models on HuggingFace, 1.7B validation
+2. **Harden** — integration tests, bounds checks, dependency pins, debug cleanup
+3. **Remove training wheels** — custom mel spectrogram (drop transformers for feature extraction), fully native forced aligner (drop PyTorch bridge)
+4. **Real streaming** — incremental encoder, KV cache reuse across chunks, CJK-aware prefix rollback
+5. **Zero external deps** — custom BPE tokenizer (drop transformers entirely), native audio decoding
+6. **Swift port** — native Metal, system-level integration, app-embeddable framework
 
 ### What this is NOT
 
