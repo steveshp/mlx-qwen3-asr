@@ -86,6 +86,11 @@ Tokenizer loader path benchmark (2026-02-14):
 - `docs/benchmarks/2026-02-14-tokenizer-loader-path-benchmark.json`
 - `docs/benchmarks/2026-02-14-tokenizer-loader-path-benchmark.md`
 
+Tokenizer resolved-local-path benchmark (2026-02-14):
+
+- `docs/benchmarks/2026-02-14-tokenizer-local-path-benchmark.json`
+- `docs/benchmarks/2026-02-14-tokenizer-local-path-benchmark.md`
+
 Generate with:
 
 ```bash

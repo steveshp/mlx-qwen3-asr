@@ -1,5 +1,6 @@
 # mlx-qwen3-asr
 
+[![PyPI version](https://img.shields.io/pypi/v/mlx-qwen3-asr.svg)](https://pypi.org/project/mlx-qwen3-asr/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://pypi.org/project/mlx-qwen3-asr/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 
@@ -9,28 +10,103 @@ A ground-up reimplementation of the [official PyTorch model](https://github.com/
 
 ## Why this exists
 
-Qwen3-ASR is the new state of the art in open-source ASR, beating Whisper-large-v3 across nearly every benchmark and supporting 30 languages plus 22 Chinese dialects. But the official implementation is **PyTorch + NVIDIA CUDA** — it doesn't use Apple GPUs.
+[Qwen3-ASR](https://github.com/QwenLM/Qwen3-ASR) is the current state-of-the-art open-source speech recognition model by the Alibaba Qwen team, beating Whisper-large-v3 across nearly every benchmark and supporting 30 languages plus 22 Chinese dialects. But the official implementation is **PyTorch + NVIDIA CUDA** — it doesn't use Apple GPUs.
 
 This project rewrites every layer for MLX so the same model runs natively on M1/M2/M3/M4 hardware. Not a wrapper — a full reimplementation with correct interleaved MRoPE, per-chunk windowed encoder attention, and all the details that matter for output quality.
 
-## Quick start
+### Key features
+
+- Full audio encoder + text decoder with correct interleaved MRoPE
+- Supports both 1.7B and 0.6B model sizes
+- Long audio chunking (up to 20 minutes per chunk) with no 30s feature truncation
+- Word-level timestamps via native MLX forced aligner (experimental) or official Qwen backend
+- Streaming ASR support
+- Native fast-path WAV loader (PCM/float WAV) with ffmpeg fallback for other formats
+- Multiple output formats: txt, json, srt, vtt, tsv
+- Cached model/tokenizer instances for low repeated-call latency
+- Decoder optimizations: preallocated KV cache + direct grouped-query fused attention
+- 4-bit and 8-bit quantization — 4x speed gain with no quality loss
+- Minimal dependencies: mlx, numpy, huggingface-hub, transformers
+
+## Installation
+
+Install from PyPI:
 
 ```bash
 pip install mlx-qwen3-asr
 ```
+
+Install with optional forced aligner support (timestamps via official backend):
+
+```bash
+pip install "mlx-qwen3-asr[aligner]"
+```
+
+This extra installs `qwen-asr`, `nagisa`, and `soynlp`.
+
+For development:
+
+```bash
+git clone https://github.com/moona3k/mlx-qwen3-asr.git
+cd mlx-qwen3-asr
+pip install -e ".[dev]"
+```
+
+## Quick start
+
+### Python API
 
 ```python
 from mlx_qwen3_asr import transcribe
 
 result = transcribe("audio.wav")
 print(result.text)
+print(result.language)
 ```
+
+By default, `transcribe()` uses `Qwen/Qwen3-ASR-0.6B` for fast local usage on Mac. Use `Qwen/Qwen3-ASR-1.7B` when you want higher accuracy and can afford higher latency/memory.
+
+With options:
+
+```python
+result = transcribe(
+    "meeting.mp3",
+    model="Qwen/Qwen3-ASR-1.7B",  # accuracy-first option
+    language="English",
+    verbose=True,
+)
+print(result.text)
+```
+
+### Loading models explicitly
+
+```python
+from mlx_qwen3_asr import load_model, load_audio, transcribe
+
+model, config = load_model("Qwen/Qwen3-ASR-0.6B")
+audio = load_audio("speech.wav")
+result = transcribe(audio, model=model)
+```
+
+### CLI
 
 ```bash
 mlx-qwen3-asr audio.wav
 ```
 
-That's it. First run downloads model weights from HuggingFace (~1.2 GB for 0.6B).
+Specify model, language, and output format:
+
+```bash
+mlx-qwen3-asr recording.mp3 --model Qwen/Qwen3-ASR-0.6B --language English -f srt -o output/
+```
+
+Multiple files with all output formats:
+
+```bash
+mlx-qwen3-asr *.wav -f all -o transcripts/ --verbose
+```
+
+Run `mlx-qwen3-asr --help` for the full list of options.
 
 ## Performance on Apple Silicon
 
@@ -73,14 +149,20 @@ Word error rates from the [Qwen3-ASR technical report](https://huggingface.co/Qw
 
 4-bit quantization matches fp16 quality at 2.9x faster evaluation throughput. All benchmark JSON artifacts are committed to `docs/benchmarks/` for reproducibility.
 
-## Models
+## Model variants
 
 | | Qwen3-ASR-0.6B (default) | Qwen3-ASR-1.7B |
 |---|---|---|
-| **Use case** | Fast local transcription | Maximum accuracy |
-| **Encoder** | 18 layers, d=896 | 24 layers, d=1024 |
-| **Decoder** | 28 layers, GQA 16/8 | 28 layers, GQA 16/8 |
-| **Languages** | 30 + 22 Chinese dialects | 30 + 22 Chinese dialects |
+| **Parameters** | 0.6B | 1.7B |
+| **Audio encoder layers** | 18 | 24 |
+| **Audio encoder dim (`d_model`)** | 896 | 1024 |
+| **Text decoder layers** | 28 | 28 |
+| **Text hidden size** | 1024 | 2048 |
+| **Text attention (Q/KV heads)** | GQA (16/8) | GQA (16/8) |
+| **RoPE theta** | 1,000,000 | 1,000,000 |
+| **HuggingFace** | `Qwen/Qwen3-ASR-0.6B` | `Qwen/Qwen3-ASR-1.7B` |
+
+Both models use Multi-dimensional RoPE (MRoPE), 128-bin mel spectrograms, and the same tokenizer with a vocabulary size of 151,936.
 
 ```python
 # Default: 0.6B (fast)
@@ -105,7 +187,9 @@ mlx-qwen3-asr audio.wav --timestamps --aligner-backend qwen_asr
 mlx-qwen3-asr audio.wav --timestamps --aligner-backend auto
 ```
 
-The native MLX backend is 2.6x faster than the PyTorch-backed official aligner with matching text output and <6ms timing deviation on tested samples.
+The native MLX backend is 2.6x faster than the PyTorch-backed official aligner with matching text output and <6ms timing deviation on 50 LibriSpeech test-clean samples.
+
+For Japanese/Korean timestamp alignment with the native MLX backend, install the `[aligner]` extra so `nagisa`/`soynlp` tokenization matches the official path.
 
 ## Quantization
 
@@ -118,6 +202,20 @@ python scripts/convert.py \
   --output-dir ./qwen3-asr-4bit
 
 mlx-qwen3-asr audio.wav --model ./qwen3-asr-4bit
+```
+
+Recommended quantization profile (current best on Apple Silicon):
+- `4-bit`, `group_size=64`
+- Latest matrix report: `docs/benchmarks/2026-02-14-quant-matrix-post-wavfast.md`
+- Measured long-clip speedup vs fp16: **3.98x** with zero sampled WER delta
+
+Publish quantized models to HuggingFace:
+
+```bash
+HF_TOKEN=... python scripts/publish_quantized.py \
+  --source-model Qwen/Qwen3-ASR-0.6B \
+  --repo-id YOUR_USER/mlx-qwen3-asr-0.6b-4bit \
+  --bits 4
 ```
 
 ## Output formats
@@ -133,9 +231,41 @@ Supported: `txt`, `json`, `srt`, `vtt`, `tsv`.
 
 ## Supported languages
 
-30 languages: Arabic, Cantonese, Chinese, Czech, Danish, Dutch, English, Filipino, Finnish, French, German, Greek, Hindi, Hungarian, Indonesian, Italian, Japanese, Korean, Macedonian, Malay, Persian, Polish, Portuguese, Romanian, Russian, Spanish, Swedish, Thai, Turkish, Vietnamese.
+Qwen3-ASR supports 52 languages and dialects in total:
 
-Plus 22 Chinese dialects (Sichuan, Shanghai, Cantonese, etc.).
+| Language | Language | Language | Language |
+|----------|----------|----------|----------|
+| Arabic | Cantonese | Chinese | Czech |
+| Danish | Dutch | English | Filipino |
+| Finnish | French | German | Greek |
+| Hindi | Hungarian | Indonesian | Italian |
+| Japanese | Korean | Macedonian | Malay |
+| Persian | Polish | Portuguese | Romanian |
+| Russian | Spanish | Swedish | Thai |
+| Turkish | Vietnamese | | |
+
+Plus 22 Chinese dialects (Sichuan, Shanghai, Cantonese, and others).
+
+## API reference
+
+### `transcribe(audio, *, model, language, return_timestamps, forced_aligner, dtype, max_new_tokens, verbose)`
+
+Transcribe audio to text. Accepts a file path, numpy array, `mx.array`, or `(array, sample_rate)` tuple. Returns a `TranscriptionResult`. Set `return_timestamps=True` to request word-level timestamps. You can pass a configured `ForcedAligner` instance for explicit backend control (`qwen_asr`, `mlx`, or `auto`).
+
+### `load_model(name_or_path, *, dtype)`
+
+Load a Qwen3-ASR model and its config from a HuggingFace repo or local path. Returns `(model, config)`.
+
+### `load_audio(path_or_url)`
+
+Load and resample audio to mono 16 kHz. Returns an `mx.array`.
+
+### `TranscriptionResult`
+
+Frozen dataclass with fields:
+- `text` (str) — transcribed text
+- `language` (str) — detected or forced language
+- `segments` (list[dict] | None) — optional timestamped segments when requested
 
 ## Quality gates
 
@@ -150,6 +280,27 @@ RUN_REFERENCE_PARITY=1 python scripts/quality_gate.py --mode release
 
 # Golden evaluation on LibriSpeech
 python scripts/eval_librispeech.py --subset test-clean --samples 100
+```
+
+Run unit tests directly:
+
+```bash
+pytest -q
+```
+
+Token-level greedy parity against official PyTorch (slow; downloads model weights):
+
+```bash
+RUN_REFERENCE_PARITY=1 REFERENCE_PARITY_MODEL=Qwen/Qwen3-ASR-0.6B pytest -q tests/test_reference_parity.py
+```
+
+Benchmark latency + RTF:
+
+```bash
+python scripts/benchmark_asr.py tests/fixtures/test_speech.wav \
+  --model Qwen/Qwen3-ASR-0.6B \
+  --runs 5 \
+  --json-output docs/benchmarks/latest.json
 ```
 
 Every performance optimization is committed with before/after benchmark JSON artifacts so regressions are caught and claims are verifiable.
@@ -167,7 +318,7 @@ pytest -q
 
 - [Qwen team](https://github.com/QwenLM) at Alibaba for the Qwen3-ASR model
 - [Apple MLX team](https://github.com/ml-explore/mlx) for the MLX framework
-- [mlx-whisper](https://github.com/ml-explore/mlx-examples) for architecture patterns
+- [mlx-whisper](https://github.com/ml-explore/mlx-examples) for architecture patterns and inspiration
 
 ## License
 

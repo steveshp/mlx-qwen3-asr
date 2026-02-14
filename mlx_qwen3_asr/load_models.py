@@ -25,6 +25,7 @@ class _ModelHolder:
     _model: Optional[Qwen3ASRModel] = None
     _config: Optional[Qwen3ASRConfig] = None
     _path: Optional[str] = None
+    _resolved_path: Optional[str] = None
     _dtype: Optional[mx.Dtype] = None
 
     @classmethod
@@ -36,18 +37,32 @@ class _ModelHolder:
         if cls._model is not None and cls._path == path_or_hf_repo and cls._dtype == dtype:
             return cls._model, cls._config
 
-        model, config = load_model(path_or_hf_repo, dtype=dtype)
+        model, config, resolved_path = _load_model_with_resolved_path(path_or_hf_repo, dtype=dtype)
         cls._model = model
         cls._config = config
         cls._path = path_or_hf_repo
+        cls._resolved_path = str(resolved_path)
         cls._dtype = dtype
         return model, config
+
+    @classmethod
+    def get_resolved_path(
+        cls,
+        path_or_hf_repo: str,
+        dtype: mx.Dtype = mx.float16,
+    ) -> str:
+        """Return a local resolved model path for the cached model key."""
+        cls.get(path_or_hf_repo, dtype=dtype)
+        if cls._resolved_path is None:
+            return path_or_hf_repo
+        return cls._resolved_path
 
     @classmethod
     def clear(cls):
         cls._model = None
         cls._config = None
         cls._path = None
+        cls._resolved_path = None
         cls._dtype = None
 
 
@@ -71,6 +86,15 @@ def load_model(
     Returns:
         Tuple of (model, config)
     """
+    model, config, _ = _load_model_with_resolved_path(path_or_hf_repo, dtype=dtype)
+    return model, config
+
+
+def _load_model_with_resolved_path(
+    path_or_hf_repo: str,
+    dtype: mx.Dtype,
+) -> tuple[Qwen3ASRModel, Qwen3ASRConfig, Path]:
+    """Load model and return both config and resolved local model path."""
     model_path = _resolve_path(path_or_hf_repo)
 
     # Load config
@@ -111,7 +135,7 @@ def load_model(
         logger.info(f"Loaded quantized model from {model_path}")
     else:
         logger.info(f"Loaded model from {model_path} with dtype {dtype}")
-    return model, config
+    return model, config, model_path
 
 
 def _cast_tree_dtype(tree: dict, dtype: mx.Dtype) -> dict:

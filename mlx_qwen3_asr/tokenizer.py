@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Optional
 
 
@@ -127,12 +128,20 @@ class _TokenizerHolder:
 
     _cache: dict[str, Tokenizer] = {}
 
+    @staticmethod
+    def _canonical_key(model_path: str) -> str:
+        p = Path(model_path)
+        if p.exists():
+            return str(p.resolve())
+        return model_path
+
     @classmethod
     def get(cls, model_path: str) -> Tokenizer:
-        tok = cls._cache.get(model_path)
+        key = cls._canonical_key(model_path)
+        tok = cls._cache.get(key)
         if tok is None:
             tok = Tokenizer(model_path)
-            cls._cache[model_path] = tok
+            cls._cache[key] = tok
         return tok
 
     @classmethod

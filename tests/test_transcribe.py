@@ -108,6 +108,11 @@ def test_transcribe_uses_default_model_id(monkeypatch):
     monkeypatch.setattr(tmod, "_TokenizerHolder", _DummyTokenizerHolder)
     monkeypatch.setattr(tmod._ModelHolder, "get", _fake_get)
     monkeypatch.setattr(
+        tmod._ModelHolder,
+        "get_resolved_path",
+        lambda path, dtype=mx.float16: path,
+    )
+    monkeypatch.setattr(
         tmod,
         "compute_features",
         lambda audio: (mx.zeros((1, 128, 100), dtype=mx.float32), mx.array([100], dtype=mx.int32)),
@@ -116,3 +121,31 @@ def test_transcribe_uses_default_model_id(monkeypatch):
 
     _ = transcribe(np.zeros(3200, dtype=np.float32))
     assert called_paths == [DEFAULT_MODEL_ID]
+
+
+def test_transcribe_uses_resolved_model_path_for_tokenizer(monkeypatch):
+    tmod = importlib.import_module("mlx_qwen3_asr.transcribe")
+    token_paths = []
+
+    class _RecordingTokenizerHolder:
+        @staticmethod
+        def get(model_path: str):
+            token_paths.append(model_path)
+            return _DummyTokenizer(model_path)
+
+    monkeypatch.setattr(tmod, "_TokenizerHolder", _RecordingTokenizerHolder)
+    monkeypatch.setattr(tmod._ModelHolder, "get", lambda *a, **k: (_DummyModel(), None))
+    monkeypatch.setattr(
+        tmod._ModelHolder,
+        "get_resolved_path",
+        lambda path, dtype=mx.float16: "/tmp/qwen3-resolved-model",
+    )
+    monkeypatch.setattr(
+        tmod,
+        "compute_features",
+        lambda audio: (mx.zeros((1, 128, 100), dtype=mx.float32), mx.array([100], dtype=mx.int32)),
+    )
+    monkeypatch.setattr(tmod, "generate", lambda **kwargs: [10, 11, 12])
+
+    _ = transcribe(np.zeros(3200, dtype=np.float32))
+    assert token_paths == ["/tmp/qwen3-resolved-model"]

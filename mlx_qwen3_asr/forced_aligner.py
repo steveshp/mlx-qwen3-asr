@@ -286,7 +286,8 @@ class _MLXForcedAlignerBackend:
 
         self.dtype = dtype
         self.model, self.config = _ModelHolder.get(model_path, dtype=dtype)
-        self.tokenizer = _TokenizerHolder.get(model_path)
+        resolved_model_path = _ModelHolder.get_resolved_path(model_path, dtype=dtype)
+        self.tokenizer = _TokenizerHolder.get(resolved_model_path)
 
         self.timestamp_token_id = self.config.timestamp_token_id
         self.timestamp_segment_time = self.config.timestamp_segment_time

@@ -57,8 +57,10 @@ Performance progress:
 - Done (cold-start tokenizer optimization):
   - tokenizer loader now prefers direct `Qwen2Tokenizer` path over
     `AutoTokenizer` dynamic loading.
+  - tokenizer now also receives resolved local snapshot path (not repo ID),
+    avoiding extra Hub checks in short-lived processes.
   - benchmarked process-level first-transcribe latency on fixture audio:
-    mean `4.008s` -> `2.599s` (`~1.54x` faster).
+    mean `4.008s` -> `2.296s` (`~1.75x` faster overall vs legacy path).
 - Current measured fp16 point from refreshed matrix run
   (Apple M4 Pro, `Qwen/Qwen3-ASR-0.6B`, float16):
   - short fixture: mean `0.4996s`, RTF `0.1972`

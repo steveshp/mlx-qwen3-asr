@@ -125,3 +125,14 @@ available, with `AutoTokenizer` as fallback.
 - Direct `Qwen2Tokenizer` reduces process-level first-transcribe latency while preserving
   tokenization behavior and parity gates.
 - Fallback path retains compatibility with older/variant transformer stacks.
+
+## Decision 11: Resolve Local Model Snapshot Path Before Tokenizer Load
+
+**Choice:** Pass resolved local model path (HF snapshot directory) to tokenizer loading
+once the model is already resolved by `_ModelHolder`.
+**Alternative:** Keep passing the original repo ID string to tokenizer loading.
+
+**Rationale:**
+- Repo-ID tokenizer loading may still perform Hub metadata checks in short-lived processes.
+- Resolved local path removes that network overhead when weights/tokenizer files are already cached.
+- This complements Decision 10 and further reduces first-transcribe latency without affecting quality.

@@ -12,6 +12,7 @@ from mlx_qwen3_asr.load_models import (
     _cast_tree_dtype,
     _infer_quantization_params,
     _is_quantized_weights,
+    _ModelHolder,
     _read_quantization_config,
     _resolve_path,
 )
@@ -69,6 +70,31 @@ class TestResolvePath:
 
         resolved = _resolve_path(ACCURACY_MODEL_ID)
         assert resolved == Path(expected)
+
+
+class TestModelHolder:
+    def test_get_resolved_path_uses_cached_resolve(self, monkeypatch):
+        _ModelHolder.clear()
+        sentinel_model = object()
+        sentinel_cfg = object()
+
+        def fake_loader(path_or_hf_repo, dtype):  # noqa: ANN001
+            assert path_or_hf_repo == ACCURACY_MODEL_ID
+            return sentinel_model, sentinel_cfg, Path("/tmp/qwen3-resolved")
+
+        monkeypatch.setattr(
+            "mlx_qwen3_asr.load_models._load_model_with_resolved_path",
+            fake_loader,
+        )
+
+        model, cfg = _ModelHolder.get(ACCURACY_MODEL_ID, dtype=mx.float16)
+        assert model is sentinel_model
+        assert cfg is sentinel_cfg
+        assert _ModelHolder.get_resolved_path(ACCURACY_MODEL_ID, dtype=mx.float16) == (
+            "/tmp/qwen3-resolved"
+        )
+
+        _ModelHolder.clear()
 
 
 class _FakeModel:

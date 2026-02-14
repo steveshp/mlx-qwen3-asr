@@ -78,7 +78,7 @@ def transcribe(
     # Load model
     if isinstance(model, str):
         model_obj, _ = _ModelHolder.get(model, dtype=dtype)
-        model_path = model
+        model_path = _ModelHolder.get_resolved_path(model, dtype=dtype)
     else:
         model_obj = model
         model_path = DEFAULT_MODEL_ID
