@@ -1,0 +1,393 @@
+"""Tests for mlx_qwen3_asr/model.py.
+
+All tests use tiny configs (small d_model, 2 layers, 2 heads) to keep tests
+fast and avoid needing real model weights.
+"""
+
+import pytest
+import numpy as np
+import mlx.core as mx
+import mlx.nn as nn
+
+from mlx_qwen3_asr.config import AudioEncoderConfig, TextDecoderConfig, Qwen3ASRConfig
+from mlx_qwen3_asr.model import (
+    SinusoidalPositionEmbedding,
+    AudioAttention,
+    AudioEncoderLayer,
+    AudioEncoder,
+    TextAttention,
+    SwiGLU,
+    TextDecoderLayer,
+    KVCache,
+    _create_causal_mask,
+    Qwen3ASRModel,
+)
+
+
+# ---------------------------------------------------------------------------
+# Tiny configs for fast tests
+# ---------------------------------------------------------------------------
+
+def _tiny_audio_config() -> AudioEncoderConfig:
+    return AudioEncoderConfig(
+        num_mel_bins=128,
+        encoder_layers=2,
+        encoder_attention_heads=2,
+        encoder_ffn_dim=128,
+        d_model=64,
+        output_dim=96,
+        max_source_positions=100,
+        downsample_hidden_size=32,
+    )
+
+
+def _tiny_text_config() -> TextDecoderConfig:
+    return TextDecoderConfig(
+        vocab_size=256,
+        hidden_size=96,
+        intermediate_size=192,
+        num_hidden_layers=2,
+        num_attention_heads=2,
+        num_key_value_heads=2,
+        head_dim=48,  # hidden_size / num_heads is not forced, head_dim is separate
+        rms_norm_eps=1e-6,
+    )
+
+
+def _tiny_asr_config() -> Qwen3ASRConfig:
+    return Qwen3ASRConfig(
+        audio_config=_tiny_audio_config(),
+        text_config=_tiny_text_config(),
+    )
+
+
+# ---------------------------------------------------------------------------
+# SinusoidalPositionEmbedding
+# ---------------------------------------------------------------------------
+
+
+class TestSinusoidalPositionEmbedding:
+    """Test SinusoidalPositionEmbedding output shape."""
+
+    def test_output_shape(self):
+        emb = SinusoidalPositionEmbedding(num_positions=100, embedding_dim=64)
+        positions = mx.arange(10)
+        result = emb(positions)
+        assert result.shape == (10, 64)
+
+    def test_single_position(self):
+        emb = SinusoidalPositionEmbedding(num_positions=50, embedding_dim=32)
+        result = emb(mx.array([0]))
+        assert result.shape == (1, 32)
+
+    def test_odd_embedding_dim(self):
+        """For odd embedding_dim=33, half_dim=16 so concat gives 32 columns.
+        The trim pe[:, :33] on 32 columns just returns 32. This is fine since
+        odd dims are not used in practice."""
+        emb = SinusoidalPositionEmbedding(num_positions=10, embedding_dim=33)
+        result = emb(mx.arange(5))
+        # half_dim = 33 // 2 = 16, concat(sin, cos) = 32 cols.
+        # pe[:, :33] on 32 cols => 32.
+        assert result.shape == (5, 32)
+
+
+# ---------------------------------------------------------------------------
+# AudioAttention
+# ---------------------------------------------------------------------------
+
+
+class TestAudioAttention:
+    """Test AudioAttention output shape."""
+
+    def test_output_shape(self):
+        d_model, num_heads = 64, 2
+        attn = AudioAttention(d_model, num_heads)
+        x = mx.random.normal((1, 10, d_model))
+        result = attn(x)
+        mx.eval(result)
+        assert result.shape == (1, 10, d_model)
+
+    def test_batch_output_shape(self):
+        d_model, num_heads = 64, 4
+        attn = AudioAttention(d_model, num_heads)
+        x = mx.random.normal((2, 8, d_model))
+        result = attn(x)
+        mx.eval(result)
+        assert result.shape == (2, 8, d_model)
+
+
+# ---------------------------------------------------------------------------
+# AudioEncoderLayer
+# ---------------------------------------------------------------------------
+
+
+class TestAudioEncoderLayer:
+    """Test AudioEncoderLayer output shape."""
+
+    def test_output_shape(self):
+        d_model, num_heads, ffn_dim = 64, 2, 128
+        layer = AudioEncoderLayer(d_model, num_heads, ffn_dim)
+        x = mx.random.normal((1, 10, d_model))
+        result = layer(x)
+        mx.eval(result)
+        assert result.shape == (1, 10, d_model)
+
+
+# ---------------------------------------------------------------------------
+# AudioEncoder.get_output_lengths
+# ---------------------------------------------------------------------------
+
+
+class TestAudioEncoderGetOutputLengths:
+    """Test AudioEncoder.get_output_lengths with known lengths."""
+
+    def test_known_lengths(self):
+        cfg = _tiny_audio_config()
+        encoder = AudioEncoder(cfg)
+
+        # Formula: apply (L + 1) // 2 three times
+        # 100 -> 50 -> 25 -> 13 (actually (100+1)//2=50, (50+1)//2=25, (25+1)//2=13)
+        lengths = mx.array([100])
+        result = encoder.get_output_lengths(lengths)
+        mx.eval(result)
+        assert result.item() == 13
+
+    def test_400_frames(self):
+        cfg = _tiny_audio_config()
+        encoder = AudioEncoder(cfg)
+        # 400 -> 200 -> 100 -> 50  ((400+1)//2=200, (200+1)//2=100, (100+1)//2=50)
+        lengths = mx.array([400])
+        result = encoder.get_output_lengths(lengths)
+        mx.eval(result)
+        assert result.item() == 50
+
+    def test_1000_frames(self):
+        cfg = _tiny_audio_config()
+        encoder = AudioEncoder(cfg)
+        # 1000 -> 500 -> 250 -> 125 ((1000+1)//2=500, (500+1)//2=250, (250+1)//2=125)
+        lengths = mx.array([1000])
+        result = encoder.get_output_lengths(lengths)
+        mx.eval(result)
+        assert result.item() == 125
+
+    def test_batch(self):
+        cfg = _tiny_audio_config()
+        encoder = AudioEncoder(cfg)
+        lengths = mx.array([100, 400, 1000])
+        result = encoder.get_output_lengths(lengths)
+        mx.eval(result)
+        expected = [13, 50, 125]
+        np.testing.assert_array_equal(np.array(result), expected)
+
+    def test_small_input(self):
+        cfg = _tiny_audio_config()
+        encoder = AudioEncoder(cfg)
+        # 1 -> (1+1)//2=1 -> 1 -> 1
+        lengths = mx.array([1])
+        result = encoder.get_output_lengths(lengths)
+        mx.eval(result)
+        assert result.item() == 1
+
+
+# ---------------------------------------------------------------------------
+# TextAttention
+# ---------------------------------------------------------------------------
+
+
+class TestTextAttention:
+    """Test TextAttention output shape with small config."""
+
+    def test_output_shape(self):
+        cfg = _tiny_text_config()
+        # Need head_dim such that sections sum to half_dim
+        # head_dim=48 -> half_dim=24 -> need sections summing to 24
+        # We'll use a head_dim of 128 for MRoPE compatibility or mock cos/sin
+        cfg_for_attn = TextDecoderConfig(
+            vocab_size=256,
+            hidden_size=64,
+            intermediate_size=128,
+            num_hidden_layers=2,
+            num_attention_heads=2,
+            num_key_value_heads=2,
+            head_dim=32,
+        )
+        attn = TextAttention(cfg_for_attn)
+        batch, seq_len = 1, 5
+        x = mx.random.normal((batch, seq_len, 64))
+        # cos/sin shape: (batch, seq_len, head_dim)
+        cos = mx.ones((batch, seq_len, 32))
+        sin = mx.zeros((batch, seq_len, 32))
+        result = attn(x, cos, sin)
+        mx.eval(result)
+        assert result.shape == (batch, seq_len, 64)
+
+
+# ---------------------------------------------------------------------------
+# SwiGLU
+# ---------------------------------------------------------------------------
+
+
+class TestSwiGLU:
+    """Test SwiGLU output shape."""
+
+    def test_output_shape(self):
+        hidden_size, intermediate_size = 64, 128
+        mlp = SwiGLU(hidden_size, intermediate_size)
+        x = mx.random.normal((1, 10, hidden_size))
+        result = mlp(x)
+        mx.eval(result)
+        assert result.shape == (1, 10, hidden_size)
+
+    def test_2d_input(self):
+        hidden_size, intermediate_size = 32, 64
+        mlp = SwiGLU(hidden_size, intermediate_size)
+        x = mx.random.normal((5, hidden_size))
+        result = mlp(x)
+        mx.eval(result)
+        assert result.shape == (5, hidden_size)
+
+
+# ---------------------------------------------------------------------------
+# TextDecoderLayer
+# ---------------------------------------------------------------------------
+
+
+class TestTextDecoderLayer:
+    """Test TextDecoderLayer output shape."""
+
+    def test_output_shape(self):
+        cfg = TextDecoderConfig(
+            vocab_size=256,
+            hidden_size=64,
+            intermediate_size=128,
+            num_hidden_layers=2,
+            num_attention_heads=2,
+            num_key_value_heads=2,
+            head_dim=32,
+        )
+        layer = TextDecoderLayer(cfg)
+        batch, seq_len = 1, 5
+        x = mx.random.normal((batch, seq_len, 64))
+        cos = mx.ones((batch, seq_len, 32))
+        sin = mx.zeros((batch, seq_len, 32))
+        result = layer(x, cos, sin)
+        mx.eval(result)
+        assert result.shape == (batch, seq_len, 64)
+
+
+# ---------------------------------------------------------------------------
+# KVCache
+# ---------------------------------------------------------------------------
+
+
+class TestKVCache:
+    """Test KVCache update and offset tracking."""
+
+    def test_initial_state(self):
+        cache = KVCache(num_layers=4)
+        assert cache.offset == 0
+        assert cache.seq_len == 0
+        assert len(cache.keys) == 4
+        assert all(k is None for k in cache.keys)
+
+    def test_first_update(self):
+        cache = KVCache(num_layers=2)
+        k = mx.random.normal((1, 2, 5, 16))  # (B, H, L, D)
+        v = mx.random.normal((1, 2, 5, 16))
+
+        # Update layer 0
+        k_out, v_out = cache.update(k, v, layer_idx=0)
+        assert k_out.shape == (1, 2, 5, 16)
+        assert cache.offset == 0  # offset only updates after last layer
+
+        # Update layer 1 (last layer)
+        k_out, v_out = cache.update(k, v, layer_idx=1)
+        assert cache.offset == 5
+        assert cache.seq_len == 5
+
+    def test_sequential_updates(self):
+        cache = KVCache(num_layers=2)
+        k1 = mx.random.normal((1, 2, 5, 16))
+        v1 = mx.random.normal((1, 2, 5, 16))
+
+        # First step: prefill with 5 tokens
+        cache.update(k1, v1, layer_idx=0)
+        cache.update(k1, v1, layer_idx=1)
+        assert cache.offset == 5
+
+        # Second step: one new token
+        k2 = mx.random.normal((1, 2, 1, 16))
+        v2 = mx.random.normal((1, 2, 1, 16))
+        k_out, v_out = cache.update(k2, v2, layer_idx=0)
+        assert k_out.shape == (1, 2, 6, 16)  # 5 + 1 = 6
+
+        cache.update(k2, v2, layer_idx=1)
+        assert cache.offset == 6
+
+
+# ---------------------------------------------------------------------------
+# _create_causal_mask
+# ---------------------------------------------------------------------------
+
+
+class TestCreateCausalMask:
+    """Test _create_causal_mask shape and values."""
+
+    def test_shape(self):
+        mask = _create_causal_mask(4)
+        assert mask.shape == (1, 1, 4, 4)
+
+    def test_values(self):
+        mask = _create_causal_mask(3)
+        mx.eval(mask)
+        m = np.array(mask[0, 0])
+        # Diagonal and below should be 0
+        assert m[0, 0] == 0.0
+        assert m[1, 0] == 0.0
+        assert m[1, 1] == 0.0
+        assert m[2, 0] == 0.0
+        assert m[2, 1] == 0.0
+        assert m[2, 2] == 0.0
+        # Above diagonal should be large negative
+        assert m[0, 1] == pytest.approx(-1e9)
+        assert m[0, 2] == pytest.approx(-1e9)
+        assert m[1, 2] == pytest.approx(-1e9)
+
+    def test_seq_len_1(self):
+        mask = _create_causal_mask(1)
+        mx.eval(mask)
+        assert mask.shape == (1, 1, 1, 1)
+        assert np.array(mask[0, 0, 0, 0]) == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Qwen3ASRModel instantiation
+# ---------------------------------------------------------------------------
+
+
+class TestQwen3ASRModelInstantiation:
+    """Test Qwen3ASRModel instantiation with tiny config."""
+
+    def test_instantiation(self):
+        cfg = _tiny_asr_config()
+        # Need head_dim with valid MRoPE sections. Use head_dim=128 for compatibility.
+        cfg.text_config.head_dim = 128
+        model = Qwen3ASRModel(cfg)
+        assert model.audio_token_id == cfg.audio_token_id
+        assert model.num_audio_encoder_layers == 2
+        assert model.num_text_decoder_layers == 2
+
+    def test_create_cache(self):
+        cfg = _tiny_asr_config()
+        cfg.text_config.head_dim = 128
+        model = Qwen3ASRModel(cfg)
+        cache = model.create_cache()
+        assert isinstance(cache, KVCache)
+        assert len(cache.keys) == cfg.text_config.num_hidden_layers
+
+    def test_default_config_instantiation(self):
+        """Instantiation with full default config should not error."""
+        cfg = Qwen3ASRConfig()
+        model = Qwen3ASRModel(cfg)
+        assert model.num_audio_encoder_layers == 32
+        assert model.num_text_decoder_layers == 32

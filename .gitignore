@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.DS_Store
+*.safetensors
+*.npz
+!mlx_qwen3_asr/assets/mel_filters.npz
