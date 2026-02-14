@@ -129,6 +129,12 @@ Primary-source refresh across Qwen3-ASR, Swift ports, and ASR decoding papers:
 - No paper-backed shortcut was found that can safely replace the current
   correctness-first gates for MRoPE/audio injection/long-context handling.
 
+### 10) Post-change correctness checkpoint
+
+- Ran release gate after final cache/research pass:
+  - `RUN_REFERENCE_PARITY=1 python scripts/quality_gate.py --mode release`
+  - Result: PASS (full pytest + reference parity lane green).
+
 ## Decision Gates
 
 ### Gate A: Mel backend switch
