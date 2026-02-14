@@ -226,6 +226,58 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 - **Always** for significant changes (multi-file, architectural, new modules)
 - **Simplified** for trivial fixes (typos, single-line changes) — just type + summary + brief why
 
+## Architecture Direction
+
+These are known structural improvements to pursue as the codebase evolves. They represent the target architecture — implement them when touching the relevant code.
+
+### Split model.py into encoder.py + decoder.py + model.py
+
+model.py is 1068 lines containing two completely different architectures (audio encoder with LayerNorm/bias/GELU/bidirectional attention vs text decoder with RMSNorm/no-bias/SwiGLU/causal attention). Split into:
+- `encoder.py` — `SinusoidalPositionEmbedding`, `AudioAttention`, `AudioEncoderLayer`, `AudioEncoder`, `_create_windowed_mask`
+- `decoder.py` — `TextAttention`, `SwiGLU`, `TextDecoderLayer`, `TextDecoder`, `KVCache`, `_create_causal_mask`
+- `model.py` — `Qwen3ASRModel` (top-level glue, audio injection, lm_head)
+
+### Add model.prefill() and model.step() methods
+
+Currently `generate()` reaches into model internals: `model.model.embed_tokens()`, `model._inject_audio_features()`, `model.lm_head()`. Instead, add:
+- `model.prefill(input_ids, audio_features, feature_lens, position_ids)` → returns logits + populated KV cache
+- `model.step(token_id, position_ids, cache)` → returns logits + updated cache
+
+Then `generate()` becomes a simple loop calling `step()` with no knowledge of model internals. This also enables real streaming (carry KV cache across chunks).
+
+### Replace singletons with Session object
+
+`_ModelHolder` and `_TokenizerHolder` are class-level mutable singletons that hide state, cause cache eviction bugs (aligner evicts ASR model), and make testing painful. Target API:
+
+```python
+# Power user path (explicit, testable, no hidden state)
+session = mlx_qwen3_asr.Session(model="Qwen/Qwen3-ASR-0.6B")
+result = session.transcribe("audio.wav")
+
+# Convenience path (uses a default session internally)
+result = mlx_qwen3_asr.transcribe("audio.wav")
+```
+
+The `Session` holds model, tokenizer, and optional aligner. Multiple sessions can coexist. The convenience `transcribe()` uses a module-level default session.
+
+### Wire custom mel spectrogram to drop transformers for feature extraction
+
+`log_mel_spectrogram()`, `stft()`, `_reflect_pad()`, `mel_filters()` exist in audio.py but are unused — the pipeline uses HF `WhisperFeatureExtractor` via `compute_features()`. Target:
+1. Validate custom mel output matches `WhisperFeatureExtractor` output (bit-level parity on test fixtures)
+2. Once proven, swap `compute_features()` to use custom implementation
+3. `transformers` dependency becomes tokenizer-only (and eventually removable with custom BPE)
+
+### Design streaming around resumable KV cache
+
+Current streaming re-transcribes ALL accumulated audio every chunk — O(n²) and not real streaming. Target:
+- `generate()` accepts and returns KV cache
+- Streaming feeds new audio chunks through encoder, extends existing cache, decodes incrementally
+- `_split_stable_unstable` must handle CJK (no whitespace splitting)
+
+### Eliminate audio load round-trip
+
+Currently: `load_audio()` → `mx.array` → `transcribe()` converts back to numpy → `compute_features()`. Unnecessary round-trip. Keep audio as numpy through the feature extraction pipeline, convert to `mx.array` only when entering the model.
+
 ## Working with This Codebase
 
 ### Before Making Changes
@@ -246,10 +298,11 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 |----------|--------|-----------|
 | Language | Python + MLX | MLX has no Rust bindings; Metal compute is language-agnostic |
 | Standalone vs mlx-audio | Standalone | mlx-audio cuts corners (no MRoPE), too many deps |
-| Tokenizer | HF transformers | Qwen2TokenizerFast already exists, not worth reimplementing |
+| Tokenizer | HF transformers (for now) | Qwen2TokenizerFast already exists; custom BPE is a future milestone |
 | Audio loading | ffmpeg subprocess | Same as mlx-whisper, handles all formats |
 | Weight format | safetensors | Standard for MLX ecosystem |
 | RoPE | Custom interleaved MRoPE | MLX's nn.RoPE doesn't support 3D interleaved |
+| Mel spectrogram | HF WhisperFeatureExtractor (for now) | Custom MLX implementation exists but needs parity validation before swapping in |
 
 ### Critical Correctness Rules
 
@@ -258,6 +311,13 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 3. **Text decoder uses RMSNorm + no bias** — different from audio encoder
 4. **Conv2d weight transpose** — PyTorch (out,in,kH,kW) → MLX (out,kH,kW,in)
 5. **Sinusoidal pos embeddings are NOT in weights** — must be recomputed at init
+
+### Known Bugs to Fix
+
+1. **Audio injection bounds check** (model.py `_inject_audio_features`) — `cum_idx` can exceed `audio_features.shape[1]` if prompt token count doesn't match encoder output. Add assertion.
+2. **Model cache eviction** (load_models.py `_ModelHolder`) — single-slot cache; loading aligner evicts ASR model. Change to dict keyed by `(path, dtype)` as interim fix before Session refactor.
+3. **Bare except on fused attention** (model.py `_scaled_dot_product_attention`) — `except Exception` swallows real errors. Narrow to `(TypeError, ValueError)`.
+4. **No language validation** (tokenizer.py `build_prompt_tokens`) — unsupported language strings silently degrade quality. Add warning against known language list.
 
 ## Verification Commands
 
