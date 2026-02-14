@@ -69,6 +69,8 @@ Performance progress:
   - added regression coverage in `tests/test_forced_aligner.py`.
 - Experimental native MLX backend path is now wired (`--aligner-backend mlx`
   or `auto`) while default remains `qwen_asr` until quality gates are met.
+- Initial smoke benchmark on fixture audio shows strong latency upside
+  (~`4.73x` mean vs `qwen_asr`) with matching sample word spans.
 - Native MLX aligner remains a future optimization.
 
 5. Discoverability (README polish + PyPI)

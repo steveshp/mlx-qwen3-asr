@@ -67,6 +67,11 @@ WAV fast-path loader experiment (2026-02-14):
 - `docs/benchmarks/2026-02-14-wav-fastpath.json`
 - `docs/benchmarks/2026-02-14-wav-fastpath.md`
 
+Forced aligner backend smoke comparison (2026-02-14):
+
+- `docs/benchmarks/2026-02-14-aligner-backend-smoke.json`
+- `docs/benchmarks/2026-02-14-aligner-backend-smoke.md`
+
 Generate with:
 
 ```bash

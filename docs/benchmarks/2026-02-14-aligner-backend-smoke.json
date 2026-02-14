@@ -1,0 +1,83 @@
+{
+  "audio": "tests/fixtures/test_speech.wav",
+  "audio_duration_sec": 2.53325,
+  "text": "The quick brown fox jumps over the lazy dog.",
+  "language": "English",
+  "runs": 5,
+  "results": {
+    "mlx": {
+      "latency_sec": {
+        "mean": 0.0413968667970039,
+        "median": 0.041028459003428,
+        "min": 0.04035845799080562,
+        "max": 0.043414125000708736,
+        "std": 0.0010497265543761335
+      },
+      "word_count_mean": 9,
+      "example_first_5": [
+        {
+          "text": "The",
+          "start": 0.0,
+          "end": 0.08
+        },
+        {
+          "text": "quick",
+          "start": 0.08,
+          "end": 0.32
+        },
+        {
+          "text": "brown",
+          "start": 0.4,
+          "end": 0.72
+        },
+        {
+          "text": "fox",
+          "start": 0.72,
+          "end": 1.12
+        },
+        {
+          "text": "jumps",
+          "start": 1.12,
+          "end": 1.44
+        }
+      ]
+    },
+    "qwen_asr": {
+      "latency_sec": {
+        "mean": 0.19565346680174117,
+        "median": 0.19982974999584258,
+        "min": 0.17602141699171625,
+        "max": 0.21043887500127312,
+        "std": 0.013648360127700945
+      },
+      "word_count_mean": 9,
+      "example_first_5": [
+        {
+          "text": "The",
+          "start": 0.0,
+          "end": 0.08
+        },
+        {
+          "text": "quick",
+          "start": 0.08,
+          "end": 0.32
+        },
+        {
+          "text": "brown",
+          "start": 0.4,
+          "end": 0.72
+        },
+        {
+          "text": "fox",
+          "start": 0.72,
+          "end": 1.12
+        },
+        {
+          "text": "jumps",
+          "start": 1.12,
+          "end": 1.44
+        }
+      ]
+    }
+  }
+}

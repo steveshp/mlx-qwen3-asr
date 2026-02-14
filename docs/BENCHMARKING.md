@@ -161,3 +161,22 @@ To avoid rediscovering low-signal paths, these were tested and not kept:
 - `compute_features()` attention-mask skip for `padding="do_not_pad"`:
   - Microbench results were mixed and within noise for practical E2E impact.
   - Final decision: reverted to the simpler, explicit attention-mask path.
+
+## Forced Aligner Backend Smoke (2026-02-14)
+
+Experimental native MLX timestamp backend (`--aligner-backend mlx`) was
+compared against `qwen_asr` on a short deterministic fixture.
+
+Artifacts:
+- `docs/benchmarks/2026-02-14-aligner-backend-smoke.json`
+- `docs/benchmarks/2026-02-14-aligner-backend-smoke.md`
+
+Result snapshot (`tests/fixtures/test_speech.wav`, 5 warm runs):
+- `mlx` mean: `0.0414s`
+- `qwen_asr` mean: `0.1957s`
+- Relative mean speed (`qwen_asr / mlx`): `4.73x`
+- Both backends produced identical first-word timestamp spans in this smoke case.
+
+Scope note:
+- This is a single-sample sanity comparison, not yet a full multilingual
+  timestamp quality parity verdict.
