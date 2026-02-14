@@ -123,6 +123,32 @@ class TestModelHolder:
 
         _ModelHolder.clear()
 
+    def test_cache_key_isolated_by_dtype(self, monkeypatch):
+        _ModelHolder.clear()
+        calls: list[tuple[str, mx.Dtype]] = []
+        store: dict[tuple[str, str], tuple[object, object]] = {}
+
+        def fake_loader(path_or_hf_repo, dtype):  # noqa: ANN001
+            calls.append((path_or_hf_repo, dtype))
+            key = (path_or_hf_repo, str(dtype))
+            model, cfg = store.setdefault(key, (object(), object()))
+            return model, cfg, Path(f"/tmp/{path_or_hf_repo.replace('/', '_')}")
+
+        monkeypatch.setattr(
+            "mlx_qwen3_asr.load_models._load_model_with_resolved_path",
+            fake_loader,
+        )
+
+        m_f16, _ = _ModelHolder.get("Qwen/A", dtype=mx.float16)
+        m_f32, _ = _ModelHolder.get("Qwen/A", dtype=mx.float32)
+        m_f16_2, _ = _ModelHolder.get("Qwen/A", dtype=mx.float16)
+
+        assert m_f16 is m_f16_2
+        assert m_f16 is not m_f32
+        assert calls == [("Qwen/A", mx.float16), ("Qwen/A", mx.float32)]
+
+        _ModelHolder.clear()
+
 
 class _FakeModel:
     def __init__(self):
