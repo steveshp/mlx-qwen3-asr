@@ -124,6 +124,18 @@ Timestamps use the official forced-aligner backend (PyTorch) for now; core ASR
 inference remains native MLX. Native MLX timestamp alignment is an active
 roadmap item, and this backend is treated as a temporary bridge.
 
+Experimental native backend (opt-in):
+
+```bash
+mlx-qwen3-asr audio.wav --timestamps --aligner-backend mlx
+```
+
+Auto fallback mode (try MLX first, then `qwen-asr`):
+
+```bash
+mlx-qwen3-asr audio.wav --timestamps --aligner-backend auto
+```
+
 ## API Reference
 
 ### `transcribe(audio, *, model, language, return_timestamps, forced_aligner, dtype, max_new_tokens, verbose)`
@@ -131,7 +143,9 @@ roadmap item, and this backend is treated as a temporary bridge.
 Transcribe audio to text. Accepts a file path, numpy array, `mx.array`, or
 `(array, sample_rate)` tuple. Returns a `TranscriptionResult`.
 Set `return_timestamps=True` to request word-level timestamps. This requires
-the optional `qwen-asr` dependency (used as forced-aligner backend).
+the optional `qwen-asr` dependency when using the default `qwen_asr` backend.
+You can also pass a configured `ForcedAligner` instance for explicit backend
+control (`qwen_asr`, `mlx`, or `auto`).
 
 ### `load_model(name_or_path, *, dtype)`
 

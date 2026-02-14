@@ -180,6 +180,8 @@ class TestQwen3ASRConfigFromDict:
 
     def test_hf_nested_format(self):
         d = {
+            "timestamp_token_id": 151705,
+            "timestamp_segment_time": 80,
             "thinker_config": {
                 "audio_config": {"d_model": 512, "encoder_layers": 8},
                 "text_config": {"hidden_size": 2048, "num_hidden_layers": 16},
@@ -187,6 +189,7 @@ class TestQwen3ASRConfigFromDict:
                 "audio_start_token_id": 124,
                 "audio_end_token_id": 125,
                 "user_token_id": 999,
+                "classify_num": 5000,
             },
             "audio_token_id": 777,  # ignored when thinker_config is present
         }
@@ -199,6 +202,9 @@ class TestQwen3ASRConfigFromDict:
         assert cfg.audio_start_token_id == 124
         assert cfg.audio_end_token_id == 125
         assert cfg.user_token_id == 999
+        assert cfg.classify_num == 5000
+        assert cfg.timestamp_token_id == 151705
+        assert cfg.timestamp_segment_time == 80
 
     def test_flat_format(self):
         d = {

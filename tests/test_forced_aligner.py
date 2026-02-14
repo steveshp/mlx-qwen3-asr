@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
+import mlx_qwen3_asr.forced_aligner as famod
 from mlx_qwen3_asr.forced_aligner import ForcedAlignTextProcessor
 
 
@@ -46,3 +48,19 @@ def test_parse_timestamp_ms_pairs_words():
     assert aligned[1].text == "world"
     assert aligned[1].start_time == 0.13
     assert aligned[1].end_time == 0.3
+
+
+def test_forced_aligner_rejects_invalid_backend():
+    aligner = famod.ForcedAligner(backend="invalid")
+    with pytest.raises(RuntimeError, match="Unsupported aligner backend"):
+        aligner._ensure_loaded()
+
+
+def test_forced_aligner_mlx_backend_reports_load_failure(monkeypatch):
+    def _boom(*args, **kwargs):
+        raise RuntimeError("mlx init failed")
+
+    monkeypatch.setattr(famod, "_MLXForcedAlignerBackend", _boom)
+    aligner = famod.ForcedAligner(backend=famod.ALIGNER_BACKEND_MLX)
+    with pytest.raises(RuntimeError, match="Failed to load MLX aligner backend"):
+        aligner._ensure_loaded()

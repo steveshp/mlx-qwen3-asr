@@ -67,6 +67,8 @@ Performance progress:
   - ported official text-unit preprocessing and LIS-based timestamp correction
     utilities into `mlx_qwen3_asr/forced_aligner.py`,
   - added regression coverage in `tests/test_forced_aligner.py`.
+- Experimental native MLX backend path is now wired (`--aligner-backend mlx`
+  or `auto`) while default remains `qwen_asr` until quality gates are met.
 - Native MLX aligner remains a future optimization.
 
 5. Discoverability (README polish + PyPI)

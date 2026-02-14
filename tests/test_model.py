@@ -456,3 +456,11 @@ class TestQwen3ASRModelInstantiation:
         model = Qwen3ASRModel(cfg)
         assert model.num_audio_encoder_layers == 24
         assert model.num_text_decoder_layers == 28
+
+    def test_classify_num_changes_output_head_size(self):
+        cfg = _tiny_asr_config()
+        cfg.text_config.head_dim = 128
+        cfg.classify_num = 64
+        model = Qwen3ASRModel(cfg)
+        assert model.lm_head.weight.shape[0] == 64
+        assert model.model.embed_tokens.weight.shape[0] == cfg.text_config.vocab_size

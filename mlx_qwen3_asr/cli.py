@@ -56,6 +56,12 @@ def main():
         help="Forced aligner model (default: Qwen/Qwen3-ForcedAligner-0.6B)",
     )
     parser.add_argument(
+        "--aligner-backend",
+        default="qwen_asr",
+        choices=["qwen_asr", "mlx", "auto"],
+        help="Timestamp backend (default: qwen_asr)",
+    )
+    parser.add_argument(
         "--dtype",
         default="float16",
         choices=["float16", "float32", "bfloat16"],
@@ -81,7 +87,11 @@ def main():
     args = parser.parse_args()
 
     existing_files = [p for p in args.audio if Path(p).exists()]
-    if args.timestamps and existing_files:
+    if (
+        args.timestamps
+        and existing_files
+        and args.aligner_backend in {"qwen_asr", "auto"}
+    ):
         if importlib.util.find_spec("qwen_asr") is None:
             print(
                 "Error: --timestamps requires optional dependency `qwen-asr`. "
@@ -93,6 +103,7 @@ def main():
     # Lazy imports for faster --help
     import mlx.core as mx
 
+    from .forced_aligner import ForcedAligner
     from .transcribe import transcribe
     from .writers import get_writer
 
@@ -114,6 +125,15 @@ def main():
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     had_error = False
+    aligner = (
+        ForcedAligner(
+            model_path=args.forced_aligner,
+            dtype=dtype,
+            backend=args.aligner_backend,
+        )
+        if args.timestamps
+        else None
+    )
 
     for audio_path in args.audio:
         if not Path(audio_path).exists():
@@ -132,7 +152,7 @@ def main():
                 model=args.model,
                 language=args.language,
                 return_timestamps=args.timestamps,
-                forced_aligner=args.forced_aligner if args.timestamps else None,
+                forced_aligner=aligner,
                 dtype=dtype,
                 max_new_tokens=args.max_new_tokens,
                 verbose=args.verbose,

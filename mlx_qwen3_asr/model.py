@@ -943,17 +943,21 @@ class Qwen3ASRModel(nn.Module):
         super().__init__()
         self.config = config
         self.audio_token_id = config.audio_token_id
+        output_size = config.classify_num or config.text_config.vocab_size
 
         self.audio_tower = AudioEncoder(config.audio_config)
         self.model = TextDecoder(config.text_config)
         self.lm_head = nn.Linear(
             config.text_config.hidden_size,
-            config.text_config.vocab_size,
+            output_size,
             bias=False,
         )
 
         # Tie weights if configured
-        if config.text_config.tie_word_embeddings:
+        if (
+            config.text_config.tie_word_embeddings
+            and output_size == config.text_config.vocab_size
+        ):
             self.lm_head.weight = self.model.embed_tokens.weight
 
     def __call__(

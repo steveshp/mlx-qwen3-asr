@@ -1,8 +1,8 @@
 """Forced alignment wrapper for word-level timestamps.
 
-This module intentionally uses the official `qwen-asr` forced aligner as a
-backend. It provides a thin, stable interface for this project while keeping
-the dependency optional.
+Supports:
+- `qwen_asr` backend (official PyTorch forced aligner)
+- `mlx` backend (native MLX prototype path)
 """
 
 from __future__ import annotations
@@ -14,7 +14,12 @@ from typing import Any, Optional
 import mlx.core as mx
 import numpy as np
 
+from .audio import compute_features
+
 DEFAULT_FORCED_ALIGNER_MODEL = "Qwen/Qwen3-ForcedAligner-0.6B"
+ALIGNER_BACKEND_QWEN_ASR = "qwen_asr"
+ALIGNER_BACKEND_MLX = "mlx"
+ALIGNER_BACKEND_AUTO = "auto"
 
 
 @dataclass(frozen=True)
@@ -189,26 +194,82 @@ class ForcedAlignTextProcessor:
         return out
 
 
-class ForcedAligner:
-    """Word-level forced aligner using the official Qwen backend.
+class _MLXForcedAlignerBackend:
+    """Native MLX forced aligner backend."""
 
-    Args:
-        model_path: HF repo ID or local path for the forced aligner model.
-        dtype: Reserved for future native-MLX backend compatibility.
-    """
+    def __init__(self, model_path: str, dtype: mx.Dtype):
+        from .load_models import _ModelHolder
+        from .tokenizer import _TokenizerHolder
 
-    def __init__(
-        self,
-        model_path: str = DEFAULT_FORCED_ALIGNER_MODEL,
-        dtype: mx.Dtype = mx.float16,
-    ):
-        self.model_path = model_path
         self.dtype = dtype
-        self._backend: Optional[Any] = None
+        self.model, self.config = _ModelHolder.get(model_path, dtype=dtype)
+        self.tokenizer = _TokenizerHolder.get(model_path)
 
-    def _ensure_loaded(self) -> None:
-        if self._backend is not None:
-            return
+        self.timestamp_token_id = self.config.timestamp_token_id
+        self.timestamp_segment_time = self.config.timestamp_segment_time
+        if self.config.classify_num is None:
+            raise RuntimeError(
+                "Model config missing classify_num required for forced alignment."
+            )
+        if self.timestamp_token_id is None or self.timestamp_segment_time is None:
+            raise RuntimeError(
+                "Model config missing timestamp_token_id/timestamp_segment_time."
+            )
+
+    @staticmethod
+    def _build_prompt(words: list[str], n_audio_tokens: int) -> str:
+        body = "<timestamp><timestamp>".join(words) + "<timestamp><timestamp>"
+        return (
+            "<|audio_start|>"
+            + ("<|audio_pad|>" * n_audio_tokens)
+            + "<|audio_end|>"
+            + body
+        )
+
+    def align(self, audio: np.ndarray, text: str, language: str) -> list[AlignedWord]:
+        if text.strip() == "":
+            return []
+
+        words = ForcedAlignTextProcessor.tokenize_text(text, language)
+        if not words:
+            return []
+
+        mel, feature_lens = compute_features(audio.astype(np.float32))
+        audio_features, _ = self.model.audio_tower(mel.astype(self.dtype), feature_lens)
+        n_audio_tokens = int(audio_features.shape[1])
+
+        prompt = self._build_prompt(words, n_audio_tokens)
+        token_ids = self.tokenizer.encode(prompt, add_special_tokens=False)
+        input_ids = mx.array([token_ids])
+
+        seq_len = input_ids.shape[1]
+        positions = mx.arange(seq_len)[None, :]
+        position_ids = mx.stack([positions, positions, positions], axis=1)
+
+        embeds = self.model.model.embed_tokens(input_ids)
+        audio_mask = input_ids == self.model.audio_token_id
+        embeds = self.model._inject_audio_features(
+            embeds, audio_features.astype(embeds.dtype), audio_mask
+        )
+        hidden = self.model.model(
+            inputs_embeds=embeds,
+            position_ids=position_ids,
+            attention_mask=None,
+            cache=None,
+        )
+        logits = self.model.lm_head(hidden)
+
+        pred_ids = np.array(mx.argmax(logits, axis=-1))[0]
+        input_np = np.array(input_ids)[0]
+        timestamp_ids = pred_ids[input_np == int(self.timestamp_token_id)]
+        timestamp_ms = timestamp_ids.astype(np.float32) * float(self.timestamp_segment_time)
+        return ForcedAlignTextProcessor.parse_timestamp_ms(words, timestamp_ms)
+
+
+class _QwenASRForcedAlignerBackend:
+    """Official qwen-asr forced aligner backend."""
+
+    def __init__(self, model_path: str):
         try:
             from qwen_asr import Qwen3ForcedAligner  # type: ignore
         except ImportError as e:
@@ -219,24 +280,15 @@ class ForcedAligner:
 
         # CPU keeps this portable and avoids silently requiring CUDA.
         self._backend = Qwen3ForcedAligner.from_pretrained(
-            self.model_path,
+            model_path,
             device_map="cpu",
         )
 
-    def align(
-        self,
-        audio: np.ndarray,
-        text: str,
-        language: str,
-    ) -> list[AlignedWord]:
-        """Align a transcript against audio and return word-level timestamps."""
-        self._ensure_loaded()
-
+    def align(self, audio: np.ndarray, text: str, language: str) -> list[AlignedWord]:
         if text.strip() == "":
             return []
 
-        # Backend returns a list with one result for single-input calls.
-        results = self._backend.align(  # type: ignore[union-attr]
+        results = self._backend.align(
             audio=[(audio.astype(np.float32), 16000)],
             text=[text],
             language=[language],
@@ -251,8 +303,78 @@ class ForcedAligner:
 
         out: list[AlignedWord] = []
         for item in items:
-            word = getattr(item, "text", "")
-            start = float(getattr(item, "start_time", 0.0))
-            end = float(getattr(item, "end_time", 0.0))
-            out.append(AlignedWord(text=str(word), start_time=start, end_time=end))
+            out.append(
+                AlignedWord(
+                    text=str(getattr(item, "text", "")),
+                    start_time=float(getattr(item, "start_time", 0.0)),
+                    end_time=float(getattr(item, "end_time", 0.0)),
+                )
+            )
         return out
+
+
+class ForcedAligner:
+    """Word-level forced aligner.
+
+    Args:
+        model_path: HF repo ID or local path for the forced aligner model.
+        dtype: MLX dtype for native backend paths.
+        backend: One of `qwen_asr`, `mlx`, `auto`.
+    """
+
+    def __init__(
+        self,
+        model_path: str = DEFAULT_FORCED_ALIGNER_MODEL,
+        dtype: mx.Dtype = mx.float16,
+        backend: str = ALIGNER_BACKEND_QWEN_ASR,
+    ):
+        self.model_path = model_path
+        self.dtype = dtype
+        self.backend = backend
+        self._backend: Optional[Any] = None
+
+    def _ensure_loaded(self) -> None:
+        if self._backend is not None:
+            return
+
+        if self.backend not in {
+            ALIGNER_BACKEND_QWEN_ASR,
+            ALIGNER_BACKEND_MLX,
+            ALIGNER_BACKEND_AUTO,
+        }:
+            raise RuntimeError(
+                f"Unsupported aligner backend '{self.backend}'. "
+                f"Expected one of: {ALIGNER_BACKEND_QWEN_ASR}, "
+                f"{ALIGNER_BACKEND_MLX}, {ALIGNER_BACKEND_AUTO}."
+            )
+
+        mlx_err: Optional[Exception] = None
+        if self.backend in {ALIGNER_BACKEND_MLX, ALIGNER_BACKEND_AUTO}:
+            try:
+                self._backend = _MLXForcedAlignerBackend(self.model_path, self.dtype)
+                return
+            except Exception as e:  # pragma: no cover - exercised via runtime integration
+                mlx_err = e
+                if self.backend == ALIGNER_BACKEND_MLX:
+                    raise RuntimeError(f"Failed to load MLX aligner backend: {e}") from e
+
+        try:
+            self._backend = _QwenASRForcedAlignerBackend(self.model_path)
+            return
+        except Exception as e:
+            if mlx_err is not None:
+                raise RuntimeError(
+                    "Failed to load both MLX and qwen-asr aligner backends. "
+                    f"mlx_error={mlx_err}; qwen_asr_error={e}"
+                ) from e
+            raise
+
+    def align(
+        self,
+        audio: np.ndarray,
+        text: str,
+        language: str,
+    ) -> list[AlignedWord]:
+        """Align a transcript against audio and return word-level timestamps."""
+        self._ensure_loaded()
+        return self._backend.align(audio, text, language)  # type: ignore[union-attr]

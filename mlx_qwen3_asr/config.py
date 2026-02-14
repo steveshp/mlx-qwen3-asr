@@ -144,6 +144,9 @@ class Qwen3ASRConfig:
     audio_end_token_id: int = 151670    # <|audio_end|>
     user_token_id: int = 872
     support_languages: Optional[list] = None
+    classify_num: Optional[int] = None
+    timestamp_token_id: Optional[int] = None
+    timestamp_segment_time: Optional[float] = None
 
     @classmethod
     def from_dict(cls, d: dict) -> Qwen3ASRConfig:
@@ -203,6 +206,9 @@ class Qwen3ASRConfig:
             audio_end_token_id=token_source.get("audio_end_token_id", 151670),
             user_token_id=token_source.get("user_token_id", 872),
             support_languages=d.get("support_languages", None),
+            classify_num=token_source.get("classify_num", d.get("classify_num")),
+            timestamp_token_id=d.get("timestamp_token_id", None),
+            timestamp_segment_time=d.get("timestamp_segment_time", None),
         )
 
     @classmethod
