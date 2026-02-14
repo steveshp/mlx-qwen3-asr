@@ -89,6 +89,16 @@ audio = load_audio("speech.wav")
 result = transcribe(audio, model=model)
 ```
 
+### Explicit session (no hidden globals)
+
+```python
+from mlx_qwen3_asr import Session
+
+session = Session(model="Qwen/Qwen3-ASR-0.6B")
+result = session.transcribe("audio.wav")
+print(result.text)
+```
+
 ### CLI
 
 ```bash

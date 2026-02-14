@@ -16,7 +16,9 @@ from .forced_aligner import ForcedAligner
 from .generate import GenerationConfig, generate
 from .load_models import _ModelHolder
 from .model import Qwen3ASRModel
-from .tokenizer import _TokenizerHolder, parse_asr_output
+from .tokenizer import Tokenizer, _TokenizerHolder, parse_asr_output
+
+AudioInput = Union[str, Path, np.ndarray, mx.array, tuple[np.ndarray, int]]
 
 
 @dataclass(frozen=True)
@@ -34,7 +36,7 @@ class TranscriptionResult:
 
 
 def transcribe(
-    audio: Union[str, Path, np.ndarray, mx.array, tuple[np.ndarray, int]],
+    audio: AudioInput,
     *,
     model: Union[str, Qwen3ASRModel] = DEFAULT_MODEL_ID,
     language: Optional[str] = None,
@@ -66,14 +68,7 @@ def transcribe(
     Returns:
         TranscriptionResult with text, language, and optional segments
     """
-    aligner: Optional[ForcedAligner] = None
-    if return_timestamps:
-        if forced_aligner is None:
-            aligner = ForcedAligner()
-        elif isinstance(forced_aligner, str):
-            aligner = ForcedAligner(forced_aligner)
-        else:
-            aligner = forced_aligner
+    aligner = _resolve_aligner(return_timestamps, forced_aligner)
 
     # Load model
     if isinstance(model, str):
@@ -87,26 +82,67 @@ def transcribe(
     tokenizer = _TokenizerHolder.get(model_path)
 
     # Load audio
-    if isinstance(audio, mx.array):
-        audio_np = np.array(audio)
-    elif isinstance(audio, np.ndarray):
-        audio_np = audio.astype(np.float32)
-    elif isinstance(audio, tuple):
-        audio_np = np.array(load_audio(audio))
-    else:
-        audio_np = np.array(load_audio(audio))
+    audio_np = _to_audio_np(audio)
 
     if verbose:
         duration = len(audio_np) / SAMPLE_RATE
         print(f"Audio duration: {duration:.1f}s ({len(audio_np)} samples)")
 
-    # Split into chunks if needed
+    return _transcribe_loaded_components(
+        audio_np=audio_np,
+        model_obj=model_obj,
+        tokenizer=tokenizer,
+        dtype=dtype,
+        language=language,
+        aligner=aligner,
+        return_timestamps=return_timestamps,
+        max_new_tokens=max_new_tokens,
+        verbose=verbose,
+    )
+
+
+def _to_audio_np(audio: AudioInput) -> np.ndarray:
+    """Convert supported audio inputs to float32 numpy waveform at 16kHz."""
+    if isinstance(audio, mx.array):
+        return np.array(audio, dtype=np.float32)
+    if isinstance(audio, np.ndarray):
+        return audio.astype(np.float32)
+    if isinstance(audio, tuple):
+        return np.array(load_audio(audio), dtype=np.float32)
+    return np.array(load_audio(audio), dtype=np.float32)
+
+
+def _resolve_aligner(
+    return_timestamps: bool,
+    forced_aligner: Optional[Union[str, ForcedAligner]],
+) -> Optional[ForcedAligner]:
+    if not return_timestamps:
+        return None
+    if forced_aligner is None:
+        return ForcedAligner()
+    if isinstance(forced_aligner, str):
+        return ForcedAligner(forced_aligner)
+    return forced_aligner
+
+
+def _transcribe_loaded_components(
+    *,
+    audio_np: np.ndarray,
+    model_obj: Qwen3ASRModel,
+    tokenizer: Tokenizer,
+    dtype: mx.Dtype,
+    language: Optional[str],
+    aligner: Optional[ForcedAligner],
+    return_timestamps: bool,
+    max_new_tokens: int,
+    verbose: bool,
+) -> TranscriptionResult:
+    """Transcribe using already-loaded model/tokenizer components."""
     chunks = split_audio_into_chunks(audio_np, sr=SAMPLE_RATE)
 
     if verbose and len(chunks) > 1:
         print(f"Split into {len(chunks)} chunks")
 
-    # Transcribe each chunk
     all_texts = []
     all_segments: list[dict] = []
     detected_language = language or "unknown"
@@ -118,34 +154,28 @@ def transcribe(
 
     for chunk_idx, (chunk_audio, offset) in enumerate(chunks):
         if verbose:
-            print(f"Processing chunk {chunk_idx + 1}/{len(chunks)} "
-                  f"(offset={offset:.1f}s, duration={len(chunk_audio)/SAMPLE_RATE:.1f}s)")
+            print(
+                f"Processing chunk {chunk_idx + 1}/{len(chunks)} "
+                f"(offset={offset:.1f}s, duration={len(chunk_audio)/SAMPLE_RATE:.1f}s)"
+            )
 
-        # Compute mel spectrogram using HF WhisperFeatureExtractor
-        mel, feature_lens = compute_features(chunk_audio)  # (1, 128, n_frames), (1,)
-
-        # Encode audio (encoder handles padding mask and trims to valid tokens)
-        audio_features, output_lens = model_obj.audio_tower(
-            mel.astype(dtype), feature_lens
-        )  # (1, n_valid_tokens, dim)
+        mel, feature_lens = compute_features(chunk_audio)
+        audio_features, _ = model_obj.audio_tower(mel.astype(dtype), feature_lens)
         n_audio_tokens = audio_features.shape[1]
 
         if verbose:
             print(f"  Audio features: {n_audio_tokens} tokens")
 
-        # Build prompt
         prompt_tokens = tokenizer.build_prompt_tokens(
             n_audio_tokens=n_audio_tokens,
             language=language,
         )
         input_ids = mx.array([prompt_tokens])
 
-        # Build position_ids for MRoPE (3 spatial dims, all same for text)
         seq_len = input_ids.shape[1]
-        positions = mx.arange(seq_len)[None, :]  # (1, seq_len)
-        position_ids = mx.stack([positions, positions, positions], axis=1)  # (1, 3, seq_len)
+        positions = mx.arange(seq_len)[None, :]
+        position_ids = mx.stack([positions, positions, positions], axis=1)
 
-        # Generate
         output_tokens = generate(
             model=model_obj,
             input_ids=input_ids,
@@ -154,7 +184,6 @@ def transcribe(
             config=gen_config,
         )
 
-        # Decode tokens to text
         raw_text = tokenizer.decode(output_tokens)
         lang, text = parse_asr_output(raw_text)
 
@@ -179,11 +208,8 @@ def transcribe(
         if verbose:
             print(f"  [{lang}] {text[:100]}{'...' if len(text) > 100 else ''}")
 
-    # Merge chunks
-    full_text = " ".join(all_texts)
-
     return TranscriptionResult(
-        text=full_text,
+        text=" ".join(all_texts),
         language=detected_language,
         segments=all_segments if return_timestamps else None,
     )

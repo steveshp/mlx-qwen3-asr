@@ -149,3 +149,14 @@ once the model is already resolved by `_ModelHolder`.
 - This avoids over-claiming while preserving a usable API for live transcription workflows.
 - A true production incremental mode still requires decoder cache lifecycle + chunk-level
   audio encoder state strategy; that remains on the roadmap.
+
+## Decision 13: Add Explicit `Session` API While Keeping One-Liner Convenience
+
+**Choice:** Introduce a first-class `Session` object that owns model/tokenizer state,
+while preserving top-level `transcribe(...)` for simple usage.
+**Alternative:** Keep only hidden process-global holders.
+
+**Rationale:**
+- Explicit state ownership is easier to reason about and test.
+- Multiple model sessions can coexist in one process without implicit coupling.
+- Keeps power-user workflows deterministic while preserving beginner ergonomics.

@@ -86,6 +86,6 @@ Keep streaming marked experimental until:
 
 ## Immediate Next Tasks
 
-1. Add a `Session` API skeleton for explicit state ownership without breaking current public API.
+1. (Complete) Added explicit `Session` API skeleton for explicit state ownership.
 2. Introduce model-level `prefill/step` interfaces so `generate()` stops reaching into internals.
 3. Prototype resumable-cache streaming path behind an explicit experimental flag.
