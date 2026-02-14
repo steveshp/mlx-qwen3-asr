@@ -335,3 +335,32 @@ Keep streaming marked experimental until:
 2. (Complete) Introduced model-level `prefill/step` interfaces so `generate()` no longer reaches into model internals.
 3. (In progress) Expand golden-set benchmark coverage (quality + latency) for release and quantized artifacts.
 4. Keep streaming experimental; only revisit deeper streaming work after core gates are saturated.
+
+### 24) Reference parity suite hardening (coverage + multilingual honesty)
+
+- Extended `scripts/eval_reference_parity_suite.py` with:
+  - optional deterministic noise variants (`--include-noise-variants`, `--noise-snrs-db`, `--noise-seed`),
+  - dual parity metrics:
+    - strict token parity (`token_match_rate`),
+    - Unicode-safe normalized text parity (`text_match_rate`),
+  - per-row debug fields (`ref_text_raw`, `mlx_text_raw`, normalized variants),
+  - optional text-threshold fail gate (`--fail-text-match-rate-below`).
+- Fixed a multilingual evaluation bias:
+  - removed English-only normalization from this lane,
+  - replaced with script-local Unicode-preserving normalization so CJK/non-Latin
+    comparisons are not falsely collapsed to empty strings.
+- Wired optional parity-suite env controls through `scripts/quality_gate.py`:
+  - `REFERENCE_PARITY_SUITE_MANIFEST_JSONL`,
+  - `REFERENCE_PARITY_SUITE_INCLUDE_NOISE_VARIANTS`,
+  - `REFERENCE_PARITY_SUITE_NOISE_SNRS_DB`,
+  - `REFERENCE_PARITY_SUITE_NOISE_SEED`,
+  - `REFERENCE_PARITY_SUITE_FAIL_TEXT_MATCH_RATE_BELOW`,
+  - `REFERENCE_PARITY_SUITE_JSON_OUTPUT`.
+- Added helper unit coverage:
+  - deterministic noise-variant generation,
+  - Unicode-safe normalization behavior.
+- Re-ran release gate with parity-suite lane enabled (small mixed smoke):
+  - artifact: `docs/benchmarks/2026-02-14-reference-parity-suite-smoke-v2.json`
+  - token match rate: `0.40`
+  - text match rate: `0.60`
+  - lane remains exploratory (gap-finding), not a hard release blocker.

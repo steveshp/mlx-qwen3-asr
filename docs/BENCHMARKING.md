@@ -51,13 +51,21 @@ python scripts/eval_reference_parity_suite.py \
   --subsets test-clean,test-other \
   --samples-per-subset 5 \
   --include-long-mixes \
+  --include-noise-variants \
+  --noise-snrs-db 10,5 \
   --long-mixes 2 \
   --json-output docs/benchmarks/reference-parity-suite.json
 ```
 
+The suite reports:
+- `token_match_rate` (strict token-for-token parity),
+- `text_match_rate` (Unicode-safe normalized text parity).
+
 Latest smoke artifacts:
 - `docs/benchmarks/2026-02-14-reference-parity-suite-smoke.json`
 - `docs/benchmarks/2026-02-14-reference-parity-suite-smoke.md`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-smoke-v2.json`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-smoke-v2.md`
 
 Mel parity evaluation:
 

@@ -64,13 +64,22 @@ RUN_REFERENCE_PARITY=1 RUN_REFERENCE_PARITY_SUITE=1 \
 REFERENCE_PARITY_SUITE_SUBSETS=test-clean,test-other \
 REFERENCE_PARITY_SUITE_SAMPLES_PER_SUBSET=3 \
 REFERENCE_PARITY_SUITE_INCLUDE_LONG_MIXES=1 \
+REFERENCE_PARITY_SUITE_INCLUDE_NOISE_VARIANTS=1 \
+REFERENCE_PARITY_SUITE_NOISE_SNRS_DB=10,5 \
 python scripts/quality_gate.py --mode release
 ```
 
 What it adds:
 - deterministic multi-speaker sampling from `test-clean` and `test-other`,
 - optional synthetic long/mixed-speaker clips,
-- strict token-level match-rate threshold (default `>= 1.0`).
+- optional synthetic noisy variants (white noise at configured SNR values),
+- strict token-level match-rate threshold (default `>= 1.0`),
+- optional normalized-text match threshold via
+  `REFERENCE_PARITY_SUITE_FAIL_TEXT_MATCH_RATE_BELOW`.
+
+Optional envs:
+- `REFERENCE_PARITY_SUITE_MANIFEST_JSONL=/abs/path/manifest.jsonl`
+- `REFERENCE_PARITY_SUITE_JSON_OUTPUT=docs/benchmarks/reference-parity-suite.json`
 
 Current status:
 - this lane is exploratory and intended for gap discovery before promotion to a

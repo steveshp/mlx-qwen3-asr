@@ -69,6 +69,8 @@ python scripts/eval_reference_parity_suite.py \
   --subsets test-clean,test-other \
   --samples-per-subset 5 \
   --include-long-mixes \
+  --include-noise-variants \
+  --noise-snrs-db 10,5 \
   --long-mixes 2 \
   --json-output docs/benchmarks/reference-parity-suite.json
 ```
@@ -76,6 +78,9 @@ python scripts/eval_reference_parity_suite.py \
 Optional multilingual extension:
 - pass `--manifest-jsonl path/to/manifest.jsonl` with records containing
   `audio_path` and optional `language` labels.
+- optional fail thresholds:
+  - `--fail-match-rate-below` for strict token parity
+  - `--fail-text-match-rate-below` for Unicode-safe normalized-text parity
 
 ## Aligner Parity Command
 

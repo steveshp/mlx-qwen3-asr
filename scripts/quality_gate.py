@@ -113,10 +113,22 @@ def run_gate(mode: str, repo: Path, python_bin: str) -> tuple[list[StepResult], 
             )
 
         if os.environ.get("RUN_REFERENCE_PARITY_SUITE") == "1":
-            subsets = os.environ.get("REFERENCE_PARITY_SUITE_SUBSETS", "test-clean,test-other")
-            samples_per_subset = os.environ.get("REFERENCE_PARITY_SUITE_SAMPLES_PER_SUBSET", "3")
+            subsets = os.environ.get(
+                "REFERENCE_PARITY_SUITE_SUBSETS",
+                "test-clean,test-other",
+            )
+            samples_per_subset = os.environ.get(
+                "REFERENCE_PARITY_SUITE_SAMPLES_PER_SUBSET",
+                "3",
+            )
             max_new_tokens = os.environ.get("REFERENCE_PARITY_SUITE_MAX_NEW_TOKENS", "128")
-            fail_match_rate = os.environ.get("REFERENCE_PARITY_SUITE_FAIL_MATCH_RATE_BELOW", "1.0")
+            fail_match_rate = os.environ.get(
+                "REFERENCE_PARITY_SUITE_FAIL_MATCH_RATE_BELOW",
+                "1.0",
+            )
+            fail_text_match_rate = os.environ.get(
+                "REFERENCE_PARITY_SUITE_FAIL_TEXT_MATCH_RATE_BELOW",
+            )
             cmd = [
                 python_bin,
                 str(repo / "scripts" / "eval_reference_parity_suite.py"),
@@ -131,6 +143,9 @@ def run_gate(mode: str, repo: Path, python_bin: str) -> tuple[list[StepResult], 
                 "--fail-match-rate-below",
                 fail_match_rate,
             ]
+            manifest_jsonl = os.environ.get("REFERENCE_PARITY_SUITE_MANIFEST_JSONL")
+            if manifest_jsonl:
+                cmd.extend(["--manifest-jsonl", manifest_jsonl])
             if os.environ.get("REFERENCE_PARITY_SUITE_INCLUDE_LONG_MIXES", "1") == "1":
                 cmd.append("--include-long-mixes")
                 cmd.extend(
@@ -143,6 +158,21 @@ def run_gate(mode: str, repo: Path, python_bin: str) -> tuple[list[StepResult], 
                         os.environ.get("REFERENCE_PARITY_SUITE_LONG_MIX_SILENCE_SEC", "0.3"),
                     ]
                 )
+            if os.environ.get("REFERENCE_PARITY_SUITE_INCLUDE_NOISE_VARIANTS", "0") == "1":
+                cmd.append("--include-noise-variants")
+                cmd.extend(
+                    [
+                        "--noise-snrs-db",
+                        os.environ.get("REFERENCE_PARITY_SUITE_NOISE_SNRS_DB", "10,5"),
+                        "--noise-seed",
+                        os.environ.get("REFERENCE_PARITY_SUITE_NOISE_SEED", "20260214"),
+                    ]
+                )
+            if fail_text_match_rate:
+                cmd.extend(["--fail-text-match-rate-below", fail_text_match_rate])
+            json_output = os.environ.get("REFERENCE_PARITY_SUITE_JSON_OUTPUT")
+            if json_output:
+                cmd.extend(["--json-output", json_output])
             steps.append(_run(cmd, repo))
 
     ok = all(step.passed for step in steps)

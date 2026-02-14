@@ -119,6 +119,8 @@ Reference parity suite smoke run (2026-02-14):
 
 - `docs/benchmarks/2026-02-14-reference-parity-suite-smoke.json`
 - `docs/benchmarks/2026-02-14-reference-parity-suite-smoke.md`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-smoke-v2.json`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-smoke-v2.md`
 
 Generate with:
 

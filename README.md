@@ -347,10 +347,13 @@ RUN_REFERENCE_PARITY=1 python scripts/quality_gate.py --mode release
 RUN_REFERENCE_PARITY=1 RUN_ALIGNER_PARITY=1 ALIGNER_PARITY_SAMPLES=10 \
 python scripts/quality_gate.py --mode release
 
-# Optional broader token-level parity suite (clean/other + long mixes)
+# Optional broader parity suite (clean/other + long mixes + noise variants)
 RUN_REFERENCE_PARITY=1 RUN_REFERENCE_PARITY_SUITE=1 \
 REFERENCE_PARITY_SUITE_SUBSETS=test-clean,test-other \
 REFERENCE_PARITY_SUITE_SAMPLES_PER_SUBSET=3 \
+REFERENCE_PARITY_SUITE_INCLUDE_LONG_MIXES=1 \
+REFERENCE_PARITY_SUITE_INCLUDE_NOISE_VARIANTS=1 \
+REFERENCE_PARITY_SUITE_NOISE_SNRS_DB=10,5 \
 python scripts/quality_gate.py --mode release
 
 # Golden evaluation on LibriSpeech
@@ -380,6 +383,9 @@ python scripts/benchmark_asr.py tests/fixtures/test_speech.wav \
 
 Every performance optimization should include benchmark artifacts and pass
 quality gates so claims remain auditable and reproducible.
+
+`RUN_REFERENCE_PARITY_SUITE` remains an exploratory lane for broader coverage.
+It reports both strict token parity and Unicode-safe normalized text parity.
 
 ## Development
 
