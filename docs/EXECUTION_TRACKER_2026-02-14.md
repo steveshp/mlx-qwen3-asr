@@ -245,6 +245,20 @@ python scripts/quality_gate.py --mode release
   - mean latency: `mlx=0.2972s`, `qwen_asr=0.9129s`
   - relative speed (`qwen_asr / mlx`): `3.07x`
 
+### 20) README artifact-reference integrity gate
+
+- Added `tests/test_docs_integrity.py`:
+  - validates dated benchmark artifact references in `README.md` resolve to
+    real committed files (including brace-expanded forms like `{json,md}`).
+- Purpose:
+  - prevent doc drift where performance/quality claims reference missing
+    artifacts,
+  - keep README evidence links auditable as numbers evolve.
+
+Post-change validation:
+- fast gate: PASS (`289 passed, 1 skipped`)
+- release gate: PASS (`290 passed` + reference parity lane pass)
+
 ## Decision Gates
 
 ### Gate A: Mel backend switch
