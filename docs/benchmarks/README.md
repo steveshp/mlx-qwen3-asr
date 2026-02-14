@@ -121,6 +121,8 @@ Reference parity suite smoke run (2026-02-14):
 - `docs/benchmarks/2026-02-14-reference-parity-suite-smoke.md`
 - `docs/benchmarks/2026-02-14-reference-parity-suite-smoke-v2.json`
 - `docs/benchmarks/2026-02-14-reference-parity-suite-smoke-v2.md`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-english22.json`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-english22.md`
 
 Generate with:
 

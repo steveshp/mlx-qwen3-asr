@@ -364,3 +364,19 @@ Keep streaming marked experimental until:
   - token match rate: `0.40`
   - text match rate: `0.60`
   - lane remains exploratory (gap-finding), not a hard release blocker.
+
+### 25) Broader English parity sweep (22-sample mixed lane)
+
+- Ran expanded parity suite on deterministic LibriSpeech sample plus synthetic
+  long/noise variants:
+  - `--subsets test-clean,test-other`
+  - `--samples-per-subset 5`
+  - `--include-long-mixes --long-mixes 2 --long-mix-segments 4`
+  - `--include-noise-variants --noise-snrs-db 10`
+- Artifacts:
+  - `docs/benchmarks/2026-02-14-reference-parity-suite-english22.json`
+  - `docs/benchmarks/2026-02-14-reference-parity-suite-english22.md`
+- Result summary:
+  - token match rate: `16/22 = 0.7273`
+  - text match rate: `18/22 = 0.8182`
+  - largest remaining gap: synthetic long mixed-speaker clips (`0.0` token/text).
