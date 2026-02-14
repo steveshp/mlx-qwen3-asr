@@ -239,8 +239,8 @@ mlx-qwen3-asr audio.wav --model ./qwen3-asr-4bit
 Recommended quantization profiles (Apple Silicon):
 - Speed-first: `4-bit`, `group_size=64`
 - Quality-first quantized: `8-bit`, `group_size=64`
-- Latest matrix report: `docs/benchmarks/2026-02-14-quant-matrix-post-wavfast.md`
-- Measured long-clip speedup vs fp16: **3.98x** (`4-bit`, `group_size=64`)
+- Latest matrix report: `docs/benchmarks/2026-02-14-quant-matrix-speaker100.md`
+- Latest long-clip speedup vs fp16 (speaker-balanced run): **4.68x** (`4-bit`, `group_size=64`)
 - 100-sample quality artifacts:
   - `docs/benchmarks/2026-02-14-librispeech-fp16-100-speaker-round-robin.json`
   - `docs/benchmarks/2026-02-14-librispeech-8bit-g64-100-speaker-round-robin.json`

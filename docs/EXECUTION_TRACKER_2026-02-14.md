@@ -145,6 +145,19 @@ Primary-source refresh across Qwen3-ASR, Swift ports, and ASR decoding papers:
   - reduced HF extractor dependency in common feature paths,
   - preserved `feature_lens` behavior and existing tests.
 
+### 12) Quantization matrix refresh with speaker-balanced defaults
+
+- Ran `scripts/benchmark_quantization_matrix.py` with:
+  - configs: `fp16,4:64,8:64`
+  - benchmark runs: `5`
+  - eval lane: `test-clean`, `n=100`, `speaker_round_robin`
+- Artifacts:
+  - `docs/benchmarks/2026-02-14-quant-matrix-speaker100.json`
+  - `docs/benchmarks/2026-02-14-quant-matrix-speaker100.md`
+- Snapshot:
+  - `4bit-g64` long speedup vs fp16: `4.68x`, WER delta `+0.004316`
+  - `8bit-g64` long speedup vs fp16: `3.11x`, WER delta `+0.000432`
+
 ## Decision Gates
 
 ### Gate A: Mel backend switch

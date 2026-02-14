@@ -146,16 +146,20 @@ Artifacts:
 - Refreshed run after WAV fast-path:
   - `docs/benchmarks/2026-02-14-quant-matrix-post-wavfast.json`
   - `docs/benchmarks/2026-02-14-quant-matrix-post-wavfast.md`
+- Speaker-balanced refresh (`n=100`, `speaker_round_robin`):
+  - `docs/benchmarks/2026-02-14-quant-matrix-speaker100.json`
+  - `docs/benchmarks/2026-02-14-quant-matrix-speaker100.md`
 - CI/manual workflow: `.github/workflows/quantization-matrix.yml`
 
 Current recommended operating points for `Qwen/Qwen3-ASR-0.6B` on Apple Silicon:
 - `4bit-g64` for speed-first workloads.
 - `8bit-g64` for quality-sensitive quantized workloads.
 
-Latest refreshed matrix highlights (`2026-02-14-quant-matrix-post-wavfast.md`):
-- fp16 long 10s: mean `0.9088s`, RTF `0.0909`
-- 4bit-g64 long 10s: mean `0.2286s`, RTF `0.0229`
-- 4bit-g64 long speedup vs fp16: `3.98x`
+Latest refreshed matrix highlights (`2026-02-14-quant-matrix-speaker100.md`):
+- fp16 long 10s: mean `0.8341s`, RTF `0.0834`
+- 4bit-g64 long 10s: mean `0.1784s`, RTF `0.0178`
+- 4bit-g64 long speedup vs fp16: `4.68x`
+- 8bit-g64 long speedup vs fp16: `3.11x`
 - WER deltas should be interpreted with the larger speaker-balanced quality artifacts:
   - `docs/benchmarks/2026-02-14-librispeech-fp16-100-speaker-round-robin.json`
   - `docs/benchmarks/2026-02-14-librispeech-8bit-g64-100-speaker-round-robin.json`

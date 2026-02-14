@@ -59,6 +59,8 @@ Quantization matrix sweep artifacts (2026-02-14):
 - `docs/benchmarks/2026-02-14-quant-matrix.md`
 - `docs/benchmarks/2026-02-14-quant-matrix-post-wavfast.json`
 - `docs/benchmarks/2026-02-14-quant-matrix-post-wavfast.md`
+- `docs/benchmarks/2026-02-14-quant-matrix-speaker100.json`
+- `docs/benchmarks/2026-02-14-quant-matrix-speaker100.md`
 - CI/manual workflow output names:
   - `docs/benchmarks/ci-quant-matrix.json`
   - `docs/benchmarks/ci-quant-matrix.md`
