@@ -54,3 +54,15 @@ python scripts/eval_librispeech.py \
 
 - Add multilingual golden lane once non-gated, script-free datasets are pinned.
 - Add release-only full split evaluation (`test-clean`, `test-other`) before tags.
+- Add forced-aligner backend parity lane (`mlx` vs `qwen_asr`) as dataset
+  coverage expands beyond English deterministic samples.
+
+## Aligner Parity Command
+
+```bash
+python scripts/eval_aligner_parity.py \
+  --subset test-clean \
+  --samples 20 \
+  --model Qwen/Qwen3-ForcedAligner-0.6B \
+  --json-output docs/benchmarks/aligner-parity.json
+```

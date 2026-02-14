@@ -71,6 +71,11 @@ Performance progress:
   or `auto`) while default remains `qwen_asr` until quality gates are met.
 - Initial smoke benchmark on fixture audio shows strong latency upside
   (~`4.73x` mean vs `qwen_asr`) with matching sample word spans.
+- Deterministic parity lane is now in place (`scripts/eval_aligner_parity.py`)
+  and currently passes on `test-clean` (10 samples):
+  - text-match rate: `1.0`,
+  - timing MAE: `1.67ms`,
+  - mean latency speedup: `~1.78x` vs `qwen_asr`.
 - Native MLX aligner remains a future optimization.
 
 5. Discoverability (README polish + PyPI)

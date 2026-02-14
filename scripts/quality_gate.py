@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shlex
 import subprocess
 import sys
@@ -87,6 +88,28 @@ def run_gate(mode: str, repo: Path, python_bin: str) -> tuple[list[StepResult], 
         else:
             steps.append(
                 _run([python_bin, "-m", "pytest", "-q", "tests/test_reference_parity.py"], repo)
+            )
+
+        if os.environ.get("RUN_ALIGNER_PARITY") == "1":
+            samples = os.environ.get("ALIGNER_PARITY_SAMPLES", "10")
+            steps.append(
+                _run(
+                    [
+                        python_bin,
+                        str(repo / "scripts" / "eval_aligner_parity.py"),
+                        "--subset",
+                        "test-clean",
+                        "--samples",
+                        samples,
+                        "--model",
+                        "Qwen/Qwen3-ForcedAligner-0.6B",
+                        "--fail-text-match-rate-below",
+                        "1.0",
+                        "--fail-timing-mae-ms-above",
+                        "60.0",
+                    ],
+                    repo,
+                )
             )
 
     ok = all(step.passed for step in steps)

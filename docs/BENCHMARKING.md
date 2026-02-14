@@ -180,3 +180,23 @@ Result snapshot (`tests/fixtures/test_speech.wav`, 5 warm runs):
 Scope note:
 - This is a single-sample sanity comparison, not yet a full multilingual
   timestamp quality parity verdict.
+
+## Forced Aligner Parity Lane (2026-02-14)
+
+A deterministic LibriSpeech subset parity run was added for native aligner
+validation (`scripts/eval_aligner_parity.py`).
+
+Artifacts:
+- `docs/benchmarks/2026-02-14-aligner-parity-10.json`
+- `docs/benchmarks/2026-02-14-aligner-parity-10.md`
+
+Latest snapshot (`test-clean`, 10 samples):
+- text-match rate (`mlx` vs `qwen_asr` word sequence): `1.0000`
+- timing MAE (all boundaries): `1.6667 ms`
+- mean latency: `mlx=0.5005s`, `qwen_asr=0.8909s`
+- relative speed (`qwen_asr / mlx`): `1.78x`
+
+Gate integration:
+- Optional release gate lane:
+  - `RUN_ALIGNER_PARITY=1 ALIGNER_PARITY_SAMPLES=10`
+  - thresholds: text-match `>= 1.0`, timing MAE `<= 60ms`.

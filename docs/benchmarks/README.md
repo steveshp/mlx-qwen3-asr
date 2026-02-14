@@ -72,6 +72,11 @@ Forced aligner backend smoke comparison (2026-02-14):
 - `docs/benchmarks/2026-02-14-aligner-backend-smoke.json`
 - `docs/benchmarks/2026-02-14-aligner-backend-smoke.md`
 
+Forced aligner parity lane run (2026-02-14):
+
+- `docs/benchmarks/2026-02-14-aligner-parity-10.json`
+- `docs/benchmarks/2026-02-14-aligner-parity-10.md`
+
 Generate with:
 
 ```bash

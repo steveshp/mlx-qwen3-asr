@@ -27,6 +27,9 @@ RUN_REFERENCE_PARITY=1 python scripts/quality_gate.py --mode release
 Checks:
 - Everything in fast gate.
 - Reference parity test (`tests/test_reference_parity.py`).
+- Optional aligner parity lane when explicitly enabled:
+  - `RUN_ALIGNER_PARITY=1`
+  - runs `scripts/eval_aligner_parity.py` on deterministic LibriSpeech samples.
 
 ### Nightly Regression Lane (scheduled/manual)
 
@@ -37,6 +40,19 @@ Checks:
 
 This lane is intentionally separate from PR CI so day-to-day development stays fast.
 Current schedule cadence is weekly (plus manual `workflow_dispatch`) to keep operational overhead low.
+
+### Optional Native Aligner Parity Gate
+
+Use this before changing timestamp backend defaults:
+
+```bash
+RUN_REFERENCE_PARITY=1 RUN_ALIGNER_PARITY=1 ALIGNER_PARITY_SAMPLES=10 \
+python scripts/quality_gate.py --mode release
+```
+
+Default thresholds in the gate hook:
+- text-match rate: `>= 1.0`
+- timing MAE: `<= 60ms`
 
 ## Pass Criteria
 
