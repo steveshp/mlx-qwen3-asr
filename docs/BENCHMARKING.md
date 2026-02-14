@@ -61,6 +61,26 @@ The suite reports:
 - `token_match_rate` (strict token-for-token parity),
 - `text_match_rate` (Unicode-safe normalized text parity).
 
+Multilingual manifest parity benchmark:
+
+```bash
+python scripts/build_multilingual_manifest.py \
+  --languages en_us,zh_cn,ja_jp,de_de,fr_fr,es_419,ru_ru,ar_eg,hi_in,ko_kr \
+  --samples-per-language 2 \
+  --output-manifest docs/benchmarks/fleurs-multilingual-manifest.jsonl
+
+python scripts/eval_reference_parity_suite.py \
+  --subsets '' \
+  --samples-per-subset 1 \
+  --manifest-jsonl docs/benchmarks/fleurs-multilingual-manifest.jsonl \
+  --json-output docs/benchmarks/reference-parity-suite-multilingual.json
+```
+
+Latest multilingual smoke artifacts:
+- `docs/benchmarks/2026-02-14-fleurs-multilingual-smoke-manifest.jsonl`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-smoke.json`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-smoke.md`
+
 Latest smoke artifacts:
 - `docs/benchmarks/2026-02-14-reference-parity-suite-smoke.json`
 - `docs/benchmarks/2026-02-14-reference-parity-suite-smoke.md`

@@ -356,6 +356,19 @@ REFERENCE_PARITY_SUITE_INCLUDE_NOISE_VARIANTS=1 \
 REFERENCE_PARITY_SUITE_NOISE_SNRS_DB=10,5 \
 python scripts/quality_gate.py --mode release
 
+# Optional multilingual parity workflow (manifest-driven)
+python scripts/build_multilingual_manifest.py \
+  --languages en_us,zh_cn,ja_jp,de_de \
+  --samples-per-language 1 \
+  --output-manifest docs/benchmarks/fleurs-multilingual-smoke.jsonl
+RUN_REFERENCE_PARITY=1 RUN_REFERENCE_PARITY_SUITE=1 \
+REFERENCE_PARITY_SUITE_SUBSETS='' \
+REFERENCE_PARITY_SUITE_MANIFEST_JSONL=docs/benchmarks/fleurs-multilingual-smoke.jsonl \
+REFERENCE_PARITY_SUITE_INCLUDE_LONG_MIXES=0 \
+REFERENCE_PARITY_SUITE_FAIL_MATCH_RATE_BELOW=0.0 \
+REFERENCE_PARITY_SUITE_FAIL_TEXT_MATCH_RATE_BELOW=0.0 \
+python scripts/quality_gate.py --mode release
+
 # Golden evaluation on LibriSpeech
 python scripts/eval_librispeech.py --subset test-clean --samples 100 --sampling speaker_round_robin
 ```

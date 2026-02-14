@@ -380,3 +380,28 @@ Keep streaming marked experimental until:
   - token match rate: `16/22 = 0.7273`
   - text match rate: `18/22 = 0.8182`
   - largest remaining gap: synthetic long mixed-speaker clips (`0.0` token/text).
+
+### 26) Reproducible multilingual parity manifest workflow + smoke run
+
+- Added `scripts/build_multilingual_manifest.py`:
+  - builds deterministic JSONL manifests from FLEURS (`google/fleurs`) across
+    selected language configs,
+  - resolves user-friendly aliases (`zh_cn -> cmn_hans_cn`, etc),
+  - validates configs against available Hub files,
+  - writes local 16k mono WAVs + manifest rows with language labels.
+- Added helper tests in `tests/test_build_multilingual_manifest.py`.
+- Important compatibility fix:
+  - avoided `datasets` script-loader path (fails on `datasets>=4` for FLEURS),
+  - switched to direct Hub TSV/audio-tar consumption (`hf_hub_download`).
+- Ran multilingual smoke parity artifact set:
+  - manifest: `docs/benchmarks/2026-02-14-fleurs-multilingual-smoke-manifest.jsonl`
+  - parity JSON: `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-smoke.json`
+  - parity summary: `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-smoke.md`
+- Smoke result (4 languages, 1 sample each):
+  - token match rate: `0.50` (2/4)
+  - text match rate: `0.50` (2/4)
+  - matches: English + Chinese; mismatches: Japanese + German.
+- Verified via release-gate wiring:
+  - `RUN_REFERENCE_PARITY=1 RUN_REFERENCE_PARITY_SUITE=1` with
+    `REFERENCE_PARITY_SUITE_SUBSETS=''` and
+    `REFERENCE_PARITY_SUITE_MANIFEST_JSONL=...` completed successfully.

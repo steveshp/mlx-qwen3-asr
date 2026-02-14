@@ -81,6 +81,23 @@ Optional envs:
 - `REFERENCE_PARITY_SUITE_MANIFEST_JSONL=/abs/path/manifest.jsonl`
 - `REFERENCE_PARITY_SUITE_JSON_OUTPUT=docs/benchmarks/reference-parity-suite.json`
 
+For multilingual lanes, generate a deterministic manifest first:
+
+```bash
+python scripts/build_multilingual_manifest.py \
+  --languages en_us,zh_cn,ja_jp,de_de \
+  --samples-per-language 1 \
+  --output-manifest docs/benchmarks/fleurs-multilingual-smoke.jsonl
+
+RUN_REFERENCE_PARITY=1 RUN_REFERENCE_PARITY_SUITE=1 \
+REFERENCE_PARITY_SUITE_SUBSETS='' \
+REFERENCE_PARITY_SUITE_INCLUDE_LONG_MIXES=0 \
+REFERENCE_PARITY_SUITE_MANIFEST_JSONL=docs/benchmarks/fleurs-multilingual-smoke.jsonl \
+REFERENCE_PARITY_SUITE_FAIL_MATCH_RATE_BELOW=0.0 \
+REFERENCE_PARITY_SUITE_FAIL_TEXT_MATCH_RATE_BELOW=0.0 \
+python scripts/quality_gate.py --mode release
+```
+
 Current status:
 - this lane is exploratory and intended for gap discovery before promotion to a
   required release gate.

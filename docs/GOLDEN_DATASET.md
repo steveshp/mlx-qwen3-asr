@@ -82,6 +82,31 @@ Optional multilingual extension:
   - `--fail-match-rate-below` for strict token parity
   - `--fail-text-match-rate-below` for Unicode-safe normalized-text parity
 
+### Reproducible multilingual manifest (FLEURS)
+
+Build deterministic multilingual samples (local WAV + JSONL manifest):
+
+```bash
+python scripts/build_multilingual_manifest.py \
+  --languages en_us,zh_cn,ja_jp,de_de,fr_fr,es_419,ru_ru,ar_eg,hi_in,ko_kr \
+  --samples-per-language 2 \
+  --output-manifest docs/benchmarks/fleurs-multilingual-manifest.jsonl
+```
+
+Implementation note:
+- `build_multilingual_manifest.py` downloads FLEURS TSV/audio tar assets directly
+  from the Hugging Face Hub (no `datasets` script loader dependency).
+
+Run manifest-only parity suite:
+
+```bash
+python scripts/eval_reference_parity_suite.py \
+  --subsets '' \
+  --samples-per-subset 1 \
+  --manifest-jsonl docs/benchmarks/fleurs-multilingual-manifest.jsonl \
+  --json-output docs/benchmarks/reference-parity-suite-multilingual.json
+```
+
 ## Aligner Parity Command
 
 ```bash
