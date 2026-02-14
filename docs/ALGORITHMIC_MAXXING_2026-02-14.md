@@ -42,6 +42,25 @@ Focused review of paper-backed inference algorithms that can materially improve
 - This removes repeated target/draft reload churn across repeated speculative
   calls and is a required foundation for any serious speculative benchmarking.
 
+4. Forced-aligner timestamp repair complexity drop (legacy behavior preserved)
+- Replaced `fix_timestamp(...)` LIS core from O(n^2) DP to O(n log n) using
+  coordinate compression + Fenwick tree.
+- Critical constraint: tie semantics remain identical to legacy behavior:
+  - predecessor choice stays "earliest index with best length",
+  - chosen LIS endpoint stays earliest index at global max length.
+- Why this matters:
+  - avoids quadratic blow-up in long timestamp sequences,
+  - preserves existing alignment outputs (no behavior drift).
+- Validation:
+  - new randomized parity test compares LIS indices against legacy O(n^2)
+    reference implementation across hundreds of random inputs per length bucket.
+
+Related algorithmic references:
+- Fredman 1975 (LIS complexity lower/upper bounds):
+  https://doi.org/10.1016/0012-365X(75)90103-X
+- Fenwick 1994 (binary indexed tree data structure):
+  https://doi.org/10.1002/spe.4380240306
+
 ## High-Value Next Algorithms (Paper-Backed)
 
 1. Speculative decoding for 1.7B using 0.6B draft model

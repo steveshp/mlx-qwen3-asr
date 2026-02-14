@@ -323,3 +323,19 @@ Implication for this repo:
 - Current local prototype status (implemented):
   - greedy text parity preserved,
   - tested short and 10s runs showed latency regressions, so it remains opt-in.
+
+### Classic algorithm pass (old-paper gems applied)
+
+For monotonic timestamp repair in forced alignment, we also reviewed classic
+sequence algorithms and applied one directly:
+
+- LIS complexity theory (Fredman 1975):
+  - https://doi.org/10.1016/0012-365X(75)90103-X
+- Fenwick tree (Fenwick 1994), enabling efficient prefix-best queries:
+  - https://doi.org/10.1002/spe.4380240306
+
+Applied change in this repo:
+- Replaced O(n^2) LIS DP in `ForcedAlignTextProcessor.fix_timestamp(...)` with
+  O(n log n) Fenwick-based LIS while preserving legacy tie semantics exactly.
+- Added randomized parity tests against the old O(n^2) reference implementation
+  so alignment behavior remains stable while complexity drops.

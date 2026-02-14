@@ -8,6 +8,7 @@ Supports:
 from __future__ import annotations
 
 import unicodedata
+from bisect import bisect_right
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
@@ -190,30 +191,76 @@ class ForcedAlignTextProcessor:
         return words, input_text
 
     @staticmethod
+    def _lis_non_decreasing_indices(arr: list[float]) -> list[int]:
+        """Return indices of one longest non-decreasing subsequence.
+
+        Matches the legacy O(n^2) DP tie semantics exactly:
+        - predecessor is the earliest index that yields the best length
+        - end index is the earliest index that reaches global max length
+
+        Uses coordinate compression + Fenwick tree.
+        Time: O(n log n), Space: O(n).
+        """
+        n = len(arr)
+        if n == 0:
+            return []
+
+        values = sorted(set(arr))
+        m = len(values)
+
+        # Fenwick tree nodes store (best_len, earliest_idx_for_that_len)
+        bit: list[tuple[int, int]] = [(0, -1)] * (m + 1)
+        parent = [-1] * n
+        dp = [1] * n
+
+        def _better(a: tuple[int, int], b: tuple[int, int]) -> tuple[int, int]:
+            """Compare LIS candidates by (max length, earliest index)."""
+            if a[0] != b[0]:
+                return a if a[0] > b[0] else b
+            a_idx = a[1] if a[1] != -1 else n + 1
+            b_idx = b[1] if b[1] != -1 else n + 1
+            return a if a_idx <= b_idx else b
+
+        def _query(pos: int) -> tuple[int, int]:
+            best = (0, -1)
+            while pos > 0:
+                best = _better(best, bit[pos])
+                pos -= pos & -pos
+            return best
+
+        def _update(pos: int, candidate: tuple[int, int]) -> None:
+            while pos <= m:
+                bit[pos] = _better(bit[pos], candidate)
+                pos += pos & -pos
+
+        max_len = 0
+        end_idx = 0
+        for i, x in enumerate(arr):
+            rank = bisect_right(values, x)
+            best_len, best_idx = _query(rank)
+            dp[i] = best_len + 1
+            parent[i] = best_idx
+            _update(rank, (dp[i], i))
+            if dp[i] > max_len:
+                max_len = dp[i]
+                end_idx = i
+
+        out: list[int] = []
+        cur = end_idx
+        while cur != -1:
+            out.append(cur)
+            cur = parent[cur]
+        out.reverse()
+        return out
+
+    @staticmethod
     def fix_timestamp(data: np.ndarray) -> list[int]:
         """Repair non-monotonic timestamp sequence via LIS-based correction."""
         arr = data.tolist()
         n = len(arr)
         if n == 0:
             return []
-
-        dp = [1] * n
-        parent = [-1] * n
-
-        for i in range(1, n):
-            for j in range(i):
-                if arr[j] <= arr[i] and dp[j] + 1 > dp[i]:
-                    dp[i] = dp[j] + 1
-                    parent[i] = j
-
-        max_len = max(dp)
-        idx = dp.index(max_len)
-
-        lis_indices: list[int] = []
-        while idx != -1:
-            lis_indices.append(idx)
-            idx = parent[idx]
-        lis_indices.reverse()
+        lis_indices = ForcedAlignTextProcessor._lis_non_decreasing_indices(arr)
 
         is_normal = [False] * n
         for i in lis_indices:

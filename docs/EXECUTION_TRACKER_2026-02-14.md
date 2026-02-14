@@ -182,6 +182,21 @@ Primary-source refresh across Qwen3-ASR, Swift ports, and ASR decoding papers:
 - Verified benchmark-path references: only expected generated outputs are absent
   (`latest*`, `nightly*`, CI upload filenames, and one-off local golden paths).
 
+### 16) Forced-aligner LIS hotpath optimized with legacy-exact behavior
+
+- `ForcedAlignTextProcessor.fix_timestamp(...)` now uses an O(n log n)
+  LIS solver (Fenwick tree + coordinate compression) instead of O(n^2) DP.
+- Kept exact legacy tie semantics to avoid timestamp behavior drift:
+  - earliest predecessor for equal-length candidates,
+  - earliest end index for global LIS length.
+- Added regression coverage:
+  - randomized equivalence against the legacy O(n^2) LIS reference,
+  - duplicate-heavy non-decreasing edge-case check.
+
+Post-change validation:
+- Fast gate: PASS (`285 passed, 1 skipped`).
+- Release gate (with parity lane): PASS (`286 passed` + `reference parity passed`).
+
 ## Decision Gates
 
 ### Gate A: Mel backend switch

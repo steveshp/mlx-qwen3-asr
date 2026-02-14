@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import builtins
+import random
 import sys
 import types
 
@@ -118,6 +119,45 @@ def test_fix_timestamp_repairs_non_monotonic_sequence():
     fixed = ForcedAlignTextProcessor.fix_timestamp(raw)
     assert len(fixed) == len(raw)
     assert all(fixed[i] <= fixed[i + 1] for i in range(len(fixed) - 1))
+
+
+def _lis_non_decreasing_indices_reference(arr: list[float]) -> list[int]:
+    """Legacy O(n^2) DP reference used for behavioral parity checks."""
+    n = len(arr)
+    if n == 0:
+        return []
+    dp = [1] * n
+    parent = [-1] * n
+    for i in range(n):
+        for j in range(i):
+            if arr[j] <= arr[i] and dp[j] + 1 > dp[i]:
+                dp[i] = dp[j] + 1
+                parent[i] = j
+    max_len = max(dp)
+    end_idx = dp.index(max_len)
+    out: list[int] = []
+    cur = end_idx
+    while cur != -1:
+        out.append(cur)
+        cur = parent[cur]
+    out.reverse()
+    return out
+
+
+def test_lis_non_decreasing_indices_matches_legacy_reference():
+    rng = random.Random(20260214)
+    for n in range(1, 40):
+        for _ in range(150):
+            arr = [float(rng.randint(-40, 40)) for _ in range(n)]
+            got = ForcedAlignTextProcessor._lis_non_decreasing_indices(arr)
+            want = _lis_non_decreasing_indices_reference(arr)
+            assert got == want
+
+
+def test_fix_timestamp_preserves_duplicate_non_decreasing_lis_behavior():
+    raw = np.array([0, 10, 10, 9, 11], dtype=np.int32)
+    fixed = ForcedAlignTextProcessor.fix_timestamp(raw)
+    assert fixed == [0, 10, 10, 10, 11]
 
 
 def test_parse_timestamp_ms_pairs_words():
