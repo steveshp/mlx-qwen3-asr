@@ -1,0 +1,91 @@
+# Execution Tracker (2026-02-14)
+
+North-star execution notes for the current optimization/refactor wave.
+
+## Goal
+
+Ship the highest-quality native MLX Qwen3-ASR path while preserving correctness gates.
+
+## Current Priorities
+
+1. Decode/session architecture decoupling for production-grade streaming evolution.
+2. Keep all claims benchmark-backed and quality-gate clean.
+3. Advance toward resumable-cache streaming without regressing reference parity.
+
+## Verified Findings
+
+### 1) Custom mel parity status (updated)
+
+Measured against current `compute_features()` (HF WhisperFeatureExtractor):
+
+- Frame count mismatch:
+  - HF path returns `N` frames for `N*160` samples (e.g., 2s -> 200).
+  - Current custom `log_mel_spectrogram()` returns `N+1` frames (e.g., 2s -> 201).
+- Value mismatch after truncating custom to HF frame count:
+  - MAE around `0.153-0.155` on normalized log-mel.
+  - Correlation around `0.09-0.12`.
+
+Status update:
+- Fixed by (a) regenerating filterbank to match Whisper exactly and
+  (b) trimming final STFT frame before normalization.
+- Parity now passes on deterministic random + fixture set:
+  - max MAE: `2.83e-07`
+  - max abs diff: `1.13e-04`
+  - exact frame-count parity.
+- Artifacts:
+  - `docs/benchmarks/2026-02-14-mel-parity.json`
+  - `docs/benchmarks/2026-02-14-mel-parity.md`
+
+### 2) Mel filter mismatch root cause (resolved)
+
+Comparing `assets/mel_filters.npz` against `WhisperFeatureExtractor.mel_filters`
+(transposed to shape `(128, 201)`):
+
+- MAE: `0.0002265`
+- Max abs diff: `0.05816`
+
+Resolution:
+- `scripts/generate_mel_filters.py` now generates Whisper-compatible filters
+  (`mel_filter_bank(..., norm="slaney", mel_scale="slaney")`).
+- `compute_features(..., padding="do_not_pad")` now uses the corrected custom
+  mel path by default.
+
+### 3) Official streaming semantics context
+
+From upstream `qwen_asr/inference/qwen3_asr.py`:
+
+- Streaming path re-feeds accumulated audio context each chunk.
+- Uses `unfixed_chunk_num` and `unfixed_token_num` rollback controls.
+- Streaming in official stack is backend-limited (`vllm`) and no timestamps.
+
+We already aligned our rolling streaming controls to the same knobs and added
+bounded-context behavior for stable per-chunk cost.
+
+## Decision Gates
+
+### Gate A: Mel backend switch
+
+Status: COMPLETE
+
+Switched only after all were true:
+
+1. Frame-count parity is exact across short and long clips.
+2. Value parity threshold:
+   - MAE <= `1e-3` (target), or a justified threshold validated by transcript parity.
+3. Transcript parity:
+   - No regression in reference parity lane.
+   - No measurable degradation in sampled LibriSpeech WER/CER lane.
+
+### Gate B: Streaming architecture claims
+
+Keep streaming marked experimental until:
+
+1. Resumable decode cache path is implemented and benchmarked.
+2. Streaming benchmark lane shows predictable latency under long sessions.
+3. Regression tests cover multilingual rollback behavior and state transitions.
+
+## Immediate Next Tasks
+
+1. Add a `Session` API skeleton for explicit state ownership without breaking current public API.
+2. Introduce model-level `prefill/step` interfaces so `generate()` stops reaching into internals.
+3. Prototype resumable-cache streaming path behind an explicit experimental flag.

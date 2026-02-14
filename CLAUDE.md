@@ -69,6 +69,7 @@ Qwen3-ASR is an encoder-decoder model:
 | `docs/QUALITY_GATE.md` | Merge/release quality gates | Test policy changes |
 | `docs/GOLDEN_DATASET.md` | Golden dataset policy and commands | Dataset/threshold policy changes |
 | `docs/BENCHMARKING.md` | Runtime measurement protocol | Perf process changes |
+| `docs/EXECUTION_TRACKER_2026-02-14.md` | Active optimization/refactor tracker | During this execution wave |
 
 ## Code Conventions
 

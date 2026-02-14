@@ -336,8 +336,29 @@ def compute_features(
             mel_features: shape (1, 128, n_frames) as mx.array
             feature_lens: shape (1,) with actual frame count as mx.array
     """
-    extractor = _get_feature_extractor(sr)
     audio_np = np.asarray(audio_np, dtype=np.float32)
+
+    # Fast custom path for normal inference. This avoids HF feature-extractor
+    # overhead while matching Whisper preprocessing behavior.
+    if padding == "do_not_pad":
+        mel = np.array(log_mel_spectrogram(mx.array(audio_np)))
+        actual_frames = int(mel.shape[-1])
+        mel_mx = mx.array(mel[None, :, :].astype(np.float32))
+        feature_lens = mx.array([actual_frames])
+        return mel_mx, feature_lens
+
+    # Padded modes still use HF extractor so attention-mask-derived frame
+    # lengths remain exactly aligned with existing behavior.
+    return _compute_features_hf(audio_np, sr, padding)
+
+
+def _compute_features_hf(
+    audio_np: np.ndarray,
+    sr: int,
+    padding: str,
+) -> tuple[mx.array, mx.array]:
+    """Compute mel features via HF WhisperFeatureExtractor."""
+    extractor = _get_feature_extractor(sr)
     result = extractor(
         audio_np,
         sampling_rate=sr,
@@ -472,8 +493,11 @@ def log_mel_spectrogram(
     filters = mel_filters(n_mels)  # (n_mels, n_fft // 2 + 1)
     mel_spec = filters @ magnitudes.T  # (n_mels, n_frames)
 
+    # Whisper feature extraction trims the final STFT frame before clamping.
+    # This makes output length exactly len(audio) // hop_length for do_not_pad.
+    log_spec = mx.log10(mx.maximum(mel_spec, 1e-10))[:, :-1]
+
     # Log scale with clamping and normalization
-    log_spec = mx.log10(mx.maximum(mel_spec, 1e-10))
     log_spec = mx.maximum(log_spec, mx.max(log_spec) - 8.0)
     log_spec = (log_spec + 4.0) / 4.0
 

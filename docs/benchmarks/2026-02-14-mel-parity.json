@@ -1,0 +1,136 @@
+{
+  "seed": 0,
+  "seconds": [
+    1.0,
+    2.0,
+    5.0,
+    10.0,
+    31.0
+  ],
+  "fixture": "tests/fixtures/test_speech.wav",
+  "thresholds": {
+    "mae": 1e-05,
+    "max_abs": 0.0002
+  },
+  "cases": [
+    {
+      "frames_cur": 100,
+      "frames_hf": 100,
+      "shape_cur": [
+        128,
+        100
+      ],
+      "shape_hf": [
+        128,
+        100
+      ],
+      "direct_shape": [
+        128,
+        100
+      ],
+      "mae": 5.2182002718836884e-08,
+      "max_abs": 3.2186508178710938e-06,
+      "case": "random_1.0s"
+    },
+    {
+      "frames_cur": 200,
+      "frames_hf": 200,
+      "shape_cur": [
+        128,
+        200
+      ],
+      "shape_hf": [
+        128,
+        200
+      ],
+      "direct_shape": [
+        128,
+        200
+      ],
+      "mae": 5.235429867411767e-08,
+      "max_abs": 3.039836883544922e-06,
+      "case": "random_2.0s"
+    },
+    {
+      "frames_cur": 500,
+      "frames_hf": 500,
+      "shape_cur": [
+        128,
+        500
+      ],
+      "shape_hf": [
+        128,
+        500
+      ],
+      "direct_shape": [
+        128,
+        500
+      ],
+      "mae": 5.2083283463844054e-08,
+      "max_abs": 3.993511199951172e-06,
+      "case": "random_5.0s"
+    },
+    {
+      "frames_cur": 1000,
+      "frames_hf": 1000,
+      "shape_cur": [
+        128,
+        1000
+      ],
+      "shape_hf": [
+        128,
+        1000
+      ],
+      "direct_shape": [
+        128,
+        1000
+      ],
+      "mae": 5.2331479594158736e-08,
+      "max_abs": 1.1205673217773438e-05,
+      "case": "random_10.0s"
+    },
+    {
+      "frames_cur": 3100,
+      "frames_hf": 3100,
+      "shape_cur": [
+        128,
+        3100
+      ],
+      "shape_hf": [
+        128,
+        3100
+      ],
+      "direct_shape": [
+        128,
+        3100
+      ],
+      "mae": 5.284279325223906e-08,
+      "max_abs": 0.00011265277862548828,
+      "case": "random_31.0s"
+    },
+    {
+      "frames_cur": 253,
+      "frames_hf": 253,
+      "shape_cur": [
+        128,
+        253
+      ],
+      "shape_hf": [
+        128,
+        253
+      ],
+      "direct_shape": [
+        128,
+        253
+      ],
+      "mae": 2.831441463513329e-07,
+      "max_abs": 8.296966552734375e-05,
+      "case": "fixture_test_speech.wav"
+    }
+  ],
+  "summary": {
+    "max_mae": 2.831441463513329e-07,
+    "max_max_abs": 0.00011265277862548828,
+    "passed": true
+  }
+}

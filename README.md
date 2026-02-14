@@ -17,6 +17,7 @@ This project rewrites every layer for MLX so the same model runs natively on M1/
 ### Key features
 
 - Full audio encoder + text decoder with correct interleaved MRoPE
+- Whisper-parity custom log-mel frontend (default path for `do_not_pad`)
 - Supports both 1.7B and 0.6B model sizes
 - Long audio chunking (up to 20 minutes per chunk) with no 30s feature truncation
 - Word-level timestamps via native MLX forced aligner (experimental) or official Qwen backend

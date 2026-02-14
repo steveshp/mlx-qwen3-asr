@@ -148,3 +148,45 @@ This means exact multiples of 100 frames map to `13 * n_chunks` tokens
 - For this repo, measured wins continue to come from:
   tokenizer/model caching, preallocated KV paths, and validated quant profiles
   (`4-bit`, `group_size=64`) rather than speculative asynchronous decode logic.
+
+## Source Audit: Mel + Streaming (2026-02-14)
+
+This section records the exact primary sources used for current mel/streaming
+architecture decisions.
+
+### A) Official Qwen streaming semantics
+
+- File: `qwen_asr/inference/qwen3_asr.py`
+  - `init_streaming_state(...)` + `streaming_transcribe(...)` + `finish_streaming_transcribe(...)`.
+  - Behavior: streaming re-feeds accumulated audio and uses rollback controls
+    (`unfixed_chunk_num`, `unfixed_token_num`), with vLLM-only support.
+- Source:
+  - https://github.com/QwenLM/Qwen3-ASR/blob/main/qwen_asr/inference/qwen3_asr.py
+
+### B) Whisper feature extraction reference behavior
+
+- File: `transformers/models/whisper/feature_extraction_whisper.py`
+  - `_np_extract_fbank_features(...)` drops final STFT frame via `log_spec = log_spec[:, :-1]`.
+  - This explains common +1 frame mismatches in naive custom mel paths.
+- Source:
+  - https://github.com/huggingface/transformers/blob/main/src/transformers/models/whisper/feature_extraction_whisper.py
+
+### C) Swift implementation landscape check
+
+- Repo: `ivan-digital/qwen3-asr-swift`
+  - Public ASR surface is offline `transcribe(...)`; no dedicated ASR streaming
+    module found in `Sources/Qwen3ASR`.
+- Source:
+  - https://github.com/ivan-digital/qwen3-asr-swift/tree/main/Sources/Qwen3ASR
+
+### D) MLX cache design references
+
+- Repo: `ml-explore/mlx-lm`
+  - Multiple model implementations rely on explicit cache offset tracking and
+    `update_and_fetch` patterns for incremental decode.
+- Source:
+  - https://github.com/ml-explore/mlx-lm
+
+Decision implication for this repo:
+- Do not switch to custom mel by default until strict parity gates pass.
+- Keep streaming marked experimental until a true resumable decode-cache path lands.

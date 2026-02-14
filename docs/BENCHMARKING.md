@@ -32,6 +32,17 @@ Latest streaming baseline artifact:
 - `docs/benchmarks/2026-02-14-streaming-rolling-baseline.json`
 - `docs/benchmarks/2026-02-14-streaming-rolling-baseline.md`
 
+Mel parity evaluation:
+
+```bash
+python scripts/eval_mel_parity.py \
+  --json-output docs/benchmarks/latest-mel-parity.json
+```
+
+Latest mel parity artifacts:
+- `docs/benchmarks/2026-02-14-mel-parity.json`
+- `docs/benchmarks/2026-02-14-mel-parity.md`
+
 ## Metrics
 
 - `latency_sec.mean`

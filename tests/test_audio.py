@@ -302,15 +302,16 @@ class TestLogMelSpectrogram:
         audio = mx.array(np.random.randn(16000).astype(np.float32))
         result = log_mel_spectrogram(audio)
         assert result.shape[0] == 128  # n_mels
-        # n_frames = 101 for 16000 samples (from STFT test)
-        assert result.shape[1] == 101
+        # STFT yields 101 frames, Whisper-compatible mel path trims final frame.
+        assert result.shape[1] == 100
 
     def test_output_shape_short_audio(self):
         # 0.1 second of audio
         audio = mx.array(np.random.randn(1600).astype(np.float32))
         result = log_mel_spectrogram(audio)
         assert result.shape[0] == 128
-        assert result.shape[1] == 11
+        # STFT yields 11 frames, Whisper-compatible mel path trims final frame.
+        assert result.shape[1] == 10
 
     def test_raises_for_empty_audio(self):
         audio = mx.array(np.array([], dtype=np.float32))
@@ -360,18 +361,14 @@ class TestComputeFeatures:
         assert int(feature_lens.item()) == 200
 
     def test_do_not_pad_path_skips_attention_mask(self, monkeypatch):
-        seen = {}
+        def fail_extractor(_sr):  # noqa: ANN001
+            raise AssertionError("HF extractor should not be used for do_not_pad")
 
-        def fake_extractor(audio_np, **kwargs):  # noqa: ANN001
-            seen.update(kwargs)
-            return {"input_features": np.zeros((1, 128, 123), dtype=np.float32)}
+        monkeypatch.setattr(audio_mod, "_get_feature_extractor", fail_extractor)
 
-        monkeypatch.setattr(audio_mod, "_get_feature_extractor", lambda _sr: fake_extractor)
-
-        mel, feature_lens = compute_features(np.zeros(1600, dtype=np.float32))
-        assert seen["return_attention_mask"] is False
-        assert mel.shape == (1, 128, 123)
-        assert int(feature_lens.item()) == 123
+        mel, feature_lens = compute_features(np.zeros(3200, dtype=np.float32))
+        assert mel.shape == (1, 128, 20)
+        assert int(feature_lens.item()) == 20
 
     def test_padded_path_uses_attention_mask_for_true_length(self, monkeypatch):
         seen = {}
@@ -394,3 +391,20 @@ class TestComputeFeatures:
         assert seen["return_attention_mask"] is True
         assert mel.shape == (1, 128, 3000)
         assert int(feature_lens.item()) == 200
+
+    def test_custom_mel_parity_with_hf_reference(self):
+        audio = np.random.randn(2 * SAMPLE_RATE).astype(np.float32)
+        mel_custom, lens_custom = compute_features(audio, padding="do_not_pad")
+        mel_hf, lens_hf = audio_mod._compute_features_hf(  # noqa: SLF001
+            audio,
+            SAMPLE_RATE,
+            "do_not_pad",
+        )
+
+        assert int(lens_custom.item()) == int(lens_hf.item())
+        np.testing.assert_allclose(
+            np.array(mel_custom),
+            np.array(mel_hf),
+            atol=1e-5,
+            rtol=1e-5,
+        )
