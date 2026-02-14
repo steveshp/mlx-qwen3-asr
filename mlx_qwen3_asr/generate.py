@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 import mlx.core as mx
 
-from .model import KVCache, Qwen3ASRModel
+from .model import Qwen3ASRModel
 
 # Repetition detection constants (from official repo)
 REPETITION_THRESHOLD = 20
@@ -47,27 +47,16 @@ def generate(
     if config is None:
         config = GenerationConfig()
 
-    num_layers = len(model.model.layers)
     max_seq_len = int(input_ids.shape[1] + config.max_new_tokens)
-    cache = KVCache(num_layers, max_seq_len=max_seq_len)
+    cache = model.create_cache(max_seq_len=max_seq_len)
 
-    # Phase 1: Prefill
-    # Get embeddings and inject audio features
-    embeds = model.model.embed_tokens(input_ids)
-    audio_mask = input_ids == model.audio_token_id
-    embeds = model._inject_audio_features(embeds, audio_features, audio_mask)
-
-    # Forward pass through decoder (attention_mask=None lets TextDecoder
-    # create its own causal mask, which is required during prefill)
-    hidden = model.model(
-        inputs_embeds=embeds,
+    # Phase 1: Prefill prompt and populate cache.
+    logits = model.prefill(
+        input_ids=input_ids,
+        audio_features=audio_features,
         position_ids=position_ids,
-        attention_mask=None,
         cache=cache,
     )
-
-    # Get logits for last position
-    logits = model.lm_head(hidden[:, -1:, :])
 
     # Sample first token
     token = _sample(logits, config.temperature)
@@ -101,26 +90,23 @@ def generate(
         # Reuse precomputed decode positions to avoid per-step allocation.
         next_position_ids = next_pos_3d[:, :, step - 1 : step]
 
-        # Forward with cache
-        next_embeds = model.model.embed_tokens(next_ids)
-        hidden = model.model(
-            inputs_embeds=next_embeds,
+        logits = model.step(
+            input_ids=next_ids,
             position_ids=next_position_ids,
-            attention_mask=None,  # cache handles masking
             cache=cache,
         )
-
-        logits = model.lm_head(hidden)
         token = _sample(logits, config.temperature)
         generated.append(token)
 
         # Materialize cache periodically to avoid graph buildup while
         # reducing per-step synchronization overhead.
         if config.eval_interval > 0 and (step % config.eval_interval == 0):
-            mx.eval(
-                [c for c in cache.keys if c is not None]
-                + [c for c in cache.values if c is not None]
-            )
+            if hasattr(cache, "keys") and hasattr(cache, "values"):
+                cache_tensors = [c for c in cache.keys if c is not None] + [
+                    c for c in cache.values if c is not None
+                ]
+                if cache_tensors:
+                    mx.eval(cache_tensors)
 
     # Remove EOS token if present
     if generated and generated[-1] in config.eos_token_ids:

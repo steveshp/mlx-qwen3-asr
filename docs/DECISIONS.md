@@ -160,3 +160,17 @@ while preserving top-level `transcribe(...)` for simple usage.
 - Explicit state ownership is easier to reason about and test.
 - Multiple model sessions can coexist in one process without implicit coupling.
 - Keeps power-user workflows deterministic while preserving beginner ergonomics.
+
+## Decision 14: Keep Streaming Experimental and Deprioritize Productionization
+
+**Choice:** Keep streaming clearly labeled experimental and avoid major engineering
+investment until core offline quality/speed gates are fully saturated.
+**Alternative:** Spend near-term roadmap bandwidth on production-grade streaming.
+
+**Rationale:**
+- Qwen3-ASR's strongest practical value today is high-quality multilingual
+  post-recording transcription.
+- Current upstream streaming semantics are themselves constrained
+  (vLLM-only and no timestamps), so production streaming is not a short path.
+- Near-term engineering ROI is higher in correctness gates, native aligner quality,
+  benchmark rigor, quantized packaging, and decode-path cleanliness.

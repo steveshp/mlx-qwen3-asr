@@ -99,7 +99,7 @@ Performance progress:
 
 Near-term work should remain correctness-gated and benchmark-driven:
 
-1. Native MLX forced aligner (timestamps) prototype
+1. Native MLX forced aligner (timestamps) quality hardening
 - Goal: remove optional PyTorch runtime dependency for timestamp alignment.
 - Gate: word-level timing quality must be competitive with current `qwen-asr` backend.
 
@@ -110,6 +110,15 @@ Near-term work should remain correctness-gated and benchmark-driven:
 3. Long-form robustness benchmark expansion
 - Goal: extend golden eval + latency coverage beyond the current short fixture and 10s clip.
 - Gate: no quality regressions on >30s and multi-minute real-world clips.
+
+4. Decode API cleanliness and cache lifecycle rigor
+- Goal: keep model/generation boundaries explicit (`prefill/step` + session ownership)
+  to support maintainability and future low-risk optimizations.
+- Gate: no parity regression and no additional hidden global state.
+
+5. Streaming policy (deprioritized)
+- Keep streaming explicitly experimental and avoid major roadmap allocation
+  until the core offline quality/speed/timestamp track is fully production-grade.
 
 ## Acceptance Gates
 

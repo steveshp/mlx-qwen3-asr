@@ -8,9 +8,9 @@ Ship the highest-quality native MLX Qwen3-ASR path while preserving correctness 
 
 ## Current Priorities
 
-1. Decode/session architecture decoupling for production-grade streaming evolution.
+1. Decode/session architecture decoupling for production-grade core inference.
 2. Keep all claims benchmark-backed and quality-gate clean.
-3. Advance toward resumable-cache streaming without regressing reference parity.
+3. Prioritize offline quality/speed/timestamp rigor over streaming feature expansion.
 
 ## Verified Findings
 
@@ -87,5 +87,6 @@ Keep streaming marked experimental until:
 ## Immediate Next Tasks
 
 1. (Complete) Added explicit `Session` API skeleton for explicit state ownership.
-2. Introduce model-level `prefill/step` interfaces so `generate()` stops reaching into internals.
-3. Prototype resumable-cache streaming path behind an explicit experimental flag.
+2. (Complete) Introduced model-level `prefill/step` interfaces so `generate()` no longer reaches into model internals.
+3. Expand golden-set benchmark coverage (quality + latency) for release and quantized artifacts.
+4. Keep streaming experimental; only revisit deeper streaming work after core gates are saturated.

@@ -190,3 +190,67 @@ architecture decisions.
 Decision implication for this repo:
 - Do not switch to custom mel by default until strict parity gates pass.
 - Keep streaming marked experimental until a true resumable decode-cache path lands.
+
+## External Audit Refresh (GitHub + Papers, 2026-02-14)
+
+This pass re-checked upstream repos and paper artifacts to confirm roadmap priority.
+
+### 1) Official streaming is still constrained upstream
+
+- In official `qwen-asr`, streaming state is documented as **vLLM-only** and
+  **no timestamps**:
+  - https://github.com/QwenLM/Qwen3-ASR/blob/main/qwen_asr/inference/qwen3_asr.py#L596-L599
+- The streaming implementation explicitly re-feeds all accumulated audio each chunk:
+  - https://github.com/QwenLM/Qwen3-ASR/blob/main/qwen_asr/inference/qwen3_asr.py#L670-L673
+- Timestamping in official stack is a separate forced aligner model and code path:
+  - https://github.com/QwenLM/Qwen3-ASR/blob/main/qwen_asr/inference/qwen3_forced_aligner.py#L309
+  - https://github.com/QwenLM/Qwen3-ASR/blob/main/qwen_asr/inference/qwen3_forced_aligner.py#L394
+
+### 2) Swift ecosystem status on ASR timestamps/streaming
+
+- `ivan-digital/qwen3-asr-swift` public ASR API currently exposes
+  `transcribe(...) -> String` (no timestamp object surface in this API):
+  - https://github.com/ivan-digital/qwen3-asr-swift/blob/main/Sources/Qwen3ASR/Qwen3ASR.swift#L52-L57
+- Its README roadmap still lists **ASR streaming inference** as pending:
+  - https://github.com/ivan-digital/qwen3-asr-swift/blob/main/README.md#roadmap
+- Existing ASR speed claims in that repo are strong and useful as external target points:
+  - https://github.com/ivan-digital/qwen3-asr-swift/blob/main/README.md#latency-m2-max-64-gb
+
+### 3) Other GitHub landscape notes
+
+- `Jason-Queen/Qwen3-ASR-MLX-Server` is service glue over `mlx-audio`, not a clean
+  standalone model-core implementation:
+  - https://github.com/Jason-Queen/Qwen3-ASR-MLX-Server/blob/main/whisper_mlx_server.py#L33-L34
+- `ontypehq/mlx-swift-asr` is another native Swift effort with strong runtime focus
+  (useful for implementation ideas and benchmark comparison):
+  - https://github.com/ontypehq/mlx-swift-asr
+
+### 4) Model artifact availability (HuggingFace)
+
+- Official models:
+  - https://huggingface.co/Qwen/Qwen3-ASR-1.7B
+  - https://huggingface.co/Qwen/Qwen3-ASR-0.6B
+  - https://huggingface.co/Qwen/Qwen3-ForcedAligner-0.6B
+- MLX-community quantized variants for both ASR and forced aligner already exist
+  (4/5/6/8-bit variants), which reduces packaging risk for Mac-native workflows:
+  - https://huggingface.co/mlx-community/Qwen3-ASR-0.6B-4bit
+  - https://huggingface.co/mlx-community/Qwen3-ASR-1.7B-8bit
+  - https://huggingface.co/mlx-community/Qwen3-ForcedAligner-0.6B-4bit
+  - https://huggingface.co/mlx-community/Qwen3-ForcedAligner-0.6B-8bit
+
+### 5) Academic and MLX optimization references
+
+- Qwen3-ASR technical report (primary paper source):
+  - https://arxiv.org/abs/2601.21337
+- MLX official optimization docs (compile/lazy evaluation/streams), relevant to
+  stable hot-path design and benchmarking discipline:
+  - https://ml-explore.github.io/mlx/build/html/usage/compile.html
+  - https://ml-explore.github.io/mlx/build/html/usage/lazy_evaluation.html
+  - https://ml-explore.github.io/mlx/build/html/usage/using_streams.html
+
+### Practical Implication
+
+- Near-term highest ROI remains: correctness parity, native aligner quality gates,
+  quantized artifact quality, and decode-path cleanliness.
+- Streaming should remain explicit experimental scope, not a production-critical
+  investment lane until core offline quality and performance goals are saturated.

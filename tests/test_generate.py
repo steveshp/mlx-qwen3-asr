@@ -7,6 +7,7 @@ from mlx_qwen3_asr.generate import (
     GenerationConfig,
     _detect_repetition,
     _sample,
+    generate,
 )
 
 # ---------------------------------------------------------------------------
@@ -138,3 +139,66 @@ class TestSample:
         logits = mx.array([[[0.1, 0.5, 0.9, 0.3]]])
         token = _sample(logits, temperature=-1.0)
         assert token == 2
+
+
+# ---------------------------------------------------------------------------
+# generate
+# ---------------------------------------------------------------------------
+
+
+class TestGenerate:
+    """Test top-level generate() orchestration."""
+
+    def test_generate_uses_model_prefill_and_step_interfaces(self):
+        class _DummyModel:
+            def __init__(self):
+                self.calls = []
+                self.cache_obj = object()
+
+            def create_cache(self, max_seq_len=None):  # noqa: ANN001
+                self.calls.append(("create_cache", max_seq_len))
+                return self.cache_obj
+
+            def prefill(self, input_ids, audio_features, position_ids, cache):  # noqa: ANN001
+                self.calls.append(
+                    (
+                        "prefill",
+                        tuple(input_ids.shape),
+                        tuple(audio_features.shape),
+                        tuple(position_ids.shape),
+                        cache is self.cache_obj,
+                    )
+                )
+                # greedy -> token 1
+                return mx.array([[[0.0, 1.0, 0.0]]], dtype=mx.float32)
+
+            def step(self, input_ids, position_ids, cache):  # noqa: ANN001
+                self.calls.append(
+                    (
+                        "step",
+                        tuple(input_ids.shape),
+                        tuple(position_ids.shape),
+                        cache is self.cache_obj,
+                    )
+                )
+                # greedy -> eos token 2
+                return mx.array([[[0.0, 0.0, 1.0]]], dtype=mx.float32)
+
+        model = _DummyModel()
+        input_ids = mx.array([[10, 20, 30, 40, 50]])
+        audio_features = mx.zeros((1, 8, 4))
+        position_ids = mx.zeros((1, 3, 5), dtype=mx.int32)
+        config = GenerationConfig(max_new_tokens=3, temperature=0.0, eos_token_ids=[2])
+
+        out = generate(
+            model=model,
+            input_ids=input_ids,
+            audio_features=audio_features,
+            position_ids=position_ids,
+            config=config,
+        )
+
+        assert out == [1]
+        assert model.calls[0] == ("create_cache", 8)
+        assert model.calls[1][0] == "prefill"
+        assert model.calls[2][0] == "step"

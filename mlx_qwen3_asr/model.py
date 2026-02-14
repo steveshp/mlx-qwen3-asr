@@ -1076,13 +1076,74 @@ class Qwen3ASRModel(nn.Module):
         result = mx.where(mask_3d, audio_expanded, embeds)
         return result
 
-    def create_cache(self) -> KVCache:
+    def prefill(
+        self,
+        input_ids: mx.array,
+        audio_features: mx.array,
+        position_ids: mx.array,
+        cache: KVCache,
+    ) -> mx.array:
+        """Prefill decode cache from prompt + injected audio features.
+
+        Args:
+            input_ids: Prompt token IDs including audio placeholders, shape (B, L).
+            audio_features: Encoded audio features, shape (B, N_audio, D).
+            position_ids: MRoPE position IDs for the prompt, shape (B, 3, L).
+            cache: KV cache to populate in-place.
+
+        Returns:
+            Logits for the final prompt position, shape (B, 1, vocab_size).
+        """
+        embeds = self.model.embed_tokens(input_ids)
+        audio_mask = input_ids == self.audio_token_id
+        embeds = self._inject_audio_features(embeds, audio_features, audio_mask)
+
+        hidden = self.model(
+            inputs_embeds=embeds,
+            position_ids=position_ids,
+            attention_mask=None,
+            cache=cache,
+        )
+        return self.lm_head(hidden[:, -1:, :])
+
+    def step(
+        self,
+        input_ids: mx.array,
+        position_ids: mx.array,
+        cache: KVCache,
+    ) -> mx.array:
+        """Decode one autoregressive step with an existing cache.
+
+        Args:
+            input_ids: Next-token IDs, shape (B, 1).
+            position_ids: Step MRoPE position IDs, shape (B, 3, 1).
+            cache: KV cache to update in-place.
+
+        Returns:
+            Step logits, shape (B, 1, vocab_size).
+        """
+        embeds = self.model.embed_tokens(input_ids)
+        hidden = self.model(
+            inputs_embeds=embeds,
+            position_ids=position_ids,
+            attention_mask=None,
+            cache=cache,
+        )
+        return self.lm_head(hidden)
+
+    def create_cache(self, max_seq_len: Optional[int] = None) -> KVCache:
         """Create a fresh KV cache for autoregressive generation.
+
+        Args:
+            max_seq_len: Optional preallocation target for cache growth.
 
         Returns:
             Empty KVCache with the correct number of layers.
         """
-        return KVCache(self.config.text_config.num_hidden_layers)
+        return KVCache(
+            self.config.text_config.num_hidden_layers,
+            max_seq_len=max_seq_len,
+        )
 
     @property
     def num_audio_encoder_layers(self) -> int:
