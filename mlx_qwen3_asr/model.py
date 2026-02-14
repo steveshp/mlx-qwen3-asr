@@ -80,6 +80,10 @@ def _scaled_dot_product_attention(
 # Audio Encoder Components
 # ---------------------------------------------------------------------------
 
+# Use segmented per-window execution only once we have enough windows that
+# dense block-mask attention becomes a clear overhead.
+_WINDOWED_SEGMENT_MIN_WINDOWS = 20
+
 
 class SinusoidalPositionEmbedding(nn.Module):
     """Fixed (non-learned) sinusoidal position embeddings.
@@ -469,13 +473,15 @@ class AudioEncoder(nn.Module):
             cu_seqlens.append(window_end)
             pos = window_end
 
-        mask = _create_windowed_mask(total_tokens, cu_seqlens, x.dtype)
-
+        num_windows = len(cu_seqlens) - 1
         # Add batch dim for transformer layers: (1, total_tokens, d_model)
         x = x[None, :, :]
-
-        for layer in self.layers:
-            x = layer(x, mask=mask)
+        if num_windows >= _WINDOWED_SEGMENT_MIN_WINDOWS:
+            x = _apply_windowed_encoder_layers(x, self.layers, cu_seqlens)
+        else:
+            mask = _create_windowed_mask(total_tokens, cu_seqlens, x.dtype)
+            for layer in self.layers:
+                x = layer(x, mask=mask)
 
         x = x[0]  # remove batch dim: (total_tokens, d_model)
 
@@ -531,6 +537,40 @@ def _create_windowed_mask(
         mx.array(-1e9, dtype=dtype),
     )
     return mask[None, None, :, :]  # (1, 1, L, L)
+
+
+def _apply_windowed_encoder_layers(
+    x: mx.array,
+    layers: list[AudioEncoderLayer],
+    cu_seqlens: list[int],
+) -> mx.array:
+    """Apply encoder layers independently per attention window.
+
+    This is mathematically equivalent to a full-sequence forward pass with a
+    block-diagonal additive mask derived from ``cu_seqlens``. It avoids
+    materializing dense ``(L, L)`` masks and prevents cross-window attention
+    compute for long sequences.
+
+    Args:
+        x: Encoder hidden states, shape ``(1, L, D)``.
+        layers: Audio encoder layers to apply.
+        cu_seqlens: Cumulative window boundaries (inclusive start, exclusive end).
+
+    Returns:
+        Updated hidden states, shape ``(1, L, D)``.
+    """
+    # Single window: keep fast-path identical to prior behavior.
+    if len(cu_seqlens) <= 2:
+        for layer in layers:
+            x = layer(x, mask=None)
+        return x
+
+    for layer in layers:
+        parts: list[mx.array] = []
+        for s, e in zip(cu_seqlens[:-1], cu_seqlens[1:]):
+            parts.append(layer(x[:, s:e, :], mask=None))
+        x = mx.concatenate(parts, axis=1)
+    return x
 
 
 # ---------------------------------------------------------------------------

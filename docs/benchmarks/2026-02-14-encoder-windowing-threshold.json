@@ -1,0 +1,51 @@
+{
+  "shape": {
+    "window_len": 104,
+    "d_model": 256,
+    "num_heads": 8,
+    "ffn_dim": 1024,
+    "layers": 8
+  },
+  "results": [
+    {
+      "seq_len": 832,
+      "num_windows": 8,
+      "max_abs_diff": 1.9073486328125e-06,
+      "dense_mean_sec": 0.009408923496569818,
+      "windowed_mean_sec": 0.012673194670545248,
+      "speedup_x": 0.7424271260061857
+    },
+    {
+      "seq_len": 1664,
+      "num_windows": 16,
+      "max_abs_diff": 2.6226043701171875e-06,
+      "dense_mean_sec": 0.02993535433294407,
+      "windowed_mean_sec": 0.028245583501605626,
+      "speedup_x": 1.0598242493819392
+    },
+    {
+      "seq_len": 2080,
+      "num_windows": 20,
+      "max_abs_diff": 2.5033950805664062e-06,
+      "dense_mean_sec": 0.05472499299988461,
+      "windowed_mean_sec": 0.04659102782898117,
+      "speedup_x": 1.1745822221557398
+    },
+    {
+      "seq_len": 3120,
+      "num_windows": 30,
+      "max_abs_diff": 2.6226043701171875e-06,
+      "dense_mean_sec": 0.10998146516309741,
+      "windowed_mean_sec": 0.07408027801041801,
+      "speedup_x": 1.4846254376587324
+    },
+    {
+      "seq_len": 8320,
+      "num_windows": 80,
+      "max_abs_diff": 2.6226043701171875e-06,
+      "dense_mean_sec": 0.7989555553358514,
+      "windowed_mean_sec": 0.19144942350976635,
+      "speedup_x": 4.173193842472419
+    }
+  ]
+}

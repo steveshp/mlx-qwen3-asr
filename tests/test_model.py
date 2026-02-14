@@ -19,7 +19,9 @@ from mlx_qwen3_asr.model import (
     SwiGLU,
     TextAttention,
     TextDecoderLayer,
+    _apply_windowed_encoder_layers,
     _create_causal_mask,
+    _create_windowed_mask,
 )
 
 # ---------------------------------------------------------------------------
@@ -423,6 +425,36 @@ class TestCreateCausalMask:
         mx.eval(mask)
         assert mask.shape == (1, 1, 1, 1)
         assert np.array(mask[0, 0, 0, 0]) == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Windowed encoder execution
+# ---------------------------------------------------------------------------
+
+
+class TestWindowedEncoderExecution:
+    """Windowed per-segment execution should match dense masked execution."""
+
+    def test_matches_dense_masked_layers(self):
+        d_model, num_heads, ffn_dim = 64, 2, 128
+        layers = [AudioEncoderLayer(d_model, num_heads, ffn_dim) for _ in range(2)]
+        x = mx.random.normal((1, 11, d_model))
+        cu_seqlens = [0, 4, 9, 11]
+
+        mask = _create_windowed_mask(seq_len=11, cu_seqlens=cu_seqlens, dtype=x.dtype)
+        dense = x
+        for layer in layers:
+            dense = layer(dense, mask=mask)
+
+        windowed = _apply_windowed_encoder_layers(x, layers, cu_seqlens)
+
+        mx.eval(dense, windowed)
+        np.testing.assert_allclose(
+            np.array(dense),
+            np.array(windowed),
+            atol=1e-5,
+            rtol=1e-5,
+        )
 
 
 # ---------------------------------------------------------------------------

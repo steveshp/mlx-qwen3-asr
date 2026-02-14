@@ -91,6 +91,15 @@ Tokenizer resolved-local-path benchmark (2026-02-14):
 - `docs/benchmarks/2026-02-14-tokenizer-local-path-benchmark.json`
 - `docs/benchmarks/2026-02-14-tokenizer-local-path-benchmark.md`
 
+Encoder windowing threshold benchmark (2026-02-14):
+
+- `docs/benchmarks/2026-02-14-encoder-windowing-threshold.json`
+- `docs/benchmarks/2026-02-14-encoder-windowing-threshold.md`
+
+Post-change short-clip sanity benchmark (2026-02-14):
+
+- `docs/benchmarks/2026-02-14-short-after-windowed-hybrid.json`
+
 Generate with:
 
 ```bash

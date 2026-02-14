@@ -61,6 +61,18 @@ From upstream `qwen_asr/inference/qwen3_asr.py`:
 We already aligned our rolling streaming controls to the same knobs and added
 bounded-context behavior for stable per-chunk cost.
 
+### 4) Encoder long-context execution strategy
+
+- Dense block-mask encoder attention is fine for small window counts but scales
+  poorly as sequence length grows.
+- A segmented per-window execution path is numerically equivalent (max-abs diff
+  around `1e-6` in synthetic checks) and significantly faster for long contexts.
+- Hybrid threshold selected from benchmark sweep:
+  - use segmented path when `num_windows >= 20`.
+- Artifacts:
+  - `docs/benchmarks/2026-02-14-encoder-windowing-threshold.json`
+  - `docs/benchmarks/2026-02-14-encoder-windowing-threshold.md`
+
 ## Decision Gates
 
 ### Gate A: Mel backend switch
@@ -88,5 +100,5 @@ Keep streaming marked experimental until:
 
 1. (Complete) Added explicit `Session` API skeleton for explicit state ownership.
 2. (Complete) Introduced model-level `prefill/step` interfaces so `generate()` no longer reaches into model internals.
-3. Expand golden-set benchmark coverage (quality + latency) for release and quantized artifacts.
+3. (In progress) Expand golden-set benchmark coverage (quality + latency) for release and quantized artifacts.
 4. Keep streaming experimental; only revisit deeper streaming work after core gates are saturated.

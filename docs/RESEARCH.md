@@ -254,3 +254,28 @@ This pass re-checked upstream repos and paper artifacts to confirm roadmap prior
   quantized artifact quality, and decode-path cleanliness.
 - Streaming should remain explicit experimental scope, not a production-critical
   investment lane until core offline quality and performance goals are saturated.
+
+## Encoder Long-Context Optimization (2026-02-14)
+
+We validated a hybrid encoder-window strategy for long audio:
+
+- For smaller window counts, keep dense block-mask execution.
+- For larger window counts, switch to segmented per-window execution, which is
+  mathematically equivalent to block-diagonal masking but avoids dense `(L, L)` mask
+  overhead.
+
+Threshold decision:
+
+- Use segmented execution when `num_windows >= 20`.
+
+Benchmark artifact (synthetic, same weights/inputs, 8-layer encoder):
+
+- `docs/benchmarks/2026-02-14-encoder-windowing-threshold.json`
+- `docs/benchmarks/2026-02-14-encoder-windowing-threshold.md`
+
+Observed:
+
+- small context (`8 windows`): dense path is faster,
+- crossover around `16-20 windows`,
+- long context (`80 windows`): segmented path showed ~`4.17x` speedup with
+  max-abs output diff on the order of `1e-6`.
