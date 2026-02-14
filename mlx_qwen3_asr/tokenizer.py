@@ -149,7 +149,75 @@ class _TokenizerHolder:
         cls._cache.clear()
 
 
-def parse_asr_output(text: str) -> tuple[str, str]:
+def _detect_and_fix_repetitions(text: str, threshold: int = 20) -> str:
+    """Collapse pathological repetitions in decoder output."""
+
+    def _fix_char_runs(s: str) -> str:
+        out: list[str] = []
+        i = 0
+        n = len(s)
+        while i < n:
+            j = i + 1
+            while j < n and s[j] == s[i]:
+                j += 1
+            run = j - i
+            if run > threshold:
+                out.append(s[i])
+            else:
+                out.append(s[i:j])
+            i = j
+        return "".join(out)
+
+    def _fix_pattern_runs(s: str, max_pattern_len: int = 20) -> str:
+        n = len(s)
+        if n < threshold * 2:
+            return s
+        i = 0
+        out: list[str] = []
+        while i <= n - threshold * 2:
+            found = False
+            for k in range(1, max_pattern_len + 1):
+                if i + (k * threshold) > n:
+                    break
+                p = s[i : i + k]
+                ok = True
+                for rep in range(1, threshold):
+                    start = i + rep * k
+                    if s[start : start + k] != p:
+                        ok = False
+                        break
+                if not ok:
+                    continue
+                end = i + threshold * k
+                while end + k <= n and s[end : end + k] == p:
+                    end += k
+                out.append(p)
+                out.append(_fix_pattern_runs(s[end:], max_pattern_len=max_pattern_len))
+                i = n
+                found = True
+                break
+            if found:
+                break
+            out.append(s[i])
+            i += 1
+        if i < n:
+            out.append(s[i:])
+        return "".join(out)
+
+    return _fix_pattern_runs(_fix_char_runs(text))
+
+
+def _strip_trailing_special_tokens(s: str) -> str:
+    out = s
+    for token in ["<|im_end|>", "<|endoftext|>"]:
+        out = out.replace(token, "")
+    return out.strip()
+
+
+def parse_asr_output(
+    text: str,
+    user_language: Optional[str] = None,
+) -> tuple[str, str]:
     """Parse ASR model output into language and transcription text.
 
     Input format: "language English<asr_text>hello world"
@@ -157,14 +225,27 @@ def parse_asr_output(text: str) -> tuple[str, str]:
 
     Args:
         text: Raw model output text
+        user_language: Optional forced language. If provided, return this
+            language and treat model output as plain transcription text.
 
     Returns:
         Tuple of (detected_language, transcription_text)
     """
-    if "<asr_text>" in text:
-        parts = text.split("<asr_text>", 1)
+    if text is None:
+        return "unknown", ""
+    s = str(text).strip()
+    if not s:
+        return "unknown", ""
+
+    s = _detect_and_fix_repetitions(s)
+
+    if user_language:
+        return user_language, _strip_trailing_special_tokens(s)
+
+    if "<asr_text>" in s:
+        parts = s.split("<asr_text>", 1)
         lang_part = parts[0].strip()
-        transcript = parts[1].strip()
+        transcript = _strip_trailing_special_tokens(parts[1])
 
         # Extract language name from "language English"
         if lang_part.startswith("language "):
@@ -172,11 +253,10 @@ def parse_asr_output(text: str) -> tuple[str, str]:
         else:
             lang = lang_part
 
-        # Clean up any trailing special tokens
-        for token in ["<|im_end|>", "<|endoftext|>"]:
-            transcript = transcript.replace(token, "").strip()
+        if "language none" in lang_part.lower() and not transcript:
+            return "", ""
 
         return lang, transcript
 
     # Fallback: no asr_text marker
-    return "unknown", text.strip()
+    return "unknown", _strip_trailing_special_tokens(s)

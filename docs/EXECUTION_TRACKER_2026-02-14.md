@@ -73,6 +73,15 @@ bounded-context behavior for stable per-chunk cost.
   - `docs/benchmarks/2026-02-14-encoder-windowing-threshold.json`
   - `docs/benchmarks/2026-02-14-encoder-windowing-threshold.md`
 
+### 5) Output parse robustness hardening
+
+- Implemented upstream-style repetition cleanup in ASR output parsing.
+- Added explicit handling for:
+  - `language None<asr_text>` empty-audio case,
+  - forced-language parsing path,
+  - consistent trailing special-token cleanup.
+- Added regression tests in tokenizer/transcribe lanes.
+
 ## Decision Gates
 
 ### Gate A: Mel backend switch

@@ -81,7 +81,11 @@ def test_transcribe_with_timestamps(monkeypatch):
             (np.zeros(16000, dtype=np.float32), 1.5),
         ],
     )
-    monkeypatch.setattr(tmod, "parse_asr_output", lambda raw: ("English", "hello world"))
+    monkeypatch.setattr(
+        tmod,
+        "parse_asr_output",
+        lambda raw, user_language=None: ("English", "hello world"),
+    )
 
     result = transcribe(
         np.zeros(32000, dtype=np.float32),

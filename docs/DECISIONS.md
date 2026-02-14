@@ -174,3 +174,14 @@ investment until core offline quality/speed gates are fully saturated.
   (vLLM-only and no timestamps), so production streaming is not a short path.
 - Near-term engineering ROI is higher in correctness gates, native aligner quality,
   benchmark rigor, quantized packaging, and decode-path cleanliness.
+
+## Decision 15: Adopt Upstream-Style ASR Output Repetition Cleanup
+
+**Choice:** Apply repetition cleanup + edge-case parsing in `parse_asr_output(...)`,
+aligned with official Qwen inference utility behavior.
+**Alternative:** Keep minimal parser that only splits on `<asr_text>`.
+
+**Rationale:**
+- Repetition collapse directly reduces pathological decode tails in real-world audio.
+- Handling `language None` and forced-language parse paths improves robustness.
+- This is a low-risk, high-value inference-time quality safeguard.

@@ -279,3 +279,6 @@ Observed:
 - crossover around `16-20 windows`,
 - long context (`80 windows`): segmented path showed ~`4.17x` speedup with
   max-abs output diff on the order of `1e-6`.
+
+See also:
+- `docs/ALGORITHMIC_MAXXING_2026-02-14.md` for paper-backed next-step algorithm candidates.

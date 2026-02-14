@@ -91,6 +91,30 @@ class TestParseASROutputEdgeCases:
         lang, transcript = parse_asr_output(text)
         assert transcript == "hello world"
 
+    def test_language_none_empty_audio(self):
+        text = "language None<asr_text>"
+        lang, transcript = parse_asr_output(text)
+        assert lang == ""
+        assert transcript == ""
+
+    def test_forced_language_treats_output_as_plain_text(self):
+        text = "hello world<|im_end|>"
+        lang, transcript = parse_asr_output(text, user_language="English")
+        assert lang == "English"
+        assert transcript == "hello world"
+
+    def test_char_repetition_cleanup(self):
+        text = "language English<asr_text>" + ("a" * 30)
+        lang, transcript = parse_asr_output(text)
+        assert lang == "English"
+        assert transcript == "a"
+
+    def test_pattern_repetition_cleanup(self):
+        text = "language English<asr_text>" + ("ab" * 25)
+        lang, transcript = parse_asr_output(text)
+        assert lang == "English"
+        assert transcript == "ab"
+
 
 def test_tokenizer_holder_caches_by_model_path(monkeypatch):
     created = []

@@ -1,9 +1,9 @@
 """Audio loading and mel spectrogram computation for Qwen3-ASR.
 
-Handles audio I/O via ffmpeg subprocess and computes log-mel spectrograms.
-Uses HuggingFace's WhisperFeatureExtractor for mel computation (matching
-the official Qwen3-ASR preprocessing pipeline) with a fallback to a custom
-MLX implementation.
+Handles audio I/O via ffmpeg subprocess and computes Whisper-compatible
+log-mel spectrograms. The default feature path is a native custom mel
+implementation; HuggingFace WhisperFeatureExtractor is retained for padded
+modes and parity/debug comparisons.
 
 Key parameters:
     - Sample rate: 16000 Hz
@@ -318,11 +318,12 @@ def compute_features(
     sr: int = SAMPLE_RATE,
     padding: str = "do_not_pad",
 ) -> tuple[mx.array, mx.array]:
-    """Compute mel spectrogram features using HF WhisperFeatureExtractor.
+    """Compute mel spectrogram features.
 
-    This matches official preprocessing while keeping long-audio support:
-    128-bin Slaney mel filterbank, with truncation disabled so feature length
-    can exceed 3000 frames when input audio is longer than 30 seconds.
+    Default (`padding="do_not_pad"`) uses the native custom mel path for
+    speed and minimal dependencies while matching Whisper preprocessing.
+    Padded modes route through HF WhisperFeatureExtractor so attention-mask-
+    derived frame lengths remain aligned with existing behavior.
 
     Args:
         audio_np: Raw waveform as numpy array, shape (n_samples,).

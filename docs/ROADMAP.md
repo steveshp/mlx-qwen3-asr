@@ -13,6 +13,10 @@ Qwen3-ASR on Apple Silicon.
 - Added manual CI workflow: `.github/workflows/reference-parity.yml`.
 - Added explicit gate runner: `scripts/quality_gate.py` with fast/release modes.
 - Added policy doc: `docs/QUALITY_GATE.md`.
+- Added upstream-style output parse hardening:
+  - repetition cleanup in decoded text,
+  - `language None` empty-audio handling,
+  - forced-language parse path support.
 - Added scheduled regression lane:
   - `.github/workflows/nightly-regression.yml`
   - `scripts/eval_librispeech.py`
@@ -61,6 +65,12 @@ Performance progress:
     avoiding extra Hub checks in short-lived processes.
   - benchmarked process-level first-transcribe latency on fixture audio:
     mean `4.008s` -> `2.296s` (`~1.75x` faster overall vs legacy path).
+- Done (long-context encoder optimization):
+  - added hybrid execution strategy for audio-encoder windowed attention:
+    dense block-mask for small window counts, segmented per-window execution for
+    long contexts (`num_windows >= 20`).
+  - benchmark sweep shows crossover around `16-20` windows and substantial gains
+    on long contexts (up to `~4.17x` in synthetic long-sequence benchmark).
 - Current measured fp16 point from refreshed matrix run
   (Apple M4 Pro, `Qwen/Qwen3-ASR-0.6B`, float16):
   - short fixture: mean `0.4996s`, RTF `0.1972`

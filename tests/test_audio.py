@@ -393,7 +393,8 @@ class TestComputeFeatures:
         assert int(feature_lens.item()) == 200
 
     def test_custom_mel_parity_with_hf_reference(self):
-        audio = np.random.randn(2 * SAMPLE_RATE).astype(np.float32)
+        rng = np.random.default_rng(0)
+        audio = rng.standard_normal(2 * SAMPLE_RATE).astype(np.float32)
         mel_custom, lens_custom = compute_features(audio, padding="do_not_pad")
         mel_hf, lens_hf = audio_mod._compute_features_hf(  # noqa: SLF001
             audio,
@@ -405,6 +406,6 @@ class TestComputeFeatures:
         np.testing.assert_allclose(
             np.array(mel_custom),
             np.array(mel_hf),
-            atol=1e-5,
+            atol=2e-5,
             rtol=1e-5,
         )

@@ -185,7 +185,7 @@ def _transcribe_loaded_components(
         )
 
         raw_text = tokenizer.decode(output_tokens)
-        lang, text = parse_asr_output(raw_text)
+        lang, text = parse_asr_output(raw_text, user_language=language)
 
         if detected_language == "unknown":
             detected_language = lang
