@@ -75,6 +75,14 @@ class TestRemapWeightsConv2d:
         result = remapped["audio_tower.conv2d1.bias"]
         assert result.shape == (10,)
 
+    def test_does_not_transpose_non_thinker_conv2d_weight(self):
+        """Already-converted local MLX weights should not be transposed again."""
+        mlx_weight = mx.zeros((8, 3, 3, 1))
+        weights = {"audio_tower.conv2d1.weight": mlx_weight}
+        remapped = remap_weights(weights)
+        result = remapped["audio_tower.conv2d1.weight"]
+        assert result.shape == (8, 3, 3, 1)
+
     def test_conv2d2_and_conv2d3(self):
         """All three conv2d layers should be transposed."""
         for name in ["conv2d1", "conv2d2", "conv2d3"]:

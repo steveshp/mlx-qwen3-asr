@@ -69,3 +69,22 @@ Raw JSON artifacts are tracked under `docs/benchmarks/`.
 - Model: `Qwen/Qwen3-ASR-0.6B`, dtype `float16`.
 - Short clip (`tests/fixtures/test_speech.wav`): mean latency `0.5303s`, RTF `0.2093`.
 - 10-second clip (`/tmp/test_10s.wav`): mean latency `0.9420s`, RTF `0.0942` (repeat run `0.9546s`, RTF `0.0955`).
+
+## Quantized Comparison (2026-02-14)
+
+Quantized runtime path is now validated end-to-end (local converted 4-bit model loads and transcribes).
+
+- Machine: Apple M4 Pro, macOS 26.2.
+- Model family: `Qwen/Qwen3-ASR-0.6B`.
+
+Runtime:
+- FP16 short fixture (`2.53s`): mean `0.5303s`, RTF `0.2093`.
+- 4-bit short fixture (`2.53s`): mean `0.1591s`, RTF `0.0628`.
+- FP16 10s clip: mean `0.9420s`, RTF `0.0942`.
+- 4-bit 10s clip: mean `0.2831s`, RTF `0.0283`.
+
+Quality (LibriSpeech test-clean sample, 20 utterances):
+- FP16: WER `0.007317`, CER `0.002195`, RTF `0.1384`.
+- 4-bit: WER `0.007317`, CER `0.001647`, RTF `0.0432`.
+
+This sample indicates no measurable WER regression while achieving roughly 3x throughput improvement.

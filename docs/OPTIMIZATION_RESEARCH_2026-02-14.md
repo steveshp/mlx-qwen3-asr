@@ -20,6 +20,10 @@ Implemented optimization finding on 2026-02-14:
 - Current measured operating point:
   - short fixture: ~`0.53s` mean latency (`RTF ~0.21`)
   - 10-second clip: ~`0.94-0.95s` mean latency (`RTF ~0.095`)
+- Quantized operating point (4-bit, validated load path):
+  - short fixture: ~`0.159s` mean latency (`RTF ~0.063`)
+  - 10-second clip: ~`0.283s` mean latency (`RTF ~0.028`)
+  - LibriSpeech test-clean sample (20 utterances): same WER as fp16 in local run.
 
 ## Scope
 

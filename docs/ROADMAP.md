@@ -24,10 +24,17 @@ Qwen3-ASR on Apple Silicon.
   `padding="do_not_pad"`.
 
 3. Quantized model artifacts on HuggingFace (4-bit / 8-bit)
-- In progress.
+- In progress (runtime path now validated; artifact publishing pending).
 - Code-level quantization utility exists (`mlx_qwen3_asr.convert.quantize_model`).
 - Added publishing script: `scripts/publish_quantized.py`.
 - Added manual CI workflow: `.github/workflows/publish-quantized.yml`.
+- Fixed quantized runtime loading in `load_model()`:
+  - detects quantized tensors,
+  - quantizes model modules before loading weights,
+  - supports optional `quantization_config.json` metadata.
+- Local validated benchmark point (4-bit, 0.6B, Apple M4 Pro):
+  - short fixture: mean `0.1591s`, RTF `0.0628`
+  - 10s clip: mean `0.2831s`, RTF `0.0283`
 
 Performance progress:
 - Done (low-risk optimization): tokenizer caching in `transcribe()` hot path.

@@ -106,6 +106,16 @@ def main():
         if src.exists():
             shutil.copy2(src, output_dir / fname)
 
+    if args.quantize:
+        quant_cfg = {
+            "bits": int(args.quantize),
+            "group_size": int(args.group_size),
+        }
+        (output_dir / "quantization_config.json").write_text(
+            json.dumps(quant_cfg, indent=2),
+            encoding="utf-8",
+        )
+
     print(f"Conversion complete: {output_dir}")
 
 

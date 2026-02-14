@@ -7,7 +7,13 @@ from pathlib import Path
 import mlx.core as mx
 import mlx.utils as mlx_utils
 
-from mlx_qwen3_asr.load_models import _cast_tree_dtype, _resolve_path
+from mlx_qwen3_asr.load_models import (
+    _cast_tree_dtype,
+    _infer_quantization_params,
+    _is_quantized_weights,
+    _read_quantization_config,
+    _resolve_path,
+)
 
 
 class TestCastTreeDtype:
@@ -62,3 +68,44 @@ class TestResolvePath:
 
         resolved = _resolve_path("Qwen/Qwen3-ASR-1.7B")
         assert resolved == Path(expected)
+
+
+class _FakeModel:
+    def __init__(self):
+        self._params = {
+            "layer.weight": mx.zeros((4, 64), dtype=mx.float32),
+            "other.weight": mx.zeros((8, 128), dtype=mx.float32),
+        }
+
+    def parameters(self):
+        return self._params
+
+
+class TestQuantizationHelpers:
+    def test_is_quantized_weights(self):
+        assert _is_quantized_weights({"a.weight": mx.zeros((1, 1))}) is False
+        assert _is_quantized_weights({"a.scales": mx.zeros((1, 1))}) is True
+
+    def test_infer_quantization_params(self):
+        # layer.weight input_dim=64, packed_cols=8 -> bits=4
+        # layer.scales cols=1 -> group_size=64
+        weights = {
+            "layer.weight": mx.zeros((4, 8), dtype=mx.uint32),
+            "layer.scales": mx.zeros((4, 1), dtype=mx.float16),
+            "layer.biases": mx.zeros((4, 1), dtype=mx.float16),
+            # Add one noisy candidate that should be ignored for group-size mode.
+            "other.weight": mx.zeros((8, 16), dtype=mx.uint32),
+            "other.scales": mx.zeros((8, 16), dtype=mx.float16),
+            "other.biases": mx.zeros((8, 16), dtype=mx.float16),
+        }
+        bits, group_size = _infer_quantization_params(weights, _FakeModel())
+        assert bits == 4
+        assert group_size == 64
+
+    def test_read_quantization_config(self, tmp_path: Path):
+        model_dir = tmp_path / "model"
+        model_dir.mkdir()
+        cfg_path = model_dir / "quantization_config.json"
+        cfg_path.write_text('{"bits": 4, "group_size": 64}', encoding="utf-8")
+        cfg = _read_quantization_config(model_dir)
+        assert cfg == {"bits": 4, "group_size": 64}

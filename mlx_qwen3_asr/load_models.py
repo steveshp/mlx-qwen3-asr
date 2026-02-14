@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import json
 import logging
+from collections import Counter
 from pathlib import Path
 from typing import Optional
 
 import mlx.core as mx
+import mlx.nn as nn
 import mlx.utils as mlx_utils
 
 from .config import Qwen3ASRConfig
@@ -84,18 +86,31 @@ def load_model(
     # Instantiate model
     model = Qwen3ASRModel(config)
 
+    quant_cfg = _read_quantization_config(model_path)
+    quantized = _is_quantized_weights(weights)
+    if quantized:
+        if quant_cfg is not None:
+            bits = int(quant_cfg.get("bits", 4))
+            group_size = int(quant_cfg.get("group_size", 64))
+        else:
+            bits, group_size = _infer_quantization_params(weights, model)
+        nn.quantize(model, bits=bits, group_size=group_size)
+
     # Load weights into model
     model.load_weights(list(weights.items()))
 
     # Cast to target dtype
-    if dtype != mx.float32:
+    if dtype != mx.float32 and not quantized:
         params = _cast_tree_dtype(model.parameters(), dtype)
         model.load_weights(list(mlx_utils.tree_flatten(params)))
 
     mx.eval(model.parameters())
     model.eval()
 
-    logger.info(f"Loaded model from {model_path} with dtype {dtype}")
+    if quantized:
+        logger.info(f"Loaded quantized model from {model_path}")
+    else:
+        logger.info(f"Loaded model from {model_path} with dtype {dtype}")
     return model, config
 
 
@@ -123,6 +138,66 @@ def _resolve_path(path_or_hf_repo: str) -> Path:
         allow_patterns=["*.json", "*.safetensors", "*.txt", "*.model"],
     )
     return Path(path)
+
+
+def _read_quantization_config(model_path: Path) -> Optional[dict]:
+    """Read optional quantization metadata from model directory."""
+    qconf = model_path / "quantization_config.json"
+    if not qconf.exists():
+        return None
+    try:
+        return json.loads(qconf.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def _is_quantized_weights(weights: dict[str, mx.array]) -> bool:
+    """Return True if weight dict appears to be MLX-quantized."""
+    return any(k.endswith(".scales") for k in weights)
+
+
+def _majority_or_default(values: list[int], default: int) -> int:
+    if not values:
+        return default
+    return Counter(values).most_common(1)[0][0]
+
+
+def _infer_quantization_params(
+    weights: dict[str, mx.array],
+    model: Qwen3ASRModel,
+) -> tuple[int, int]:
+    """Infer quantization (bits, group_size) from saved tensors."""
+    ref_params = dict(mlx_utils.tree_flatten(model.parameters()))
+    bit_candidates: list[int] = []
+    group_candidates: list[int] = []
+
+    for key, packed_weight in weights.items():
+        if not key.endswith(".weight"):
+            continue
+        scales_key = key[:-7] + ".scales"
+        if scales_key not in weights:
+            continue
+
+        ref = ref_params.get(key)
+        if ref is None or ref.ndim < 2 or packed_weight.ndim < 2:
+            continue
+
+        input_dim = int(ref.shape[-1])
+        packed_cols = int(packed_weight.shape[-1])
+        if input_dim > 0 and (packed_cols * 32) % input_dim == 0:
+            bits = (packed_cols * 32) // input_dim
+            if bits in (4, 8):
+                bit_candidates.append(bits)
+
+        scale_cols = int(weights[scales_key].shape[-1])
+        if scale_cols > 0 and input_dim % scale_cols == 0:
+            group_size = input_dim // scale_cols
+            if group_size in (32, 64, 128):
+                group_candidates.append(group_size)
+
+    bits = _majority_or_default(bit_candidates, 4)
+    group_size = _majority_or_default(group_candidates, 64)
+    return bits, group_size
 
 
 def _load_safetensors(model_path: Path) -> dict[str, mx.array]:

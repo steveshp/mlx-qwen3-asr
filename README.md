@@ -239,6 +239,18 @@ HF_TOKEN=... python scripts/publish_quantized.py \
   --bits 4
 ```
 
+Convert a local 4-bit model and run it:
+
+```bash
+python scripts/convert.py \
+  --model Qwen/Qwen3-ASR-0.6B \
+  --quantize 4 \
+  --group-size 64 \
+  --output-dir /tmp/qwen3-asr-0.6b-4bit
+
+mlx-qwen3-asr tests/fixtures/test_speech.wav --model /tmp/qwen3-asr-0.6b-4bit
+```
+
 Benchmark latency + RTF (record JSON for before/after comparisons):
 
 ```bash

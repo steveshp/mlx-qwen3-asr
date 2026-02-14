@@ -1,0 +1,176 @@
+{
+  "suite": "librispeech-v1",
+  "subset": "test-clean",
+  "samples": 20,
+  "model": "Qwen/Qwen3-ASR-0.6B",
+  "dtype": "float16",
+  "max_new_tokens": 256,
+  "wer": 0.007317073170731708,
+  "cer": 0.0021953896816684962,
+  "mean_latency_sec": 1.0824367811997946,
+  "audio_duration_sec_total": 156.47006250000004,
+  "rtf": 0.13835704593008571,
+  "elapsed_sec": 44.25667083299777,
+  "rows": [
+    {
+      "index": 1,
+      "sample_id": "1089-134686-0000",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1089/134686/1089-134686-0000.flac",
+      "reference": "he hoped there would be stew for dinner turnips and carrots and bruised potatoes and fat mutton pieces to be ladled out in thick peppered flour fattened sauce",
+      "hypothesis": "he hoped there would be stew for dinner turnips and carrots and bruised potatoes and fat mutton pieces to be ladled out in thick peppered flour fatted sauce",
+      "latency_sec": 2.9671640419983305
+    },
+    {
+      "index": 2,
+      "sample_id": "1089-134686-0001",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1089/134686/1089-134686-0001.flac",
+      "reference": "stuff it into you his belly counselled him",
+      "hypothesis": "stuff it into you his belly counseled him",
+      "latency_sec": 0.38462474998959806
+    },
+    {
+      "index": 3,
+      "sample_id": "1089-134686-0002",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1089/134686/1089-134686-0002.flac",
+      "reference": "after early nightfall the yellow lamps would light up here and there the squalid quarter of the brothels",
+      "hypothesis": "after early nightfall the yellow lamps would light up here and there the squalid quarter of the brothels",
+      "latency_sec": 0.9031612499966286
+    },
+    {
+      "index": 4,
+      "sample_id": "1089-134686-0003",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1089/134686/1089-134686-0003.flac",
+      "reference": "hello bertie any good in your mind",
+      "hypothesis": "hello bertie any good in your mind",
+      "latency_sec": 0.6431281249970198
+    },
+    {
+      "index": 5,
+      "sample_id": "1089-134686-0004",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1089/134686/1089-134686-0004.flac",
+      "reference": "number ten fresh nelly is waiting on you good night husband",
+      "hypothesis": "number ten fresh nelly is waiting on you good night husband",
+      "latency_sec": 0.6170481250010198
+    },
+    {
+      "index": 6,
+      "sample_id": "1089-134686-0005",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1089/134686/1089-134686-0005.flac",
+      "reference": "the music came nearer and he recalled the words the words of shelley's fragment upon the moon wandering companionless pale for weariness",
+      "hypothesis": "the music came nearer and he recalled the words the words of shelley's fragment upon the moon wandering companionless pale for weariness",
+      "latency_sec": 1.1779559160058852
+    },
+    {
+      "index": 7,
+      "sample_id": "1089-134686-0006",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1089/134686/1089-134686-0006.flac",
+      "reference": "the dull light fell more faintly upon the page whereon another equation began to unfold itself slowly and to spread abroad its widening tail",
+      "hypothesis": "the dull light fell more faintly upon the page whereon another equation began to unfold itself slowly and to spread abroad its widening tail",
+      "latency_sec": 1.2165449999884004
+    },
+    {
+      "index": 8,
+      "sample_id": "1089-134686-0007",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1089/134686/1089-134686-0007.flac",
+      "reference": "a cold lucid indifference reigned in his soul",
+      "hypothesis": "a cold lucid indifference reigned in his soul",
+      "latency_sec": 0.5255467079987284
+    },
+    {
+      "index": 9,
+      "sample_id": "1089-134686-0008",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1089/134686/1089-134686-0008.flac",
+      "reference": "the chaos in which his ardour extinguished itself was a cold indifferent knowledge of himself",
+      "hypothesis": "the chaos in which his ardor extinguished itself was a cold indifferent knowledge of himself",
+      "latency_sec": 0.7489247080084169
+    },
+    {
+      "index": 10,
+      "sample_id": "1089-134686-0009",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1089/134686/1089-134686-0009.flac",
+      "reference": "at most by an alms given to a beggar whose blessing he fled from he might hope wearily to win for himself some measure of actual grace",
+      "hypothesis": "at most by an alms given to a beggar whose blessing he fled from he might hope wearily to win for himself some measure of actual grace",
+      "latency_sec": 1.2834904579940485
+    },
+    {
+      "index": 11,
+      "sample_id": "1089-134686-0010",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1089/134686/1089-134686-0010.flac",
+      "reference": "well now ennis i declare you have a head and so has my stick",
+      "hypothesis": "well now ennis i declare you have a head and so has my stick",
+      "latency_sec": 0.6892302500054939
+    },
+    {
+      "index": 12,
+      "sample_id": "1089-134686-0011",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1089/134686/1089-134686-0011.flac",
+      "reference": "on saturday mornings when the sodality met in the chapel to recite the little office his place was a cushioned kneeling desk at the right of the altar from which he led his wing of boys through the responses",
+      "hypothesis": "on saturday mornings when the sodality met in the chapel to recite the little office his place was a cushioned kneeling desk at the right of the altar from which he led his wing of boys through the responses",
+      "latency_sec": 1.6732575830101268
+    },
+    {
+      "index": 13,
+      "sample_id": "1089-134686-0012",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1089/134686/1089-134686-0012.flac",
+      "reference": "her eyes seemed to regard him with mild pity her holiness a strange light glowing faintly upon her frail flesh did not humiliate the sinner who approached her",
+      "hypothesis": "her eyes seemed to regard him with mild pity her holiness a strange light glowing faintly upon her frail flesh did not humiliate the sinner who approached her",
+      "latency_sec": 1.3733436659967992
+    },
+    {
+      "index": 14,
+      "sample_id": "1089-134686-0013",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1089/134686/1089-134686-0013.flac",
+      "reference": "if ever he was impelled to cast sin from him and to repent the impulse that moved him was the wish to be her knight",
+      "hypothesis": "if ever he was impelled to cast sin from him and to repent the impulse that moved him was the wish to be her knight",
+      "latency_sec": 1.1009452920116019
+    },
+    {
+      "index": 15,
+      "sample_id": "1089-134686-0014",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1089/134686/1089-134686-0014.flac",
+      "reference": "he tried to think how it could be",
+      "hypothesis": "he tried to think how it could be",
+      "latency_sec": 0.3658115839934908
+    },
+    {
+      "index": 16,
+      "sample_id": "1089-134686-0015",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1089/134686/1089-134686-0015.flac",
+      "reference": "but the dusk deepening in the schoolroom covered over his thoughts the bell rang",
+      "hypothesis": "but the dusk deepening in the schoolroom covered over his thoughts the bell rang",
+      "latency_sec": 0.7039632500091102
+    },
+    {
+      "index": 17,
+      "sample_id": "1089-134686-0016",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1089/134686/1089-134686-0016.flac",
+      "reference": "then you can ask him questions on the catechism dedalus",
+      "hypothesis": "then you can ask him questions on the catechism dedalus",
+      "latency_sec": 0.5864577920001466
+    },
+    {
+      "index": 18,
+      "sample_id": "1089-134686-0017",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1089/134686/1089-134686-0017.flac",
+      "reference": "stephen leaning back and drawing idly on his scribbler listened to the talk about him which heron checked from time to time by saying",
+      "hypothesis": "stephen leaning back and drawing idly on his scribbler listened to the talk about him which heron checked from time to time by saying",
+      "latency_sec": 1.216282916997443
+    },
+    {
+      "index": 19,
+      "sample_id": "1089-134686-0018",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1089/134686/1089-134686-0018.flac",
+      "reference": "it was strange too that he found an arid pleasure in following up to the end the rigid lines of the doctrines of the church and penetrating into obscure silences only to hear and feel the more deeply his own condemnation",
+      "hypothesis": "it was strange too that he found an arid pleasure in following up to the end the rigid lines of the doctrines of the church and penetrating into obscure silences only to hear and feel the more deeply his own condemnation",
+      "latency_sec": 1.739983833002043
+    },
+    {
+      "index": 20,
+      "sample_id": "1089-134686-0019",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1089/134686/1089-134686-0019.flac",
+      "reference": "the sentence of saint james which says that he who offends against one commandment becomes guilty of all had seemed to him first a swollen phrase until he had begun to grope in the darkness of his own state",
+      "hypothesis": "the sentence of saint james which says that he who offends against one commandment becomes guilty of all had seemed to him first a swollen phrase until he had begun to grope in the darkness of his own state",
+      "latency_sec": 1.7318703749915585
+    }
+  ]
+}

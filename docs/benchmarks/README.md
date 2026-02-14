@@ -38,6 +38,15 @@ Artifacts:
 - `docs/benchmarks/2026-02-14-gqa-kvcache-10s.json`
 - `docs/benchmarks/2026-02-14-gqa-kvcache-10s-repeat.json`
 
+Quantized comparison artifacts (2026-02-14):
+
+- Runtime:
+  - `docs/benchmarks/2026-02-14-4bit-short.json`
+  - `docs/benchmarks/2026-02-14-4bit-10s.json`
+- Quality vs FP16 (LibriSpeech sample):
+  - `docs/benchmarks/2026-02-14-librispeech-fp16-20.json`
+  - `docs/benchmarks/2026-02-14-librispeech-4bit-20.json`
+
 Generate with:
 
 ```bash

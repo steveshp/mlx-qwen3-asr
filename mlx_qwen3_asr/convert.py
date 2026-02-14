@@ -28,12 +28,18 @@ def remap_weights(weights: dict[str, mx.array]) -> dict[str, mx.array]:
     for key, value in weights.items():
         # Strip thinker. prefix
         new_key = key
+        had_thinker_prefix = new_key.startswith("thinker.")
         if new_key.startswith("thinker."):
             new_key = new_key[len("thinker."):]
 
         # Transpose Conv2d weights
         # Conv2d weight keys match pattern: audio_tower.conv2d{1,2,3}.weight
-        if "conv2d" in new_key and new_key.endswith(".weight") and value.ndim == 4:
+        if (
+            had_thinker_prefix
+            and "conv2d" in new_key
+            and new_key.endswith(".weight")
+            and value.ndim == 4
+        ):
             # PyTorch (out, in, kH, kW) -> MLX (out, kH, kW, in)
             value = value.transpose(0, 2, 3, 1)
 
