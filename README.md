@@ -133,13 +133,14 @@ Run `mlx-qwen3-asr --help` for the full list of options.
 
 ## Performance on Apple Silicon
 
-Measured on the 0.6B model. All numbers from controlled single-machine runs with benchmark artifacts committed to the repo.
+Measured on the 0.6B model. Numbers below reflect the latest speaker-balanced
+matrix run (`docs/benchmarks/2026-02-14-quant-matrix-speaker100.md`).
 
 | Configuration | Short clip latency | 10s clip latency | Real-time factor | vs fp16 |
 |---|---|---|---|---|
-| **fp16** (baseline) | 0.50s | 0.91s | 0.09x | — |
-| **4-bit** (q4, group 64) | 0.12s | 0.23s | 0.02x | **3.98x faster** |
-| **8-bit** (q8, group 64) | 0.14s | 0.26s | 0.03x | 3.46x faster |
+| **fp16** (baseline) | 0.46s | 0.83s | 0.08x | — |
+| **4-bit** (q4, group 64) | 0.13s | 0.18s | 0.02x | **4.68x faster** |
+| **8-bit** (q8, group 64) | 0.11s | 0.27s | 0.03x | 3.11x faster |
 
 Quality on speaker-balanced LibriSpeech samples is reported below with `n` and sampling strategy.
 
@@ -166,9 +167,9 @@ Word error rates from the [Qwen3-ASR technical report](https://huggingface.co/Qw
 
 | Configuration | WER | CER | Mean latency | RTF |
 |---|---|---|---|---|
-| fp16 | 2.29% | 0.59% | 1.14s | 0.127 |
+| fp16 | 2.29% | 0.59% | 1.09s | 0.121 |
 | 8-bit (g64) | 2.33% | 0.59% | 0.34s | 0.038 |
-| 4-bit (g64) | 2.72% | 0.88% | 0.28s | 0.032 |
+| 4-bit (g64) | 2.72% | 0.88% | 0.30s | 0.034 |
 
 On this larger and more speaker-diverse set, 8-bit is near-fp16 quality (+0.04 absolute WER points) while 4-bit is fastest but shows measurable degradation (+0.43 absolute WER points). All benchmark JSON artifacts are committed to `docs/benchmarks/` for reproducibility.
 

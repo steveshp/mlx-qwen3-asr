@@ -115,10 +115,12 @@ Quantized runtime path is now validated end-to-end (local converted 4-bit model 
 - Model family: `Qwen/Qwen3-ASR-0.6B`.
 
 Runtime:
-- FP16 short fixture (`2.53s`): mean `0.5303s`, RTF `0.2093`.
-- 4-bit short fixture (`2.53s`): mean `0.1591s`, RTF `0.0628`.
-- FP16 10s clip: mean `0.9420s`, RTF `0.0942`.
-- 4-bit 10s clip: mean `0.2831s`, RTF `0.0283`.
+- FP16 short fixture (`2.53s`): mean `0.4635s`, RTF `0.1830`.
+- 4-bit (`g64`) short fixture (`2.53s`): mean `0.1275s`, RTF `0.0503`.
+- 8-bit (`g64`) short fixture (`2.53s`): mean `0.1088s`, RTF `0.0429`.
+- FP16 10s clip: mean `0.8341s`, RTF `0.0834`.
+- 4-bit (`g64`) 10s clip: mean `0.1784s`, RTF `0.0178`.
+- 8-bit (`g64`) 10s clip: mean `0.2682s`, RTF `0.0268`.
 
 Quality (LibriSpeech `test-clean`, 100 utterances, deterministic `speaker_round_robin`):
 - FP16: WER `0.022874`, CER `0.005865`, RTF `0.1270`.
@@ -126,8 +128,8 @@ Quality (LibriSpeech `test-clean`, 100 utterances, deterministic `speaker_round_
 - 4-bit (`g64`): WER `0.027190`, CER `0.008798`, RTF `0.0315`.
 
 Interpretation:
-- 8-bit is near-fp16 on this sample (`+0.000432` absolute WER) with ~`3.33x` faster eval throughput.
-- 4-bit is fastest (~`4.03x`) but has measurable quality loss on this larger sample (`+0.004316` absolute WER).
+- 8-bit is near-fp16 on this sample (`+0.000432` absolute WER) with ~`3.19x` faster eval throughput.
+- 4-bit is fastest for long clips (~`3.60x` eval throughput and `4.68x` long-latency speedup) but has measurable quality loss (`+0.004316` absolute WER).
 
 ## Quantization Matrix Sweep (2026-02-14)
 

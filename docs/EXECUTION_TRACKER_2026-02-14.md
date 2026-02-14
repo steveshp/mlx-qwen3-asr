@@ -172,6 +172,16 @@ Primary-source refresh across Qwen3-ASR, Swift ports, and ASR decoding papers:
   - `RUN_REFERENCE_PARITY=1 python scripts/quality_gate.py --mode release`
   - Result: PASS.
 
+### 15) End-to-end docs alignment pass
+
+- Synchronized README and benchmarking docs to the latest committed
+  speaker-balanced matrix artifact:
+  - `docs/benchmarks/2026-02-14-quant-matrix-speaker100.{json,md}`
+- Updated runtime/quality snapshot numbers to match current artifact values and
+  removed stale latency rows from older runs.
+- Verified benchmark-path references: only expected generated outputs are absent
+  (`latest*`, `nightly*`, CI upload filenames, and one-off local golden paths).
+
 ## Decision Gates
 
 ### Gate A: Mel backend switch

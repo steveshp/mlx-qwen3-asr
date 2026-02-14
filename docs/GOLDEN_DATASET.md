@@ -13,7 +13,8 @@ This repository uses a two-level quality evaluation strategy:
 
 ## Golden Suite v1
 
-Current default suite: **LibriSpeech test-clean** (OpenSLR 12), deterministic subset.
+Current default suite: **LibriSpeech test-clean** (OpenSLR 12), deterministic
+speaker-balanced sample.
 
 - Source archive: `https://www.openslr.org/resources/12/test-clean.tar.gz`
 - Selection: deterministic **speaker-balanced round-robin** over sorted speaker IDs
