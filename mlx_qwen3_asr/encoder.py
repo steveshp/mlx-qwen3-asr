@@ -172,7 +172,7 @@ class AudioEncoderLayer(nn.Module):
         # Match upstream torch audio encoder behavior: clamp fp16 activations
         # after each layer to avoid inf/nan propagation.
         if x.dtype == mx.float16:
-            clamp_value = np.finfo(np.float16).max - 1000.0
+            clamp_value = float(np.finfo(np.float16).max - 1000.0)
             x = mx.clip(x, -clamp_value, clamp_value)
 
         return x
