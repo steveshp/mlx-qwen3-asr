@@ -46,11 +46,20 @@ python scripts/benchmark_streaming.py tests/fixtures/test_speech.wav \
   --finalization-mode latency \
   --runs 3
 
+# Speech-aware endpointing near chunk boundaries
+python scripts/benchmark_streaming.py tests/fixtures/test_speech.wav \
+  --model Qwen/Qwen3-ASR-0.6B \
+  --chunk-size-sec 2.0 \
+  --max-context-sec 30.0 \
+  --endpointing-mode energy \
+  --runs 3
+
 # Streaming quality diagnostics (stability + rewrite + finalization delta)
 python scripts/eval_streaming_metrics.py tests/fixtures/test_speech.wav \
   --model Qwen/Qwen3-ASR-0.6B \
   --chunk-size-sec 2.0 \
   --max-context-sec 30.0 \
+  --endpointing-mode energy \
   --json-output docs/benchmarks/latest-streaming-quality.json
 ```
 

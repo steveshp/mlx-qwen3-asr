@@ -95,6 +95,10 @@ class TestInitStreaming:
         with np.testing.assert_raises(ValueError):
             init_streaming(finalization_mode="fast")
 
+    def test_invalid_endpointing_mode_raises(self):
+        with np.testing.assert_raises(ValueError):
+            init_streaming(endpointing_mode="vad")
+
 
 class TestStreamingStateDefaults:
     def test_default_buffer(self):
@@ -234,6 +238,51 @@ class TestFeedAudio:
         feed_audio(np.ones(10, dtype=np.float32), state)
 
         assert call_lengths == [10, 10, 10]
+
+    def test_feed_audio_energy_endpointing_prefers_silence_boundary(self, monkeypatch):
+        call_lengths = []
+
+        def fake_decode(audio, state, model=None):  # noqa: ANN001
+            call_lengths.append(len(audio))
+            return "ok", "English"
+
+        monkeypatch.setattr(smod, "_decode_chunk_incremental", fake_decode)
+
+        state = init_streaming(
+            chunk_size_sec=1.0,
+            sample_rate=10,
+            endpointing_mode="energy",
+            endpoint_lookback_sec=0.5,
+            endpoint_frame_ms=100.0,
+            endpoint_min_chunk_sec=0.2,
+        )
+        audio = np.array([1, 1, 1, 1, 1, 1, 1, 0, 0, 0], dtype=np.float32)
+        feed_audio(audio, state)
+
+        assert call_lengths == [9]
+        assert len(state.buffer) == 1
+
+    def test_feed_audio_energy_endpointing_falls_back_without_silence(self, monkeypatch):
+        call_lengths = []
+
+        def fake_decode(audio, state, model=None):  # noqa: ANN001
+            call_lengths.append(len(audio))
+            return "ok", "English"
+
+        monkeypatch.setattr(smod, "_decode_chunk_incremental", fake_decode)
+
+        state = init_streaming(
+            chunk_size_sec=1.0,
+            sample_rate=10,
+            endpointing_mode="energy",
+            endpoint_lookback_sec=0.5,
+            endpoint_frame_ms=100.0,
+            endpoint_min_chunk_sec=0.2,
+        )
+        audio = np.ones(10, dtype=np.float32)
+        feed_audio(audio, state)
+
+        assert call_lengths == [10]
 
     def test_feed_audio_consumes_multiple_full_chunks_in_single_call(self, monkeypatch):
         call_lengths = []

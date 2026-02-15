@@ -11,7 +11,7 @@ Ground-up MLX reimplementation of Qwen3-ASR. Same HuggingFace weights, same outp
 - **One-command setup** — no ffmpeg install, no model conversion, no CUDA
 - **Both models validated** — 0.6B (fast, default) and 1.7B (accuracy), benchmarked across 10 languages
 - **Native forced aligner** — word-level timestamps via MLX, no PyTorch dependency
-- **Custom mel spectrogram** — no `transformers` needed for feature extraction
+- **Zero transformers dependency** — custom mel spectrogram, native BPE tokenizer, no HF transformers at runtime
 - **52 languages** — validated, not just English
 - **Fast** — Metal-optimized inference, sub-200ms latency on short clips
 - **Production-grade** — bounds checks, multi-slot model cache, Session API, proper error paths
@@ -29,19 +29,22 @@ Published on PyPI. 363 tests passing. Core pipeline stable.
 
 ### What's next
 
-1. **Custom BPE tokenizer** — drop `transformers` entirely (currently used for `Qwen2TokenizerFast` only)
-2. **Real streaming** — KV cache reuse across chunks (current streaming is O(n^2) re-transcription). Design targets: `generate()` accepts and returns KV cache; streaming feeds new audio through encoder and extends existing cache; `_split_stable_unstable` must handle CJK (no whitespace splitting)
-3. **Swift port** — once Python proves every decision, native Swift+MLX for apps and system integration (separate repo: `qwen3-asr-swift`)
+1. **Swift port** — once Python proves every decision, native Swift+MLX for apps and system integration (separate repo: `qwen3-asr-swift`)
 
 ### What's done
 
-- PyPI v0.1.0 published, 1.7B validated, both models benchmarked
-- Custom mel spectrogram (default path; HF `WhisperFeatureExtractor` is fallback only)
-- Native MLX forced aligner (default; `qwen-asr` PyTorch backend is optional fallback)
+- PyPI v0.1.0 published, 1.7B validated, both models benchmarked across 10 languages
+- **Native BPE tokenizer** — `transformers` fully removed from dependencies; loads vocab.json/merges.txt directly
+- **KV-cache streaming** — linear-complexity incremental decoding with context trimming, tail refinement, CJK-aware stable/unstable splitting
+- Custom mel spectrogram (default path; no HF dependency)
+- Native MLX forced aligner with LIS timestamp correction (no PyTorch dependency)
 - `model.prefill()` / `model.step()` / `model.step_many()` clean interface
 - `Session` object + multi-slot `_ModelHolder` cache keyed by `(path, dtype)`
 - Audio stays numpy through feature extraction, converts to `mx.array` at model entry
 - Bounds checks on audio injection, narrowed exception handling, language validation with warnings
+- Streaming quality metrics: `partial_stability`, `rewrite_rate`, `finalization_delta_chars`
+- 138 benchmark artifacts across 13 eval scripts, MLX-vs-PyTorch head-to-head (MLX wins: 15.99% vs 16.69% WER)
+- Typed-core mypy gate, release quality gate (ruff + pytest + reference parity + LibriSpeech + manifest quality + benchmarks)
 
 ## Architecture
 
@@ -79,11 +82,11 @@ mlx_qwen3_asr/
 ├── load_models.py       # HuggingFace download + multi-slot model cache
 ├── generate.py          # Autoregressive decode loop
 ├── transcribe.py        # High-level pipeline (main entry point)
-├── tokenizer.py         # HF Qwen2TokenizerFast wrapper + language validation
+├── tokenizer.py         # Native BPE tokenizer (vocab.json/merges.txt) + language validation
 ├── session.py           # Session: explicit model/tokenizer lifecycle
 ├── chunking.py          # Energy-based long audio splitting
 ├── forced_aligner.py    # MLX forced aligner + LIS timestamp correction
-├── streaming.py         # Streaming state machine
+├── streaming.py         # KV-cache streaming with context trimming + tail refinement
 ├── writers.py           # Output format writers (txt, srt, vtt, json, tsv)
 ├── cli.py               # CLI entry point
 └── assets/
@@ -96,7 +99,7 @@ mlx_qwen3_asr/
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | Standalone vs mlx-audio | Standalone | mlx-audio lacks MRoPE, too many deps |
-| Tokenizer | HF `transformers` (for now) | Custom BPE is next milestone |
+| Tokenizer | Native BPE (vocab.json/merges.txt) | Zero external tokenizer deps |
 | Audio loading | ffmpeg subprocess + fast WAV path | Handles all formats, no heavy deps |
 | Weight format | safetensors | MLX ecosystem standard |
 | Mel spectrogram | Custom MLX (default) | HF fallback for non-16kHz only |

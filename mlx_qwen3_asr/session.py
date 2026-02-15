@@ -104,6 +104,10 @@ class Session:
         max_new_tokens: int = 1024,
         finalization_mode: str = "accuracy",
         enable_tail_refine: Optional[bool] = None,
+        endpointing_mode: str = "fixed",
+        endpoint_lookback_sec: float = 0.3,
+        endpoint_frame_ms: float = 20.0,
+        endpoint_min_chunk_sec: float = 0.5,
     ) -> streaming_mod.StreamingState:
         """Create streaming state bound to this session's model settings."""
         return streaming_mod.init_streaming(
@@ -117,6 +121,10 @@ class Session:
             max_new_tokens=max_new_tokens,
             finalization_mode=finalization_mode,
             enable_tail_refine=enable_tail_refine,
+            endpointing_mode=endpointing_mode,
+            endpoint_lookback_sec=endpoint_lookback_sec,
+            endpoint_frame_ms=endpoint_frame_ms,
+            endpoint_min_chunk_sec=endpoint_min_chunk_sec,
         )
 
     def feed_audio(

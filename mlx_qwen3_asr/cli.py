@@ -101,6 +101,12 @@ def main():
         help="Streaming max context window in seconds (default: 30.0)",
     )
     parser.add_argument(
+        "--stream-endpointing-mode",
+        choices=["fixed", "energy"],
+        default="fixed",
+        help="Streaming chunk endpointing strategy (default: fixed)",
+    )
+    parser.add_argument(
         "--stream-finalization-mode",
         choices=["accuracy", "latency"],
         default="accuracy",
@@ -200,6 +206,7 @@ def main():
                     sample_rate=SAMPLE_RATE,
                     dtype=dtype,
                     max_new_tokens=args.max_new_tokens,
+                    endpointing_mode=args.stream_endpointing_mode,
                     finalization_mode=args.stream_finalization_mode,
                 )
                 for i in range(0, len(audio_np), chunk_samples):

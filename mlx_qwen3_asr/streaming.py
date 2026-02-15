@@ -20,6 +20,7 @@ UNFIXED_CHUNK_NUM = 2     # Trailing chunks considered unfixed
 UNFIXED_TOKEN_NUM = 5     # Trailing tokens considered unfixed
 
 _DEFAULT_EOS_TOKEN_IDS = (151643, 151645)
+_ENDPOINTING_MODES = {"fixed", "energy"}
 _CJK_LANG_ALIASES = {
     "chinese",
     "zh",
@@ -69,6 +70,10 @@ class StreamingState:
     max_new_tokens: int = 1024
     finalization_mode: str = "accuracy"
     enable_tail_refine: bool = True
+    endpointing_mode: str = "fixed"
+    endpoint_lookback_samples: int = 4800  # 300ms at 16kHz
+    endpoint_frame_samples: int = 320  # 20ms at 16kHz
+    endpoint_min_chunk_samples: int = 8000  # 500ms at 16kHz
     _model_path: str = DEFAULT_MODEL_ID
     _cache: object | None = None
     _next_position: int = 0
@@ -93,6 +98,10 @@ def init_streaming(
     max_new_tokens: int = 1024,
     finalization_mode: str = "accuracy",
     enable_tail_refine: Optional[bool] = None,
+    endpointing_mode: str = "fixed",
+    endpoint_lookback_sec: float = 0.3,
+    endpoint_frame_ms: float = 20.0,
+    endpoint_min_chunk_sec: float = 0.5,
 ) -> StreamingState:
     """Initialize a streaming ASR session."""
     if chunk_size_sec <= 0:
@@ -113,6 +122,22 @@ def init_streaming(
         raise ValueError(
             f"finalization_mode must be 'accuracy' or 'latency', got: {finalization_mode}"
         )
+    ep_mode = str(endpointing_mode).strip().lower()
+    if ep_mode not in _ENDPOINTING_MODES:
+        raise ValueError(
+            f"endpointing_mode must be one of {sorted(_ENDPOINTING_MODES)}, "
+            f"got: {endpointing_mode}"
+        )
+    if endpoint_lookback_sec < 0:
+        raise ValueError(
+            f"endpoint_lookback_sec must be >= 0, got: {endpoint_lookback_sec}"
+        )
+    if endpoint_frame_ms <= 0:
+        raise ValueError(f"endpoint_frame_ms must be > 0, got: {endpoint_frame_ms}")
+    if endpoint_min_chunk_sec <= 0:
+        raise ValueError(
+            f"endpoint_min_chunk_sec must be > 0, got: {endpoint_min_chunk_sec}"
+        )
 
     # Backward-compatible override for callers still passing enable_tail_refine.
     if enable_tail_refine is None:
@@ -131,6 +156,10 @@ def init_streaming(
         max_new_tokens=int(max_new_tokens),
         finalization_mode=mode,
         enable_tail_refine=tail_refine,
+        endpointing_mode=ep_mode,
+        endpoint_lookback_samples=max(0, int(endpoint_lookback_sec * sample_rate)),
+        endpoint_frame_samples=max(1, int((endpoint_frame_ms / 1000.0) * sample_rate)),
+        endpoint_min_chunk_samples=max(1, int(endpoint_min_chunk_sec * sample_rate)),
     )
 
 
@@ -162,8 +191,11 @@ def feed_audio(
         _reset_incremental_decoder_state(state)
 
     while len(state.buffer) >= state.chunk_size_samples:
-        decode_audio = state.buffer[:state.chunk_size_samples]
-        leftover = state.buffer[state.chunk_size_samples:]
+        decode_samples = _select_decode_samples(state)
+        if decode_samples <= 0:
+            break
+        decode_audio = state.buffer[:decode_samples]
+        leftover = state.buffer[decode_samples:]
         new_text, new_language = _decode_chunk_incremental(
             decode_audio,
             state,
@@ -405,6 +437,75 @@ def _decode_chunk_incremental(
 def _reset_incremental_decoder_state(state: StreamingState) -> None:
     state._cache = None
     state._next_position = 0
+
+
+def _select_decode_samples(state: StreamingState) -> int:
+    """Choose how many buffered samples to decode in this turn."""
+    chunk = int(state.chunk_size_samples)
+    if len(state.buffer) < chunk:
+        return 0
+    if state.endpointing_mode != "energy":
+        return chunk
+    return _select_energy_endpoint_samples(state)
+
+
+def _select_energy_endpoint_samples(state: StreamingState) -> int:
+    """Find a low-energy boundary near the fixed chunk boundary.
+
+    Keeps decode latency bounded by never selecting a boundary beyond the fixed
+    chunk size and falling back to fixed-size behavior when no silence-like
+    boundary is detected.
+    """
+    chunk = int(state.chunk_size_samples)
+    if len(state.buffer) < chunk:
+        return 0
+
+    frame = max(1, int(state.endpoint_frame_samples))
+    hop = max(1, frame // 2)
+    min_chunk = max(1, int(state.endpoint_min_chunk_samples))
+    lookback = max(0, int(state.endpoint_lookback_samples))
+
+    search_start = max(min_chunk, chunk - lookback)
+    search_end = chunk
+    if search_end - search_start < frame:
+        return chunk
+
+    segment = state.buffer[search_start:search_end]
+    seg_rms = _frame_rms(segment, frame, hop)
+    ref_rms = _frame_rms(state.buffer[:chunk], frame, hop)
+    if seg_rms.size == 0 or ref_rms.size == 0:
+        return chunk
+
+    threshold = float(np.quantile(ref_rms, 0.20))
+    ref_median = float(np.median(ref_rms))
+    if ref_median <= 1e-8:
+        return chunk
+    # Require a meaningful low-energy dip; otherwise keep fixed-size chunking.
+    if float(np.min(seg_rms)) > (ref_median * 0.8):
+        return chunk
+    silence_like = np.where(seg_rms <= (threshold + 1e-8))[0]
+    if silence_like.size == 0:
+        return chunk
+
+    # Pick the latest silence-like frame near the boundary (min latency impact).
+    idx = int(silence_like[-1])
+    boundary = search_start + (idx * hop) + (frame // 2)
+    boundary = max(min_chunk, min(chunk, boundary))
+    if boundary <= 0:
+        return chunk
+    return int(boundary)
+
+
+def _frame_rms(x: np.ndarray, frame: int, hop: int) -> np.ndarray:
+    """Compute simple frame-wise RMS values for endpoint detection."""
+    n = int(len(x))
+    if n < frame:
+        return np.array([], dtype=np.float32)
+    vals = []
+    for start in range(0, n - frame + 1, hop):
+        seg = x[start : start + frame]
+        vals.append(float(np.sqrt(np.mean(seg ** 2))))
+    return np.asarray(vals, dtype=np.float32)
 
 
 def _sanitize_stream_pcm(pcm: np.ndarray) -> np.ndarray:

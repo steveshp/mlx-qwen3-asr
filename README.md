@@ -25,9 +25,9 @@ This project rewrites every layer for MLX so the same model runs natively on M1/
 - **Multiple output formats** — txt, json, srt, vtt, tsv
 - **Session API** — explicit model/tokenizer ownership with no hidden global state
 - **Speculative decoding** — experimental opt-in path (0.6B drafts for 1.7B target), parity-verified
-- **Streaming** — experimental rolling decode with bounded context window
+- **Streaming** — KV-cache streaming with linear complexity, context trimming, and tail refinement
 - **Native WAV fast-path** — custom binary WAV parser bypasses ffmpeg for PCM/float WAV files
-- **390 tests** — every optimization is benchmark-gated with committed JSON artifacts
+- **393 tests** — every optimization is benchmark-gated with committed JSON artifacts
 - **Minimal dependencies** — mlx, numpy, regex, huggingface-hub
 
 ## Requirements
@@ -408,12 +408,16 @@ print(streaming_metrics(state))
 CLI:
 ```bash
 mlx-qwen3-asr --streaming --stream-finalization-mode accuracy audio.wav
+# Optional: speech-aware boundary selection near chunk edges
+mlx-qwen3-asr --streaming --stream-endpointing-mode energy audio.wav
 ```
 
 - Ingests small PCM chunks (default 2s)
 - Incremental decoder KV-cache reuse across chunk turns (avoids O(n²) re-transcription)
 - Bounded context window (default 30s) for stable memory/runtime
 - Prefix rollback controls (`unfixed_chunk_num`, `unfixed_token_num`)
+- Optional speech-aware endpointing (`endpointing_mode="energy"`) that selects
+  low-energy boundaries near chunk edges
 - Configurable finalization policy: `finalization_mode="accuracy"` (default) or `"latency"`
 - Backward-compatible override: `enable_tail_refine=True|False`
 - Input validation: handles int16 PCM normalization, non-1D arrays, empty input
@@ -461,7 +465,7 @@ Frozen dataclass:
 This project enforces parity with the official PyTorch implementation. No optimization lands without passing quality gates and committing benchmark artifacts.
 
 ```bash
-# Unit tests (390 tests)
+# Unit tests (393 tests)
 pytest -q
 
 # Fast quality gate
@@ -517,16 +521,16 @@ Key architectural details:
 ## Project structure
 
 ```
-mlx_qwen3_asr/           # 5,619 lines of source
+mlx_qwen3_asr/           # 5,735 lines of source
 ├── audio.py              # Mel spectrogram + audio I/O (562 lines)
 ├── forced_aligner.py     # Forced alignment + LIS correction (511 lines)
 ├── encoder.py            # Audio encoder (504 lines)
 ├── decoder.py            # Text decoder + KV cache (464 lines)
 ├── generate.py           # Autoregressive + speculative decode (350 lines)
-├── tokenizer.py          # Tokenizer wrapper + output parsing (347 lines)
+├── tokenizer.py          # Native BPE tokenizer + output parsing (347 lines)
 ├── model.py              # Top-level model + audio-text fusion (336 lines)
 ├── transcribe.py         # High-level pipeline (306 lines)
-├── streaming.py          # Streaming state machine (288 lines)
+├── streaming.py          # KV-cache streaming + context trimming (288 lines)
 ├── load_models.py        # Model loading + caching (253 lines)
 ├── config.py             # Dataclass configs (228 lines)
 ├── cli.py                # CLI entry point (201 lines)
@@ -537,7 +541,7 @@ mlx_qwen3_asr/           # 5,619 lines of source
 ├── attention.py          # Attention utilities (67 lines)
 └── convert.py            # Weight remapping (67 lines)
 
-tests/                    # 5,529 lines, 390 tests
+tests/                    # 5,578 lines, 393 tests
 scripts/                  # Benchmarks, evaluation, conversion, publishing
 docs/                     # Architecture, decisions, benchmarks, roadmap
 docs/benchmarks/          # 90+ committed JSON artifacts for reproducibility
@@ -549,7 +553,7 @@ docs/benchmarks/          # 90+ committed JSON artifacts for reproducibility
 git clone https://github.com/moona3k/mlx-qwen3-asr.git
 cd mlx-qwen3-asr
 pip install -e ".[dev]"
-pytest -q                 # 390 tests
+pytest -q                 # 393 tests
 ```
 
 ## Acknowledgments

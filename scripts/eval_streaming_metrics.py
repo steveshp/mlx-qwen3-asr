@@ -67,6 +67,11 @@ def main() -> int:
     )
     parser.add_argument("--chunk-size-sec", type=float, default=2.0)
     parser.add_argument("--max-context-sec", type=float, default=30.0)
+    parser.add_argument(
+        "--endpointing-mode",
+        choices=["fixed", "energy"],
+        default="fixed",
+    )
     parser.add_argument("--unfixed-chunk-num", type=int, default=2)
     parser.add_argument("--unfixed-token-num", type=int, default=5)
     parser.add_argument(
@@ -94,6 +99,7 @@ def main() -> int:
         chunk_size_sec=args.chunk_size_sec,
         max_context_sec=args.max_context_sec,
         sample_rate=16000,
+        endpointing_mode=args.endpointing_mode,
         finalization_mode=args.finalization_mode,
     )
 
@@ -116,6 +122,7 @@ def main() -> int:
         "dtype": args.dtype,
         "chunk_size_sec": args.chunk_size_sec,
         "max_context_sec": args.max_context_sec,
+        "endpointing_mode": args.endpointing_mode,
         "unfixed_chunk_num": args.unfixed_chunk_num,
         "unfixed_token_num": args.unfixed_token_num,
         "finalization_mode": args.finalization_mode,
