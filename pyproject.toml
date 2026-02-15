@@ -8,8 +8,9 @@ version = "0.1.0"
 description = "Qwen3-ASR speech recognition on Apple Silicon via MLX"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "Apache-2.0"}
+license = "Apache-2.0"
 authors = [{name = "dmoon"}]
+keywords = ["speech-recognition", "asr", "qwen", "mlx", "apple-silicon", "transcription"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -38,6 +39,7 @@ mlx-qwen3-asr = "mlx_qwen3_asr.cli:main"
 [project.urls]
 Homepage = "https://github.com/moona3k/mlx-qwen3-asr"
 Repository = "https://github.com/moona3k/mlx-qwen3-asr"
+Issues = "https://github.com/moona3k/mlx-qwen3-asr/issues"
 
 [tool.setuptools]
 packages = {find = {where = ["."], include = ["mlx_qwen3_asr*"]}}
