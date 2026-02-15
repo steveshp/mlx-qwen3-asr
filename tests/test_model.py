@@ -653,3 +653,40 @@ class TestQwen3ASRModelInstantiation:
 
         with pytest.raises(ValueError, match="input_ids must use an integer dtype"):
             model.step(input_ids=input_ids, position_ids=position_ids, cache=cache)
+
+    def test_step_unchecked_path_skips_range_validation(self, monkeypatch):
+        cfg = _tiny_asr_config()
+        cfg.text_config.head_dim = 128
+        model = Qwen3ASRModel(cfg)
+        cache = model.create_cache()
+        input_ids = mx.array([[1]], dtype=mx.int32)
+        position_ids = mx.zeros((1, 3, 1), dtype=mx.int32)
+
+        def _fail_range_check(_: mx.array) -> None:
+            raise AssertionError("range validation should be skipped in unchecked path")
+
+        monkeypatch.setattr(model, "_validate_input_ids_range", _fail_range_check)
+
+        logits = model.step(
+            input_ids=input_ids,
+            position_ids=position_ids,
+            cache=cache,
+            validate_input_ids=False,
+        )
+        assert tuple(logits.shape) == (1, 1, cfg.text_config.vocab_size)
+
+    def test_step_unchecked_path_still_rejects_non_integer_dtype(self):
+        cfg = _tiny_asr_config()
+        cfg.text_config.head_dim = 128
+        model = Qwen3ASRModel(cfg)
+        cache = model.create_cache()
+        input_ids = mx.array([[1.0]], dtype=mx.float32)
+        position_ids = mx.zeros((1, 3, 1), dtype=mx.int32)
+
+        with pytest.raises(ValueError, match="input_ids must use an integer dtype"):
+            model.step(
+                input_ids=input_ids,
+                position_ids=position_ids,
+                cache=cache,
+                validate_input_ids=False,
+            )

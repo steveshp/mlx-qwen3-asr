@@ -409,13 +409,16 @@ def compute_features(
             "Expected one of: do_not_pad, max_length, longest."
         )
 
-    mel = np.array(log_mel_spectrogram(mx.array(audio_np)))
+    mel = log_mel_spectrogram(mx.array(audio_np))
     actual_frames = int(mel.shape[-1])
     if mode == "max_length" and actual_frames < WHISPER_MAX_FRAMES:
         pad = WHISPER_MAX_FRAMES - actual_frames
-        mel = np.pad(mel, ((0, 0), (0, pad)), mode="constant")
-    mel_mx = mx.array(mel[None, :, :].astype(np.float32))
-    feature_lens = mx.array([actual_frames])
+        mel = mx.concatenate(
+            [mel, mx.zeros((int(mel.shape[0]), pad), dtype=mel.dtype)],
+            axis=1,
+        )
+    mel_mx = mel[None, :, :].astype(mx.float32)
+    feature_lens = mx.array([actual_frames], dtype=mx.int32)
     return mel_mx, feature_lens
 
 

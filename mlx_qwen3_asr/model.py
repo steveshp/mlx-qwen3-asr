@@ -99,9 +99,8 @@ class Qwen3ASRModel(nn.Module):
         Returns:
             Logits, shape (B, L, vocab_size).
         """
-        self._validate_input_ids_for_embed(input_ids)
         # Get text embeddings
-        embeds = self.model.embed_tokens(input_ids)
+        embeds = self._embed_tokens(input_ids, validate_input_ids=True)
 
         # Encode and inject audio features if audio is provided
         if input_features is not None:
@@ -125,15 +124,22 @@ class Qwen3ASRModel(nn.Module):
 
     def _validate_input_ids_for_embed(self, input_ids: mx.array) -> None:
         """Validate token IDs before embedding lookup."""
+        self._validate_input_ids_dtype(input_ids)
         if input_ids.size == 0:
             return
-        dtype_name = str(input_ids.dtype).lower()
-        if "int" not in dtype_name and "uint" not in dtype_name:
+
+        self._validate_input_ids_range(input_ids)
+
+    def _validate_input_ids_dtype(self, input_ids: mx.array) -> None:
+        """Validate token dtype for embedding lookup."""
+        if not mx.issubdtype(input_ids.dtype, mx.integer):
             raise ValueError(
                 "input_ids must use an integer dtype for embed_tokens, "
                 f"got dtype={input_ids.dtype}"
             )
 
+    def _validate_input_ids_range(self, input_ids: mx.array) -> None:
+        """Validate token ID bounds for embedding lookup."""
         vocab_size = int(self.config.text_config.vocab_size)
         min_id = int(mx.min(input_ids).item())
         max_id = int(mx.max(input_ids).item())
@@ -142,6 +148,21 @@ class Qwen3ASRModel(nn.Module):
                 "input_ids out of bounds for embed_tokens: "
                 f"min_token_id={min_id}, max_token_id={max_id}, vocab_size={vocab_size}"
             )
+
+    def _embed_tokens(
+        self,
+        input_ids: mx.array,
+        *,
+        validate_input_ids: bool = True,
+    ) -> mx.array:
+        """Embed token IDs with optional strict-range validation."""
+        if validate_input_ids:
+            self._validate_input_ids_for_embed(input_ids)
+        else:
+            # Decode fast path: retain dtype safety and skip range scans that
+            # force host synchronization on every token step.
+            self._validate_input_ids_dtype(input_ids)
+        return self.model.embed_tokens(input_ids)
 
     def _inject_audio_features(
         self,
@@ -244,8 +265,7 @@ class Qwen3ASRModel(nn.Module):
         Returns:
             Logits for the final prompt position, shape (B, 1, vocab_size).
         """
-        self._validate_input_ids_for_embed(input_ids)
-        embeds = self.model.embed_tokens(input_ids)
+        embeds = self._embed_tokens(input_ids, validate_input_ids=True)
         audio_mask = cast(mx.array, input_ids == self.audio_token_id)
         embeds = self._inject_audio_features(embeds, audio_features, audio_mask)
 
@@ -262,6 +282,8 @@ class Qwen3ASRModel(nn.Module):
         input_ids: mx.array,
         position_ids: mx.array,
         cache: KVCache,
+        *,
+        validate_input_ids: bool = True,
     ) -> mx.array:
         """Decode one autoregressive step with an existing cache.
 
@@ -269,12 +291,17 @@ class Qwen3ASRModel(nn.Module):
             input_ids: Next-token IDs, shape (B, 1).
             position_ids: Step MRoPE position IDs, shape (B, 3, 1).
             cache: KV cache to update in-place.
+            validate_input_ids: Whether to run strict token-range validation.
+                External callers should keep this enabled. Generation hot paths
+                may disable it to reduce per-token overhead.
 
         Returns:
             Step logits, shape (B, 1, vocab_size).
         """
-        self._validate_input_ids_for_embed(input_ids)
-        embeds = self.model.embed_tokens(input_ids)
+        embeds = self._embed_tokens(
+            input_ids,
+            validate_input_ids=validate_input_ids,
+        )
         hidden = self.model(
             inputs_embeds=embeds,
             position_ids=position_ids,
@@ -288,6 +315,8 @@ class Qwen3ASRModel(nn.Module):
         input_ids: mx.array,
         position_ids: mx.array,
         cache: KVCache,
+        *,
+        validate_input_ids: bool = True,
     ) -> mx.array:
         """Decode multiple autoregressive steps with an existing cache.
 
@@ -295,6 +324,7 @@ class Qwen3ASRModel(nn.Module):
             input_ids: Token IDs to process, shape (B, T), where T >= 1.
             position_ids: Step MRoPE position IDs, shape (B, 3, T).
             cache: KV cache to update in-place.
+            validate_input_ids: Whether to run strict token-range validation.
 
         Returns:
             Step logits, shape (B, T, vocab_size).
@@ -319,8 +349,10 @@ class Qwen3ASRModel(nn.Module):
                 f"input_ids={input_ids.shape}, position_ids={position_ids.shape}"
             )
 
-        self._validate_input_ids_for_embed(input_ids)
-        embeds = self.model.embed_tokens(input_ids)
+        embeds = self._embed_tokens(
+            input_ids,
+            validate_input_ids=validate_input_ids,
+        )
         hidden = self.model(
             inputs_embeds=embeds,
             position_ids=position_ids,
