@@ -27,7 +27,7 @@ This project rewrites every layer for MLX so the same model runs natively on M1/
 - **Speculative decoding** — experimental opt-in path (0.6B drafts for 1.7B target), parity-verified
 - **Streaming** — experimental rolling decode with bounded context window
 - **Native WAV fast-path** — custom binary WAV parser bypasses ffmpeg for PCM/float WAV files
-- **382 tests** — every optimization is benchmark-gated with committed JSON artifacts
+- **390 tests** — every optimization is benchmark-gated with committed JSON artifacts
 - **Minimal dependencies** — mlx, numpy, regex, huggingface-hub
 
 ## Requirements
@@ -168,6 +168,12 @@ Artifacts: `docs/benchmarks/2026-02-15-librispeech-test-clean-100.json`, `docs/b
 | 4-bit (g64) | 2.72% | 0.88% | 0.30s | 4.68x |
 
 8-bit is near-fp16 quality (+0.04pp WER). 4-bit trades +0.43pp WER for maximum speed.
+
+On the harder `test-other` lane (`n=100`, speaker-balanced), 8-bit remains near-fp16
+(-0.05pp WER) while 4-bit shows a larger quality tradeoff (+1.38pp WER). Speedups
+remain strong (3.66x for 8-bit, 4.37x for 4-bit on the 10s benchmark clip).
+
+Artifact: `docs/benchmarks/2026-02-15-quant-matrix-test-other-speaker100.md`.
 
 ### Multilingual quality (FLEURS, 10 languages x 10 samples)
 
@@ -314,8 +320,8 @@ mlx-qwen3-asr audio.wav --model ./qwen3-asr-4bit
 ```
 
 Recommended profiles:
-- **Speed-first**: 4-bit, group_size=64 — 4.68x faster, +0.43 WER on 100 samples
-- **Quality-first**: 8-bit, group_size=64 — 3.11x faster, +0.04 WER on 100 samples
+- **Speed-first**: 4-bit, group_size=64 — 4.68x faster / +0.43 WER (`test-clean`), 4.37x faster / +1.38 WER (`test-other`)
+- **Quality-first**: 8-bit, group_size=64 — 3.11x faster / +0.04 WER (`test-clean`), 3.66x faster / -0.05 WER (`test-other`)
 
 Publish quantized models to HuggingFace:
 
@@ -455,7 +461,7 @@ Frozen dataclass:
 This project enforces parity with the official PyTorch implementation. No optimization lands without passing quality gates and committing benchmark artifacts.
 
 ```bash
-# Unit tests (382 tests)
+# Unit tests (390 tests)
 pytest -q
 
 # Fast quality gate
@@ -511,7 +517,7 @@ Key architectural details:
 ## Project structure
 
 ```
-mlx_qwen3_asr/           # 5,058 lines of source
+mlx_qwen3_asr/           # 5,619 lines of source
 ├── audio.py              # Mel spectrogram + audio I/O (562 lines)
 ├── forced_aligner.py     # Forced alignment + LIS correction (511 lines)
 ├── encoder.py            # Audio encoder (504 lines)
@@ -531,7 +537,7 @@ mlx_qwen3_asr/           # 5,058 lines of source
 ├── attention.py          # Attention utilities (67 lines)
 └── convert.py            # Weight remapping (67 lines)
 
-tests/                    # 4,873 lines, 382 tests
+tests/                    # 5,529 lines, 390 tests
 scripts/                  # Benchmarks, evaluation, conversion, publishing
 docs/                     # Architecture, decisions, benchmarks, roadmap
 docs/benchmarks/          # 90+ committed JSON artifacts for reproducibility
@@ -543,7 +549,7 @@ docs/benchmarks/          # 90+ committed JSON artifacts for reproducibility
 git clone https://github.com/moona3k/mlx-qwen3-asr.git
 cd mlx-qwen3-asr
 pip install -e ".[dev]"
-pytest -q                 # 382 tests
+pytest -q                 # 390 tests
 ```
 
 ## Acknowledgments

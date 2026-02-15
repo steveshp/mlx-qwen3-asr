@@ -12,6 +12,7 @@ import mlx.core as mx
 import mlx.nn as nn
 import mlx.utils as mlx_utils
 
+from .cache_utils import LRUCache
 from .config import DEFAULT_MODEL_ID, Qwen3ASRConfig
 from .convert import remap_weights
 from .model import Qwen3ASRModel
@@ -26,10 +27,7 @@ class _ModelHolder:
     stay resident simultaneously for speculative decoding.
     """
 
-    _cache: dict[
-        tuple[str, str],
-        tuple[Qwen3ASRModel, Qwen3ASRConfig, str],
-    ] = {}
+    _cache = LRUCache[tuple[str, str], tuple[Qwen3ASRModel, Qwen3ASRConfig, str]](max_entries=4)
 
     @staticmethod
     def _cache_key(path_or_hf_repo: str, dtype: mx.Dtype) -> tuple[str, str]:
@@ -48,7 +46,7 @@ class _ModelHolder:
             return model, config
 
         model, config, resolved_path = _load_model_with_resolved_path(path_or_hf_repo, dtype=dtype)
-        cls._cache[key] = (model, config, str(resolved_path))
+        cls._cache.put(key, (model, config, str(resolved_path)))
         return model, config
 
     @classmethod
@@ -66,6 +64,11 @@ class _ModelHolder:
         if cached is None:
             return path_or_hf_repo
         return cached[2]
+
+    @classmethod
+    def set_cache_capacity(cls, max_entries: int) -> None:
+        """Set model-holder LRU capacity for this process."""
+        cls._cache.set_max_entries(max_entries)
 
     @classmethod
     def clear(cls):

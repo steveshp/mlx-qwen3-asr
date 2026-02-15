@@ -157,6 +157,29 @@ def test_tokenizer_holder_caches_by_model_path(monkeypatch):
     assert created == ["repo/a", "repo/b"]
 
 
+def test_tokenizer_holder_lru_eviction(monkeypatch):
+    created = []
+
+    class _DummyTokenizer:
+        def __init__(self, model_path: str):
+            created.append(model_path)
+            self.model_path = model_path
+
+    monkeypatch.setattr(tokmod, "Tokenizer", _DummyTokenizer)
+    _TokenizerHolder.clear()
+    _TokenizerHolder.set_cache_capacity(1)
+    try:
+        t1 = _TokenizerHolder.get("repo/a")
+        _ = _TokenizerHolder.get("repo/b")
+        t2 = _TokenizerHolder.get("repo/a")
+
+        assert t1 is not t2
+        assert created == ["repo/a", "repo/b", "repo/a"]
+    finally:
+        _TokenizerHolder.set_cache_capacity(8)
+        _TokenizerHolder.clear()
+
+
 def test_canonicalize_language_handles_codes_and_names():
     assert canonicalize_language("de") == "German"
     assert canonicalize_language("fr_fr") == "French"

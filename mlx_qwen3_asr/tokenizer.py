@@ -8,6 +8,8 @@ from typing import Optional
 
 import regex as re
 
+from .cache_utils import LRUCache
+
 _LANGUAGE_CANONICAL: dict[str, str] = {
     # English
     "en": "English",
@@ -443,7 +445,7 @@ class Tokenizer:
 class _TokenizerHolder:
     """Simple process-local cache for tokenizer instances."""
 
-    _cache: dict[str, Tokenizer] = {}
+    _cache = LRUCache[str, Tokenizer](max_entries=8)
 
     @staticmethod
     def _canonical_key(model_path: str) -> str:
@@ -458,8 +460,13 @@ class _TokenizerHolder:
         tok = cls._cache.get(key)
         if tok is None:
             tok = Tokenizer(model_path)
-            cls._cache[key] = tok
+            cls._cache.put(key, tok)
         return tok
+
+    @classmethod
+    def set_cache_capacity(cls, max_entries: int) -> None:
+        """Set tokenizer-holder LRU capacity for this process."""
+        cls._cache.set_max_entries(max_entries)
 
     @classmethod
     def clear(cls) -> None:

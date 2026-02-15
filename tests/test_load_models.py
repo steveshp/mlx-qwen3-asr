@@ -149,6 +149,36 @@ class TestModelHolder:
 
         _ModelHolder.clear()
 
+    def test_lru_eviction_when_capacity_exceeded(self, monkeypatch):
+        _ModelHolder.clear()
+        _ModelHolder.set_cache_capacity(1)
+        calls: list[tuple[str, mx.Dtype]] = []
+
+        def fake_loader(path_or_hf_repo, dtype):  # noqa: ANN001
+            calls.append((path_or_hf_repo, dtype))
+            model, cfg = object(), object()
+            return model, cfg, Path(f"/tmp/{path_or_hf_repo.replace('/', '_')}")
+
+        monkeypatch.setattr(
+            "mlx_qwen3_asr.load_models._load_model_with_resolved_path",
+            fake_loader,
+        )
+
+        try:
+            m_a_1, _ = _ModelHolder.get("Qwen/A", dtype=mx.float16)
+            _ = _ModelHolder.get("Qwen/B", dtype=mx.float16)
+            m_a_2, _ = _ModelHolder.get("Qwen/A", dtype=mx.float16)
+
+            assert m_a_1 is not m_a_2
+            assert calls == [
+                ("Qwen/A", mx.float16),
+                ("Qwen/B", mx.float16),
+                ("Qwen/A", mx.float16),
+            ]
+        finally:
+            _ModelHolder.set_cache_capacity(4)
+            _ModelHolder.clear()
+
 
 class _FakeModel:
     def __init__(self):
