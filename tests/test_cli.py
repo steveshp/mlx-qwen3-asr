@@ -306,9 +306,42 @@ def test_cli_diarize_preflight_emits_token_hint(monkeypatch, capsys):
     monkeypatch.delenv("PYANNOTE_AUTH_TOKEN", raising=False)
     monkeypatch.delenv("HF_TOKEN", raising=False)
     monkeypatch.delenv("HUGGINGFACE_TOKEN", raising=False)
+    monkeypatch.setattr(cli, "_ensure_diarization_backend_ready", lambda: None)
 
     cli._preflight_diarization_runtime()  # noqa: SLF001
     assert "may require Hugging Face auth" in capsys.readouterr().err
+
+
+def test_cli_diarize_preflight_checks_backend_readiness(monkeypatch):
+    cli = __import__("mlx_qwen3_asr.cli", fromlist=["main"])
+    called = {"value": False}
+
+    monkeypatch.setattr(cli.importlib.util, "find_spec", lambda name: object())
+    monkeypatch.setattr(
+        cli,
+        "_ensure_diarization_backend_ready",
+        lambda: called.__setitem__("value", True),
+    )
+
+    cli._preflight_diarization_runtime()  # noqa: SLF001
+    assert called["value"] is True
+
+
+def test_cli_diarize_preflight_fails_fast_when_backend_unavailable(monkeypatch, capsys):
+    cli = __import__("mlx_qwen3_asr.cli", fromlist=["main"])
+
+    monkeypatch.setattr(cli.importlib.util, "find_spec", lambda name: object())
+    monkeypatch.setattr(
+        cli,
+        "_ensure_diarization_backend_ready",
+        lambda: (_ for _ in ()).throw(RuntimeError("backend unavailable")),
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        cli._preflight_diarization_runtime()  # noqa: SLF001
+
+    assert exc.value.code == 1
+    assert "backend unavailable" in capsys.readouterr().err
 
 
 def test_cli_auto_enables_timestamps_for_subtitles(monkeypatch, tmp_path):

@@ -118,6 +118,21 @@ def _preflight_diarization_runtime() -> None:
             file=sys.stderr,
         )
 
+    try:
+        _ensure_diarization_backend_ready()
+    except (ImportError, RuntimeError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+
+def _ensure_diarization_backend_ready() -> None:
+    """Validate diarization backend/model access before transcription starts."""
+    # Intentional private import: we want to fail fast before spending time
+    # on ASR transcription when diarization backend access is invalid.
+    from .diarization import _load_pyannote_pipeline
+
+    _load_pyannote_pipeline()
+
 
 def _emit_new_stable_text(
     state_text: str,

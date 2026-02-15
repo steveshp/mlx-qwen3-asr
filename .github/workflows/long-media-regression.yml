@@ -1,0 +1,121 @@
+name: Long Media Regression
+
+on:
+  workflow_dispatch:
+    inputs:
+      long_seconds:
+        description: "Generated long fixture length in seconds"
+        required: true
+        default: "600"
+  schedule:
+    - cron: "0 9 * * 1"
+
+jobs:
+  long-media:
+    runs-on: macos-14
+    timeout-minutes: 180
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Cache HuggingFace artifacts
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: ${{ runner.os }}-hf-long-media-v1
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Build deterministic long fixture
+        run: |
+          python - <<'PY'
+          import wave
+          from pathlib import Path
+
+          target_sec = int("${{ github.event.inputs.long_seconds || '600' }}")
+          src = Path("tests/fixtures/test_speech.wav")
+          out = Path("${{ runner.temp }}") / "long_fixture.wav"
+
+          with wave.open(str(src), "rb") as rs:
+              channels = rs.getnchannels()
+              sampwidth = rs.getsampwidth()
+              framerate = rs.getframerate()
+              src_frames = rs.readframes(rs.getnframes())
+
+          bytes_per_frame = channels * sampwidth
+          target_frames = int(target_sec * framerate)
+          target_bytes = target_frames * bytes_per_frame
+          repeated = (src_frames * ((target_bytes // len(src_frames)) + 1))[:target_bytes]
+
+          with wave.open(str(out), "wb") as ws:
+              ws.setnchannels(channels)
+              ws.setsampwidth(sampwidth)
+              ws.setframerate(framerate)
+              ws.writeframes(repeated)
+
+          print(f"fixture={out}")
+          print(f"seconds={target_sec}")
+          PY
+
+      - name: Run long JSON transcription
+        run: |
+          mkdir -p "${{ runner.temp }}/long-out"
+          /usr/bin/time -p python -m mlx_qwen3_asr.cli \
+            "${{ runner.temp }}/long_fixture.wav" \
+            -f json \
+            -o "${{ runner.temp }}/long-out" \
+            --no-progress \
+            --quiet
+
+      - name: Run long SRT transcription
+        run: |
+          /usr/bin/time -p python -m mlx_qwen3_asr.cli \
+            "${{ runner.temp }}/long_fixture.wav" \
+            -f srt \
+            -o "${{ runner.temp }}/long-out" \
+            --no-progress \
+            --quiet
+
+      - name: Validate long outputs
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          out_dir = Path("${{ runner.temp }}") / "long-out"
+          json_files = sorted(out_dir.glob("*.json"))
+          srt_files = sorted(out_dir.glob("*.srt"))
+          if not json_files:
+              raise SystemExit("missing JSON output")
+          if not srt_files:
+              raise SystemExit("missing SRT output")
+
+          payload = json.loads(json_files[0].read_text(encoding="utf-8"))
+          text = str(payload.get("text", ""))
+          if len(text.strip()) < 50:
+              raise SystemExit("JSON transcript unexpectedly short")
+
+          srt_text = srt_files[0].read_text(encoding="utf-8")
+          cues = [blk for blk in srt_text.strip().split("\n\n") if "-->" in blk]
+          if len(cues) < 5:
+              raise SystemExit("SRT cue count unexpectedly low")
+
+          print(f"text_chars={len(text)}")
+          print(f"srt_cues={len(cues)}")
+          PY
+
+      - name: Upload long-media artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: long-media-regression-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/long_fixture.wav
+            ${{ runner.temp }}/long-out/*.json
+            ${{ runner.temp }}/long-out/*.srt
