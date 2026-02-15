@@ -34,7 +34,8 @@ make broad "production-grade across languages/conditions" quality claims.
 - MLX-vs-PyTorch head-to-head:
   - Multilingual-100 direct comparison (MLX: 15.99% WER vs PyTorch: 16.69% WER).
   - LibriSpeech test-other direct comparison (MLX: 4.20% WER vs PyTorch: 4.41% WER).
-  - 138 benchmark artifacts across 13 eval scripts.
+  - Long-form manifest direct comparison (MLX: 16.71% WER vs PyTorch: 24.31% WER).
+  - Versioned benchmark artifacts committed under `docs/benchmarks/`.
 - Streaming diagnostics lane:
   - Per-session quality metrics exposed from runtime state:
     `partial_stability`, `rewrite_rate`, `finalization_delta_chars`.
@@ -61,9 +62,9 @@ make broad "production-grade across languages/conditions" quality claims.
    long-form remains a stretch goal.
 
 3. **MLX-vs-PyTorch quality comparison** — PARTIALLY CLOSED.
-   Multilingual-100 and test-other head-to-head artifacts exist. MLX wins on
-   both lanes (15.99% vs 16.69% WER; 4.20% vs 4.41% WER). Long-form
-   head-to-head remains open.
+   Multilingual-100, test-other, and long-form head-to-head artifacts exist.
+   MLX wins on all three lanes (15.99% vs 16.69% WER; 4.20% vs 4.41% WER;
+   16.71% vs 24.31% WER). Real-world head-to-head remains open.
 
 4. **Streaming quality instrumentation** — CLOSED. Full instrumentation with
    `partial_stability`, `rewrite_rate`, `finalization_delta_chars`. KV-cache
@@ -85,12 +86,12 @@ make broad "production-grade across languages/conditions" quality claims.
      is multi-file versioned dataset artifacts.
 
 4. `P2` Broader MLX-vs-PyTorch comparison
-   - Why: long-form and real-world head-to-head lanes are still missing.
-   - Status: multilingual-100 + test-other are now covered.
+   - Why: real-world head-to-head lanes are still missing.
+   - Status: multilingual-100 + test-other + long-form are now covered.
 
 ## Follow-up Order
 
 1. Curate real-world audio lane with fixed artifact set and versioned manifests.
 2. Add real-world long-form recordings (meetings, podcasts, lectures).
 3. Commit streaming-quality versioned artifacts.
-4. Expand MLX-vs-PyTorch comparison to long-form and real-world lanes.
+4. Expand MLX-vs-PyTorch comparison to real-world lanes.

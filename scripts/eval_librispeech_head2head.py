@@ -5,13 +5,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import time
 from pathlib import Path
 
 import numpy as np
 
 _SCRIPTS_DIR = Path(__file__).resolve().parent
-import sys
 
 if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
@@ -44,7 +44,10 @@ def main() -> int:
     parser.add_argument(
         "--mlx-json",
         required=True,
-        help="Path to eval_librispeech JSON artifact (contains rows with audio_path/reference/hypothesis).",
+        help=(
+            "Path to eval_librispeech JSON artifact "
+            "(contains rows with audio_path/reference/hypothesis)."
+        ),
     )
     parser.add_argument("--model", default="Qwen/Qwen3-ASR-0.6B")
     parser.add_argument("--language", default="English")
@@ -54,8 +57,8 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        import torch
         import qwen_asr
+        import torch
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError(
             "qwen_asr + torch are required for head-to-head reference evaluation."
@@ -157,8 +160,14 @@ def main() -> int:
     if args.md_output:
         out_md = Path(args.md_output).expanduser().resolve()
         out_md.parent.mkdir(parents=True, exist_ok=True)
+        title = (
+            "MLX vs PyTorch Quality Head-to-Head "
+            f"({mlx_payload.get('subset', 'librispeech')}, n={len(rows)})"
+        )
+        mlx_latency = float(mlx_payload.get("mean_latency_sec", 0.0))
+        ref_latency = float(np.mean(lat_ref))
         lines = [
-            f"# MLX vs PyTorch Quality Head-to-Head ({mlx_payload.get('subset', 'librispeech')}, n={len(rows)})",
+            f"# {title}",
             "",
             f"- model: `{args.model}`",
             f"- samples: `{len(rows)}`",
@@ -171,8 +180,8 @@ def main() -> int:
             "",
             "| System | WER | CER | Mean latency (s) |",
             "|---|---:|---:|---:|",
-            f"| MLX | {mlx_wer:.4f} | {mlx_cer:.4f} | {float(mlx_payload.get('mean_latency_sec', 0.0)):.4f} |",
-            f"| PyTorch ref | {ref_wer:.4f} | {ref_cer:.4f} | {float(np.mean(lat_ref)):.4f} |",
+            f"| MLX | {mlx_wer:.4f} | {mlx_cer:.4f} | {mlx_latency:.4f} |",
+            f"| PyTorch ref | {ref_wer:.4f} | {ref_cer:.4f} | {ref_latency:.4f} |",
         ]
         out_md.write_text("\n".join(lines) + "\n", encoding="utf-8")
 

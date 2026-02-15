@@ -136,6 +136,17 @@ python scripts/analyze_reference_parity_mismatches.py \
   --md-output docs/benchmarks/reference-parity-suite-multilingual-analysis.md
 ```
 
+Manifest quality head-to-head benchmark (MLX artifact vs PyTorch `qwen_asr`):
+
+```bash
+python scripts/eval_manifest_head2head.py \
+  --mlx-json docs/benchmarks/2026-02-15-manifest-quality-longform10.json \
+  --model Qwen/Qwen3-ASR-0.6B \
+  --max-new-tokens 1024 \
+  --json-output docs/benchmarks/2026-02-15-quality-head2head-mlx-vs-pytorch-longform10.json \
+  --md-output docs/benchmarks/2026-02-15-quality-head2head-mlx-vs-pytorch-longform10.md
+```
+
 Latest multilingual smoke artifacts:
 - `docs/benchmarks/2026-02-14-fleurs-multilingual-smoke-manifest.jsonl`
 - `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-smoke.json`

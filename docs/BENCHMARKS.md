@@ -206,6 +206,17 @@ Artifact: `2026-02-15-quality-head2head-mlx-vs-pytorch-multilingual100.md`
 
 Artifact: `2026-02-15-quality-head2head-mlx-vs-pytorch-test-other100.md`
 
+### MLX vs PyTorch Head-to-Head (Long-form manifest, n=10)
+
+| Metric | MLX | PyTorch | Delta (MLX - Ref) |
+|---|---:|---:|---:|
+| Primary error | 11.56% | 17.99% | -6.42pp |
+| WER | 16.71% | 24.31% | -7.60pp |
+| CER | 7.04% | 11.97% | -4.94pp |
+| Mean latency | 11.13s | 55.12s | 4.95x faster |
+
+Artifact: `2026-02-15-quality-head2head-mlx-vs-pytorch-longform10.md`
+
 ### Token-Level Parity Analysis
 
 | Category | Count |
@@ -329,6 +340,7 @@ All benchmark artifacts are committed under `docs/benchmarks/`. Key files:
 | `2026-02-15-manifest-quality-multilingual100-1p7b-refresh.json` | 1.7B multilingual quality |
 | `2026-02-15-quality-head2head-mlx-vs-pytorch-multilingual100.md` | MLX vs PyTorch parity |
 | `2026-02-15-quality-head2head-mlx-vs-pytorch-test-other100.md` | MLX vs PyTorch parity on test-other |
+| `2026-02-15-quality-head2head-mlx-vs-pytorch-longform10.md` | MLX vs PyTorch parity on long-form manifest |
 | `2026-02-15-manifest-quality-longform10.md` | Long-form quality |
 | `2026-02-15-reference-parity-suite-longform10.md` | Long-form speed (MLX vs PyTorch) |
 | `2026-02-14-aligner-parity-50.md` | Forced aligner parity |
