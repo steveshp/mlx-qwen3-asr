@@ -18,6 +18,7 @@
 - `scripts/eval_diarization.py` — DER/JER evaluation from diarization manifests.
 - `scripts/build_diarization_manifest.py` — deterministic multi-speaker mix manifest builder.
 - `scripts/build_realworld_manifest.py` — deterministic AMI/Earnings real-world manifest curation.
+- `scripts/build_earnings22_longform_manifest.py` — deterministic non-synthetic long-form manifest builder.
 - Root-level `eval_*.py`, `benchmark_*.py`, and `analyze_*.py` scripts are dev tooling.
 
 The long-term direction is to keep user-facing scripts at root and migrate

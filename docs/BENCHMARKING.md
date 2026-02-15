@@ -191,6 +191,31 @@ Latest expanded real-world artifacts:
 - `docs/benchmarks/2026-02-15-quality-head2head-mlx-vs-pytorch-realworld200.json`
 - `docs/benchmarks/2026-02-15-quality-head2head-mlx-vs-pytorch-realworld200.md`
 
+Real-world non-synthetic long-form lane (Earnings22 full recordings):
+
+```bash
+python scripts/build_earnings22_longform_manifest.py \
+  --samples 3 \
+  --seed 20260216 \
+  --min-duration-sec 850 \
+  --max-duration-sec 1400 \
+  --output-manifest docs/benchmarks/2026-02-15-earnings22-full-longform3-manifest.jsonl
+
+python scripts/eval_manifest_quality.py \
+  --manifest-jsonl docs/benchmarks/2026-02-15-earnings22-full-longform3-manifest.jsonl \
+  --model Qwen/Qwen3-ASR-0.6B \
+  --dtype float16 \
+  --max-new-tokens 8192 \
+  --json-output docs/benchmarks/2026-02-15-manifest-quality-earnings22-full-longform3-0p6b.json
+
+python scripts/eval_manifest_head2head.py \
+  --mlx-json docs/benchmarks/2026-02-15-manifest-quality-earnings22-full-longform3-0p6b.json \
+  --model Qwen/Qwen3-ASR-0.6B \
+  --max-new-tokens 8192 \
+  --json-output docs/benchmarks/2026-02-15-quality-head2head-mlx-vs-pytorch-earnings22-full-longform3.json \
+  --md-output docs/benchmarks/2026-02-15-quality-head2head-mlx-vs-pytorch-earnings22-full-longform3.md
+```
+
 Latest multilingual smoke artifacts:
 - `docs/benchmarks/2026-02-14-fleurs-multilingual-smoke-manifest.jsonl`
 - `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-smoke.json`
