@@ -451,7 +451,7 @@ def _create_windowed_mask(
 
     Returns:
         Additive attention mask of shape ``(1, 1, seq_len, seq_len)`` where
-        cross-window positions have ``-1e9``, or ``None`` if there is only
+        cross-window positions use ``finfo(dtype).min``, or ``None`` if there is only
         one window (no masking needed).
     """
     # Single window -- no mask needed
@@ -469,10 +469,11 @@ def _create_windowed_mask(
 
     # Tokens attend iff they share a window
     same_window = window_ids[:, None] == window_ids[None, :]  # (L, L)
+    masked_value = float(mx.finfo(dtype).min)
     mask = mx.where(
         same_window,
         mx.array(0.0, dtype=dtype),
-        mx.array(-1e9, dtype=dtype),
+        mx.array(masked_value, dtype=dtype),
     )
     return mask[None, None, :, :]  # (1, 1, L, L)
 

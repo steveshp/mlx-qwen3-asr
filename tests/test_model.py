@@ -519,6 +519,19 @@ class TestCreateCausalMask:
 class TestWindowedEncoderExecution:
     """Windowed per-segment execution should match dense masked execution."""
 
+    def test_mask_uses_dtype_min_for_blocked_positions(self):
+        mask = _create_windowed_mask(seq_len=6, cu_seqlens=[0, 3, 6], dtype=mx.float16)
+        assert mask is not None
+        mx.eval(mask)
+        m = np.array(mask[0, 0])
+
+        # Same-window positions stay unmasked.
+        assert m[0, 1] == 0.0
+        assert m[4, 5] == 0.0
+        # Cross-window positions match dtype minimum (upstream torch behavior).
+        assert m[0, 4] == pytest.approx(np.finfo(np.float16).min)
+        assert m[5, 2] == pytest.approx(np.finfo(np.float16).min)
+
     def test_matches_dense_masked_layers(self):
         d_model, num_heads, ffn_dim = 64, 2, 128
         layers = [AudioEncoderLayer(d_model, num_heads, ffn_dim) for _ in range(2)]

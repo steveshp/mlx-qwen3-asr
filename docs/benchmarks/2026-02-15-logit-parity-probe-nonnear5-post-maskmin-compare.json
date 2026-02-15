@@ -1,0 +1,53 @@
+{
+  "suite": "nonnear5-post-maskmin-compare-v1",
+  "base": "docs/benchmarks/2026-02-15-logit-parity-probe-nonnear5-post-enc-clamp.json",
+  "candidate": "docs/benchmarks/2026-02-15-logit-parity-probe-nonnear5-post-maskmin.json",
+  "all_fields_unchanged": true,
+  "rows": [
+    {
+      "sample_id": "en_us-394135166243682296",
+      "mismatch_index_base": 17,
+      "mismatch_index_new": 17,
+      "mlx_token_base": 220,
+      "mlx_token_new": 220,
+      "near_tie_base": false,
+      "near_tie_new": false
+    },
+    {
+      "sample_id": "ja_jp-8922261396806111795",
+      "mismatch_index_base": 7,
+      "mismatch_index_new": 7,
+      "mlx_token_base": 11387,
+      "mlx_token_new": 11387,
+      "near_tie_base": false,
+      "near_tie_new": false
+    },
+    {
+      "sample_id": "de_de-11906634980733046933",
+      "mismatch_index_base": 29,
+      "mismatch_index_new": 29,
+      "mlx_token_base": 58534,
+      "mlx_token_new": 58534,
+      "near_tie_base": false,
+      "near_tie_new": false
+    },
+    {
+      "sample_id": "ar_eg-14219101187915533421",
+      "mismatch_index_base": 29,
+      "mismatch_index_new": 29,
+      "mlx_token_base": 86941,
+      "mlx_token_new": 86941,
+      "near_tie_base": false,
+      "near_tie_new": false
+    },
+    {
+      "sample_id": "hi_in-17876469696694013955",
+      "mismatch_index_base": 61,
+      "mismatch_index_new": 61,
+      "mlx_token_base": 105,
+      "mlx_token_new": 105,
+      "near_tie_base": false,
+      "near_tie_new": false
+    }
+  ]
+}

@@ -859,3 +859,27 @@ Observed trend:
 Interpretation:
 - residual non-near mismatches are consistent with gradual encoder
   representation drift, not a single decode/cache failure point.
+
+### 46) Windowed-mask value alignment (finfo.min) in encoder attention
+
+Aligned `_create_windowed_mask(...)` blocked-value semantics with upstream:
+
+- from hardcoded `-1e9` to `finfo(dtype).min` in
+  `mlx_qwen3_asr/encoder.py`
+
+Added regression coverage:
+
+- `tests/test_model.py::TestWindowedEncoderExecution::test_mask_uses_dtype_min_for_blocked_positions`
+
+Follow-up non-near probe artifacts:
+
+- `docs/benchmarks/2026-02-15-logit-parity-probe-nonnear5-post-maskmin.json`
+- `docs/benchmarks/2026-02-15-logit-parity-probe-nonnear5-post-maskmin.md`
+- `docs/benchmarks/2026-02-15-logit-parity-probe-nonnear5-post-maskmin-compare.json`
+
+Observed:
+- mismatch probe fields unchanged on this subset (`5/5` still non-near).
+
+Interpretation:
+- this fixes an upstream semantic mismatch and is the safer mask behavior, but
+  it is not the dominant cause of the current residual non-near parity gap.

@@ -191,6 +191,9 @@ Post-canonicalization multilingual triage artifacts (2026-02-15):
 - `docs/benchmarks/2026-02-15-logit-parity-probe-nonnear5-post-enc-clamp-compare.json`
 - `docs/benchmarks/2026-02-15-audio-encoder-layerwise-parity-nonnear5.json`
 - `docs/benchmarks/2026-02-15-audio-encoder-layerwise-parity-nonnear5.md`
+- `docs/benchmarks/2026-02-15-logit-parity-probe-nonnear5-post-maskmin.json`
+- `docs/benchmarks/2026-02-15-logit-parity-probe-nonnear5-post-maskmin.md`
+- `docs/benchmarks/2026-02-15-logit-parity-probe-nonnear5-post-maskmin-compare.json`
 
 Generate with:
 
