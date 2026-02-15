@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import inspect
 from dataclasses import dataclass, field
 
 import mlx.core as mx
 
 from .model import Qwen3ASRModel
+from .runtime_utils import supports_kwarg
 
 # Repetition detection constants (from official repo)
 REPETITION_THRESHOLD = 20
@@ -55,7 +55,11 @@ def generate(
 
     max_seq_len = int(input_ids.shape[1] + config.max_new_tokens)
     cache = model.create_cache(max_seq_len=max_seq_len)
-    supports_unchecked_step = _supports_validate_kwarg(getattr(model, "step", None))
+    unchecked_step_kw = (
+        {"validate_input_ids": False}
+        if supports_kwarg(getattr(model, "step", None), "validate_input_ids")
+        else {}
+    )
 
     # Phase 1: Prefill prompt and populate cache.
     logits = model.prefill(
@@ -96,7 +100,7 @@ def generate(
             input_ids=next_ids,
             position_ids=next_position_ids,
             cache=cache,
-            **({"validate_input_ids": False} if supports_unchecked_step else {}),
+            **unchecked_step_kw,
         )
         token = _sample(logits, config.temperature)
         generated.append(token)
@@ -141,9 +145,21 @@ def generate_speculative(
     max_seq_len = int(input_ids.shape[1] + config.max_new_tokens)
     target_cache = model.create_cache(max_seq_len=max_seq_len)
     draft_cache = draft_model.create_cache(max_seq_len=max_seq_len)
-    supports_unchecked_target_step = _supports_validate_kwarg(getattr(model, "step", None))
-    supports_unchecked_draft_step = _supports_validate_kwarg(getattr(draft_model, "step", None))
-    supports_unchecked_step_many = _supports_validate_kwarg(getattr(model, "step_many", None))
+    unchecked_target_step_kw = (
+        {"validate_input_ids": False}
+        if supports_kwarg(getattr(model, "step", None), "validate_input_ids")
+        else {}
+    )
+    unchecked_draft_step_kw = (
+        {"validate_input_ids": False}
+        if supports_kwarg(getattr(draft_model, "step", None), "validate_input_ids")
+        else {}
+    )
+    unchecked_step_many_kw = (
+        {"validate_input_ids": False}
+        if supports_kwarg(getattr(model, "step_many", None), "validate_input_ids")
+        else {}
+    )
 
     target_logits = model.prefill(
         input_ids=input_ids,
@@ -184,11 +200,7 @@ def generate_speculative(
                 input_ids=next_ids,
                 position_ids=next_position_ids,
                 cache=target_cache,
-                **(
-                    {"validate_input_ids": False}
-                    if supports_unchecked_target_step
-                    else {}
-                ),
+                **unchecked_target_step_kw,
             )
             token = _sample(logits, config.temperature)
             generated.append(token)
@@ -209,11 +221,7 @@ def generate_speculative(
                 input_ids=d_ids,
                 position_ids=d_pos,
                 cache=draft_cache,
-                **(
-                    {"validate_input_ids": False}
-                    if supports_unchecked_draft_step
-                    else {}
-                ),
+                **unchecked_draft_step_kw,
             )
             draft_input = _sample(d_logits, config.temperature)
             draft_tokens.append(draft_input)
@@ -224,7 +232,7 @@ def generate_speculative(
             input_ids=verify_ids,
             position_ids=verify_pos,
             cache=target_cache,
-            **({"validate_input_ids": False} if supports_unchecked_step_many else {}),
+            **unchecked_step_many_kw,
         )
         verify_pred_ids = mx.argmax(verify_logits, axis=-1)
         verify_pred = [int(x) for x in verify_pred_ids[0].tolist()]
@@ -293,17 +301,6 @@ def _sample(logits: mx.array, temperature: float) -> int:
     else:
         # Temperature sampling — pass logits directly (categorical expects log-probs)
         return mx.random.categorical(logits / temperature).item()
-
-
-def _supports_validate_kwarg(callable_obj: object) -> bool:
-    """Return True when callable supports ``validate_input_ids`` kwarg."""
-    if callable_obj is None:
-        return False
-    try:
-        sig = inspect.signature(callable_obj)
-    except (TypeError, ValueError):
-        return False
-    return "validate_input_ids" in sig.parameters
 
 
 def _build_decode_positions(

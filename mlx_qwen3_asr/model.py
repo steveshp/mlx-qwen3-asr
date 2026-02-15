@@ -132,8 +132,7 @@ class Qwen3ASRModel(nn.Module):
 
     def _validate_input_ids_dtype(self, input_ids: mx.array) -> None:
         """Validate token dtype for embedding lookup."""
-        dtype_name = str(input_ids.dtype).lower()
-        if "int" not in dtype_name and "uint" not in dtype_name:
+        if not mx.issubdtype(input_ids.dtype, mx.integer):
             raise ValueError(
                 "input_ids must use an integer dtype for embed_tokens, "
                 f"got dtype={input_ids.dtype}"
