@@ -64,6 +64,15 @@ Install with diarization extras:
 pip install "mlx-qwen3-asr[diarize]"
 ```
 
+Note: `--diarize` uses `pyannote` models. The default model is gated on
+Hugging Face, so you usually need to accept model terms and set a token:
+
+```bash
+export PYANNOTE_AUTH_TOKEN=hf_...
+```
+
+Core ASR does not require any Hugging Face token.
+
 For development:
 
 ```bash
