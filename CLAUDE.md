@@ -1,126 +1,119 @@
 # CLAUDE.md
 
-Agent instructions for working on mlx-qwen3-asr.
+Agent instructions for `mlx-qwen3-asr`.
 
 ## North Star
 
-**`pip install mlx-qwen3-asr` is the definitive way to run speech recognition on Apple Silicon.**
+**`pip install mlx-qwen3-asr` — the definitive speech recognition package for Apple Silicon.**
 
-Not just transcription. The complete speech recognition experience:
+Ground-up MLX reimplementation of Qwen3-ASR. Same HuggingFace weights, same output quality, every layer rewritten for Metal. Not a wrapper, not a binding — a standalone package.
 
-- **Instant setup** — one pip install, no ffmpeg, no manual model downloads, no conversion scripts
-- **Best-in-class speed** — pre-quantized models as default, Metal-optimized inference, sub-200ms latency on short clips
-- **Full model coverage** — 0.6B for speed, 1.7B for accuracy, both tested and validated
-- **Real-time streaming** — incremental transcription with KV cache reuse, not re-transcribe-everything
-- **Word-level timestamps** — native MLX forced aligner, no PyTorch dependency
-- **Zero unnecessary dependencies** — custom mel spectrogram, minimal tokenizer, no transformers at runtime
-- **52 languages** — all validated, not just English
-- **Production-grade** — proper error handling, memory management, batch support
-- **Swift port** — once Python proves every decision, native Swift+MLX for apps and system integration
-
-This is a ground-up reimplementation of the official PyTorch model using Apple's MLX framework. Same weights, same output, runs on Mac GPUs via Metal. Not a wrapper — every layer is rewritten for MLX.
-
-### Execution order (how we get there)
-
-Everything above matters. The order is about what unblocks what:
-
-1. ~~**Ship what works** — PyPI publish, pre-quantized models on HuggingFace, 1.7B validation~~ **DONE** (v0.1.0 on PyPI, 1.7B validated, pre-quantized models deferred as nice-to-have)
-2. ~~**Harden** — integration tests, bounds checks, dependency pins, debug cleanup~~ **MOSTLY DONE** (bounds checks, cache eviction, bare except all fixed; language validation partial — missing warning for unknown languages)
-3. ~~**Remove training wheels** — custom mel spectrogram (drop transformers for feature extraction)~~, fully native forced aligner (drop PyTorch bridge) **MEL DONE** (custom mel is default, HF is fallback only; forced aligner still uses PyTorch bridge)
-4. **Real streaming** — incremental encoder, KV cache reuse across chunks, CJK-aware prefix rollback
-5. **Zero external deps** — custom BPE tokenizer (drop transformers entirely), native audio decoding
-6. **Swift port** — native Metal, system-level integration, app-embeddable framework
+- **One-command setup** — no ffmpeg install, no model conversion, no CUDA
+- **Both models validated** — 0.6B (fast, default) and 1.7B (accuracy), benchmarked across 10 languages
+- **Native forced aligner** — word-level timestamps via MLX, no PyTorch dependency
+- **Custom mel spectrogram** — no `transformers` needed for feature extraction
+- **52 languages** — validated, not just English
+- **Fast** — Metal-optimized inference, sub-200ms latency on short clips
+- **Production-grade** — bounds checks, multi-slot model cache, Session API, proper error paths
+- **No PyTorch in the core path** — core ASR pipeline (audio → mel → encoder → decoder → text) must never import torch
 
 ### What this is NOT
 
 - Not a multi-model toolkit (that's mlx-audio)
 - Not a training framework
-- Not a server/API — just a library and CLI
+- Not a server/API — library + CLI only
 
-## Project Context
+## Current Status (v0.1.0)
 
-This is an **MLX reimplementation of Qwen3-ASR** — the SOTA open-source ASR model — for Apple Silicon Macs. The official implementation is PyTorch + NVIDIA CUDA and doesn't use Apple GPUs. We rewrite every layer in Python + MLX so the same model runs natively on Mac hardware. Standalone package (not part of mlx-audio).
+Published on PyPI. 363 tests passing. Core pipeline stable.
 
-### Key Constraints
+### What's next
 
-- **Python + MLX only** — all compute runs through MLX's Metal backend
-- **Core ASR path has no PyTorch dependency at runtime**
-- **Timestamps currently use optional `qwen-asr` (PyTorch) backend**
-- **Minimal dependencies** — mlx, numpy, huggingface-hub, transformers (tokenizer only; custom mel is default)
-- **Correctness first** — proper MRoPE implementation (interleaved, not chunked)
-- **Single-model focus** — only Qwen3-ASR, not a multi-model toolkit
+1. **Custom BPE tokenizer** — drop `transformers` entirely (currently used for `Qwen2TokenizerFast` only)
+2. **Real streaming** — KV cache reuse across chunks (current streaming is O(n^2) re-transcription). Design targets: `generate()` accepts and returns KV cache; streaming feeds new audio through encoder and extends existing cache; `_split_stable_unstable` must handle CJK (no whitespace splitting)
+3. **Swift port** — once Python proves every decision, native Swift+MLX for apps and system integration (separate repo: `qwen3-asr-swift`)
 
-### Architecture Overview
+### What's done
+
+- PyPI v0.1.0 published, 1.7B validated, both models benchmarked
+- Custom mel spectrogram (default path; HF `WhisperFeatureExtractor` is fallback only)
+- Native MLX forced aligner (default; `qwen-asr` PyTorch backend is optional fallback)
+- `model.prefill()` / `model.step()` / `model.step_many()` clean interface
+- `Session` object + multi-slot `_ModelHolder` cache keyed by `(path, dtype)`
+- Audio stays numpy through feature extraction, converts to `mx.array` at model entry
+- Bounds checks on audio injection, narrowed exception handling, language validation with warnings
+
+## Architecture
 
 Qwen3-ASR is an encoder-decoder model:
 1. Audio → mel spectrogram (128 bins) → Conv2d stem (8x downsample) → 24 transformer encoder layers → audio features
-2. Audio features injected into text embedding sequence at placeholder positions
-3. Text decoder (28 Qwen3-style layers with MRoPE) autoregressively generates transcription
+2. Audio features injected into text embedding sequence at `<|audio_pad|>` placeholder positions
+3. Text decoder (28 Qwen3-style layers with interleaved MRoPE) autoregressively generates transcription
 4. Optional: Forced aligner (separate 0.6B model) provides word-level timestamps
 
-## Documentation Map
+### Correctness invariants
 
-| File | Purpose | When to Update |
-|------|---------|----------------|
-| `docs/RESEARCH.md` | Research findings, benchmarks, model analysis | New benchmark data, paper findings |
-| `docs/ARCHITECTURE.md` | Qwen3-ASR architecture deep dive | Architecture understanding changes |
-| `docs/DECISIONS.md` | Key decisions and rationale | Major technical choices |
-| `docs/COMPARISON.md` | Comparison with alternatives | New competitors, feature changes |
-| `docs/QUALITY_GATE.md` | Merge/release quality gates | Test policy changes |
-| `docs/GOLDEN_DATASET.md` | Golden dataset policy and commands | Dataset/threshold policy changes |
-| `docs/BENCHMARKING.md` | Runtime measurement protocol | Perf process changes |
-| `docs/EXECUTION_TRACKER_2026-02-14.md` | Active optimization/refactor tracker | During this execution wave |
-| `docs/ALGORITHMIC_MAXXING_2026-02-14.md` | Paper-backed algorithmic opportunities and applied findings | After deep paper/repo research passes |
+These are non-negotiable. Violating any one produces silently wrong output:
 
-## Code Conventions
+1. **MRoPE is interleaved, not chunked** — sections [24,20,20] with stride-3 frequency assignment across temporal/height/width dimensions
+2. **Encoder uses LayerNorm + bias** — text decoder uses RMSNorm + no bias. Mixing them breaks inference silently
+3. **Conv2d weight transpose** — PyTorch `(out,in,kH,kW)` → MLX `(out,kH,kW,in)` via `transpose(0,2,3,1)`
+4. **Sinusoidal position embeddings are computed, not loaded** — they're not in the weight files
+5. **Audio token IDs** — pad=151676, start=151669, end=151670
 
-### Python Style
-
-- Python 3.10+ (f-strings, type hints, dataclasses)
-- Use `mlx.nn.Module` for all model components (not torch)
-- Type hints on all public functions
-- Docstrings on all public classes and functions (Google style)
-- No classes where functions suffice
-- Prefer `@dataclass(frozen=True)` for output types
-
-### File Organization
+### Module map
 
 ```
 mlx_qwen3_asr/
-├── __init__.py              # Public API only: transcribe(), load_model()
-├── _version.py              # Single source of truth for version
-├── config.py                # Dataclass configs (no MLX imports)
-├── audio.py                 # Audio I/O + mel spectrogram (MLX)
-├── mrope.py                 # Interleaved Multi-RoPE (critical correctness)
-├── attention.py             # Shared SDPA helper (fused + fallback)
-├── encoder.py               # Audio encoder modules + windowed attention helpers
-├── decoder.py               # Text decoder modules + KV cache + causal mask
-├── model.py                 # Qwen3ASRModel top-level glue + compatibility exports
-├── convert.py               # Weight key remapping + Conv2d transpose
-├── load_models.py           # HuggingFace download + model instantiation
-├── generate.py              # Autoregressive decode loop + KV cache
-├── transcribe.py            # High-level pipeline (the main entry point)
-├── tokenizer.py             # Thin wrapper around HF Qwen2TokenizerFast
-├── chunking.py              # Energy-based long audio splitting
-├── forced_aligner.py        # Forced alignment model + LIS correction
-├── streaming.py             # Streaming state machine
-├── writers.py               # Output format writers (txt, srt, vtt, json, tsv)
-├── cli.py                   # CLI entry point
+├── __init__.py          # Public API: transcribe(), load_model(), Session
+├── __main__.py          # python -m mlx_qwen3_asr
+├── _version.py          # Single source of truth for version
+├── config.py            # Dataclass configs (no MLX imports)
+├── audio.py             # Audio I/O (load_audio_np) + custom mel spectrogram (MLX)
+├── mrope.py             # Interleaved Multi-RoPE (critical correctness)
+├── attention.py         # Shared SDPA helper (fused + fallback)
+├── encoder.py           # Audio encoder: SinusoidalPE, windowed attention, Conv2d stem
+├── decoder.py           # Text decoder: GQA, SwiGLU, KVCache, causal mask
+├── model.py             # Qwen3ASRModel: glue, audio injection, prefill/step/step_many
+├── convert.py           # Weight key remapping + Conv2d transpose
+├── load_models.py       # HuggingFace download + multi-slot model cache
+├── generate.py          # Autoregressive decode loop
+├── transcribe.py        # High-level pipeline (main entry point)
+├── tokenizer.py         # HF Qwen2TokenizerFast wrapper + language validation
+├── session.py           # Session: explicit model/tokenizer lifecycle
+├── chunking.py          # Energy-based long audio splitting
+├── forced_aligner.py    # MLX forced aligner + LIS timestamp correction
+├── streaming.py         # Streaming state machine
+├── writers.py           # Output format writers (txt, srt, vtt, json, tsv)
+├── cli.py               # CLI entry point
 └── assets/
-    └── mel_filters.npz      # Pre-computed 128-bin Slaney mel filterbanks
+    ├── mel_filters.npz        # Pre-computed 128-bin Slaney mel filterbanks
+    └── korean_dict_jieba.dict # Korean tokenizer dictionary for aligner
 ```
 
-### Naming Conventions
+### Key technical decisions
 
-- Modules: `snake_case.py`
-- Classes: `PascalCase` (e.g., `AudioEncoder`, `TextDecoder`)
-- Functions: `snake_case` (e.g., `load_model`, `transcribe`)
-- Constants: `UPPER_SNAKE_CASE` (e.g., `SAMPLE_RATE`, `NUM_MEL_BINS`)
-- Private: prefix with `_` (e.g., `_remap_key`, `_ModelHolder`)
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Standalone vs mlx-audio | Standalone | mlx-audio lacks MRoPE, too many deps |
+| Tokenizer | HF `transformers` (for now) | Custom BPE is next milestone |
+| Audio loading | ffmpeg subprocess + fast WAV path | Handles all formats, no heavy deps |
+| Weight format | safetensors | MLX ecosystem standard |
+| Mel spectrogram | Custom MLX (default) | HF fallback for non-16kHz only |
+| Forced aligner | Native MLX (default) | PyTorch `qwen-asr` as optional fallback |
+
+## Code Conventions
+
+- **Python 3.10+** — f-strings, type hints, dataclasses throughout
+- **`mlx.nn.Module`** for all model components (never torch)
+- **Type hints** on all public functions; **Google-style docstrings** on public classes/functions
+- **`@dataclass(frozen=True)`** for output types (e.g., `TranscriptionResult`, `AlignedWord`)
+- **No classes where functions suffice** — prefer flat module-level functions
+- **Naming**: modules `snake_case.py`, classes `PascalCase`, functions `snake_case`, constants `UPPER_SNAKE_CASE`, private `_prefixed`
 
 ## Git Commit Messages
 
-This project uses **rich commit messages** optimized for AI-assisted development. Each commit captures enough context that a future agent (or human) can understand the full reasoning.
+Every commit is a self-contained unit of knowledge. The message is not just a changelog entry — it's the **DNA of the change**: the intent, the reasoning, and a seed prompt that encapsulates everything needed to reproduce the work from scratch. A well-written commit message means any future agent can reconstruct not just *what* changed, but *why* it had to change and *how* to arrive at the same solution independently.
 
 ### Structure
 
@@ -131,12 +124,17 @@ This project uses **rich commit messages** optimized for AI-assisted development
 Detailed breakdown of every file/section modified.
 
 ## Root Intent
-Why this commit exists. The underlying problem or goal.
+Why this commit exists — the underlying problem or goal,
+not the mechanical description of what was done.
 
-## Prompt That Would Produce This Diff
-A detailed instruction that would recreate this work from scratch.
-This is the "recipe" — if you gave this prompt to an AI agent with
-access to the codebase, it should produce an equivalent diff.
+## Seed Prompt
+The generative kernel of this change. Not a step-by-step
+script, but a dense, high-context instruction that carries
+enough architectural awareness and domain knowledge to
+reproduce an equivalent diff from first principles.
+
+Write it as if briefing a skilled engineer who has access
+to the codebase but no prior context on this specific task.
 
 ## Files Changed
 Summary with line counts for quick scanning.
@@ -146,270 +144,75 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 ### Types
 
-- `feat` — New feature
-- `fix` — Bug fix
-- `refactor` — Code restructuring
-- `docs` — Documentation
-- `test` — Adding tests
-- `chore` — Maintenance, dependencies
+`feat` | `fix` | `refactor` | `docs` | `test` | `chore`
 
-### Example (Feature)
+### When to use full format vs simplified
 
-```
-feat: implement interleaved MRoPE for text decoder
+- **Full format**: multi-file changes, architectural decisions, new modules, non-obvious fixes
+- **Simplified** (type + summary + brief why): typos, single-line fixes, dependency bumps
 
-## What Changed
-- mlx_qwen3_asr/mrope.py: New InterleavedMRoPE class with stride-3
-  frequency assignment across sections [24,20,20]. Computes cos/sin
-  embeddings for 3D position_ids (temporal, height, width).
-- mlx_qwen3_asr/model.py: TextAttention now uses InterleavedMRoPE
-  instead of nn.RoPE. Updated forward pass to pass position_ids.
-- tests/test_mrope.py: Golden test comparing MLX output against
-  PyTorch reference for known position_ids.
-
-## Root Intent
-The existing mlx-audio implementation uses standard nn.RoPE which
-produces incorrect embeddings for Qwen3-ASR. The model uses Multi-
-dimensional RoPE where frequency indices are interleaved across 3
-spatial dimensions, not chunked. Without this, transcription quality
-degrades significantly.
-
-## Prompt That Would Produce This Diff
-Implement interleaved MRoPE for Qwen3-ASR's text decoder in MLX.
-Reference the official apply_interleaved_mrope() in the Qwen3-ASR
-repo. Key details:
-1. mrope_section = [24, 20, 20] (temporal, height, width)
-2. Frequency assignment uses stride-3 interleaving: freq[0] → dim 0,
-   freq[1] → dim 1, freq[2] → dim 2, freq[3] → dim 0, ...
-3. position_ids shape is (batch, 3, seq_len) — one row per dimension
-4. Output cos/sin shape is (batch, seq_len, head_dim)
-Add a golden test comparing against PyTorch reference values.
-
-## Files Changed
-- mlx_qwen3_asr/mrope.py (+95)
-- mlx_qwen3_asr/model.py (+12, ~8)
-- tests/test_mrope.py (+48)
-
-Co-Authored-By: Claude <noreply@anthropic.com>
-```
-
-### Example (Bug Fix)
-
-```
-fix: correct Conv2d weight transpose for audio encoder
-
-## What Changed
-- mlx_qwen3_asr/convert.py: Fixed transpose order for Conv2d weights.
-  Was (out,in,kH,kW) → (out,kW,kH,in), now correctly (out,kH,kW,in).
-
-## Root Intent
-Audio encoder produced garbage features because Conv2d weights were
-transposed with swapped height/width dimensions. PyTorch uses
-(out_channels, in_channels, kH, kW) but MLX expects
-(out_channels, kH, kW, in_channels).
-
-## Prompt That Would Produce This Diff
-Fix the Conv2d weight transpose in convert.py. The current code swaps
-kH and kW during the PyTorch→MLX conversion. Correct order:
-PyTorch (out,in,kH,kW) → MLX (out,kH,kW,in) via transpose(0,2,3,1).
-
-## Files Changed
-- mlx_qwen3_asr/convert.py (~3)
-
-Co-Authored-By: Claude <noreply@anthropic.com>
-```
-
-### Why This Format
-
-1. **Git history becomes documentation** — Rich context lives in version control, not lost chat logs
-2. **Reproducible changes** — The prompt section is a recipe that could regenerate the diff
-3. **Onboarding via archaeology** — New devs/agents understand decisions by reading commits
-4. **Auditable reasoning** — The "why" is preserved alongside the "what"
-
-### When to Use This Format
-
-- **Always** for significant changes (multi-file, architectural, new modules)
-- **Simplified** for trivial fixes (typos, single-line changes) — just type + summary + brief why
-
-## Architecture Direction
-
-These are known structural improvements to pursue as the codebase evolves. They represent the target architecture — implement them when touching the relevant code.
-
-### Completed: Split model.py into encoder.py + decoder.py + model.py
-
-Model modules are now separated by responsibility:
-- `encoder.py` — `SinusoidalPositionEmbedding`, `AudioAttention`, `AudioEncoderLayer`, `AudioEncoder`, `_create_windowed_mask`
-- `decoder.py` — `TextAttention`, `SwiGLU`, `TextDecoderLayer`, `TextDecoder`, `KVCache`, `_create_causal_mask`
-- `model.py` — `Qwen3ASRModel` (top-level glue, audio injection, lm_head, compatibility re-exports)
-
-### Completed: model.prefill() and model.step() methods
-
-`generate()` now uses clean `model.prefill()` / `model.step()` / `model.step_many()` interface. No more reaching into model internals.
-
-### Completed: Session object
-
-`Session` class in `session.py` holds model, tokenizer, config. `_ModelHolder` upgraded to multi-slot dict cache keyed by `(path, dtype)`. Both explicit session and convenience `transcribe()` paths work.
-
-### Completed: Custom mel spectrogram
-
-Custom `log_mel_spectrogram()` / `stft()` in `audio.py` is now the default path. HF `WhisperFeatureExtractor` retained only as compatibility fallback for non-16kHz sample rates. `transformers` dependency is now tokenizer-only at runtime.
-
-### Design streaming around resumable KV cache
-
-Current streaming re-transcribes ALL accumulated audio every chunk — O(n²) and not real streaming. Target:
-- `generate()` accepts and returns KV cache
-- Streaming feeds new audio chunks through encoder, extends existing cache, decodes incrementally
-- `_split_stable_unstable` must handle CJK (no whitespace splitting)
-
-### Completed: Eliminate audio load round-trip
-
-Audio stays as numpy through feature extraction pipeline, converts to `mx.array` only at model entry. No redundant conversions.
-
-## Working with This Codebase
-
-### Before Making Changes
-
-1. Read `docs/ARCHITECTURE.md` for model structure
-2. Check the official Qwen3-ASR repo for reference implementation
-3. Run tests: `python -m pytest tests/`
-
-### After Making Changes
-
-1. Run tests: `python -m pytest tests/`
-2. Run linter: `ruff check mlx_qwen3_asr/`
-3. Update docs if architecture understanding changed
-
-### Key Technical Decisions
-
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Language | Python + MLX | MLX has no Rust bindings; Metal compute is language-agnostic |
-| Standalone vs mlx-audio | Standalone | mlx-audio cuts corners (no MRoPE), too many deps |
-| Tokenizer | HF transformers (for now) | Qwen2TokenizerFast already exists; custom BPE is a future milestone |
-| Audio loading | ffmpeg subprocess | Same as mlx-whisper, handles all formats |
-| Weight format | safetensors | Standard for MLX ecosystem |
-| RoPE | Custom interleaved MRoPE | MLX's nn.RoPE doesn't support 3D interleaved |
-| Mel spectrogram | Custom MLX implementation (default) | HF WhisperFeatureExtractor retained as fallback for non-16kHz |
-
-### Critical Correctness Rules
-
-1. **MRoPE must be interleaved** — sections [24,20,20] with stride-3 interleaving, NOT chunked
-2. **Audio encoder uses LayerNorm + bias** — different from text decoder
-3. **Text decoder uses RMSNorm + no bias** — different from audio encoder
-4. **Conv2d weight transpose** — PyTorch (out,in,kH,kW) → MLX (out,kH,kW,in)
-5. **Sinusoidal pos embeddings are NOT in weights** — must be recomputed at init
-
-### Known Bugs to Fix
-
-1. ~~**Audio injection bounds check**~~ **FIXED** — `ValueError` raised if placeholders exceed available audio features
-2. ~~**Model cache eviction**~~ **FIXED** — `_ModelHolder` is now a multi-slot dict keyed by `(path, dtype)`
-3. ~~**Bare except on fused attention**~~ **FIXED** — narrowed to `(TypeError, ValueError)` + selective `RuntimeError`
-4. **No language validation** (tokenizer.py) — `canonicalize_language()` exists with 14-language map, but unknown languages pass through silently. Add `warnings.warn()` for unrecognized language codes.
-
-## Verification Commands
-
-### Install (development)
+## Development Environment
 
 ```bash
-pip install -e ".[dev]"
-```
+# Setup — existing venv at .venv (Python 3.11), no pip installed — use uv
+uv pip install -e ".[dev]"
 
-### Quality gate (run before every PR)
+# Tests (363 passing)
+python -m pytest tests/              # full suite
+python -m pytest tests/ -x -q        # stop on first failure
 
-```bash
+# Lint
+ruff check mlx_qwen3_asr/
+
+# Quality gate (run before PRs)
 python scripts/quality_gate.py --mode fast
-```
 
-### Release gate (run before tags/releases — requires `qwen-asr` for parity test)
-
-```bash
+# Release gate (includes reference parity — requires qwen-asr)
 RUN_REFERENCE_PARITY=1 python scripts/quality_gate.py --mode release
-```
 
-### Benchmark (run for any performance-related change)
-
-```bash
-python scripts/benchmark_asr.py tests/fixtures/test_speech.wav --runs 5 --json-output docs/benchmarks/latest.json
-```
-
-### Quick smoke test
-
-```bash
+# Quick smoke test
 python -c "import mlx_qwen3_asr; print(mlx_qwen3_asr.transcribe('tests/fixtures/test_audio.wav'))"
-```
 
-### CLI
-
-```bash
+# CLI
 mlx-qwen3-asr tests/fixtures/test_audio.wav --verbose
 ```
 
-## Continuous Learning
-
-This project uses a **self-improving workflow** where AI agents document what they learn.
-
-### What to Document
-
-After completing non-trivial work, record:
-- **Gotchas discovered** — Things that wasted time or were surprising
-- **Patterns that worked** — Approaches effective for MLX model porting
-- **Failed approaches** — What didn't work and why
-
-### Where to Document
-
-| What | Where |
-|------|-------|
-| Cross-session learnings | `MEMORY.md` (auto-loaded, keep concise) |
-| Codebase conventions | This file (CLAUDE.md) |
-| Decision rationale | Commit messages + docs/DECISIONS.md |
-
-### Self-Reflection Triggers
-
-**After hitting an error or dead end:**
-1. What was the root cause?
-2. What did I try that didn't work?
-3. Would a future agent hit the same wall? If yes, document it.
-
 ## Publishing to PyPI
 
-### Prerequisites
+1. Bump version in `mlx_qwen3_asr/_version.py`
+2. Run quality gate: `python scripts/quality_gate.py --mode fast`
+3. Build: `uv build`
+4. Verify wheel: confirm 22 modules + `py.typed` + both assets
+5. Upload: `TWINE_USERNAME=__token__ TWINE_PASSWORD=<token> uv tool run twine upload dist/*`
+6. Verify: `pip install mlx-qwen3-asr==VERSION && mlx-qwen3-asr --help`
+7. Tag: `git tag v<VERSION> && git push origin v<VERSION>`
 
-- PyPI account: https://pypi.org (username: moona3k@gmail.com)
-- API token: create at https://pypi.org/manage/account/token/ (scope to `mlx-qwen3-asr` project)
+PyPI account: moona3k@gmail.com. Token scope: `mlx-qwen3-asr` project. Pure Python wheel (`py3-none-any`). License: `Apache-2.0` (string format in pyproject.toml, not table).
 
-### Release Checklist
+## Documentation
 
-1. **Bump version** in `mlx_qwen3_asr/_version.py`
-2. **Run quality gate**: `python scripts/quality_gate.py --mode fast`
-3. **Build**: `uv build` (creates `dist/*.whl` + `dist/*.tar.gz`)
-4. **Verify wheel contents**:
-   ```python
-   python -c "
-   import zipfile
-   zf = zipfile.ZipFile('dist/mlx_qwen3_asr-VERSION-py3-none-any.whl')
-   for n in sorted(zf.namelist()): print(n)
-   "
-   ```
-   Confirm: all 22 modules, `py.typed`, `assets/mel_filters.npz`, `assets/korean_dict_jieba.dict`
-5. **Upload**: `TWINE_USERNAME=__token__ TWINE_PASSWORD=<token> uv tool run twine upload dist/*`
-6. **Verify**: `pip install mlx-qwen3-asr==VERSION && mlx-qwen3-asr --help`
-7. **Git tag**: `git tag v<VERSION> && git push origin v<VERSION>`
+| File | Purpose |
+|------|---------|
+| `docs/ARCHITECTURE.md` | Qwen3-ASR architecture deep dive |
+| `docs/DECISIONS.md` | Key decisions and rationale |
+| `docs/QUALITY_GATE.md` | Merge/release quality gates |
+| `docs/BENCHMARKS.md` | Measured results and methodology |
+| `docs/GOLDEN_DATASET.md` | Golden dataset policy and evaluation commands |
+| `docs/COMPARISON.md` | Comparison with alternatives (mlx-audio, whisper, etc.) |
+| `docs/RESEARCH.md` | Research findings, model analysis |
+| `docs/BENCHMARKING.md` | Runtime measurement protocol and methodology |
 
-### Build Tools
+## Continuous Learning
 
-- `uv build` — preferred (fast, no venv needed)
-- `python -m build` — fallback (needs `pip install build`)
-- `twine upload` — PyPI upload (via `uv tool run twine` or `pip install twine`)
+After non-trivial work, record gotchas, effective patterns, and failed approaches. Cross-session learnings go in `MEMORY.md` (auto-loaded). Codebase conventions go here. Decision rationale goes in commit messages and `docs/DECISIONS.md`.
 
-### Notes
+**Before touching model code**: read `docs/ARCHITECTURE.md` and check the official Qwen3-ASR repo for reference implementation.
 
-- Package is `py3-none-any` (pure Python wheel)
-- License format: `license = "Apache-2.0"` (string, not table — avoids setuptools deprecation)
-- First published: v0.1.0, 2026-02-14
+**After hitting a dead end**: identify root cause, note what didn't work, document if a future agent would hit the same wall.
 
-## Key References
+## References
 
-- Official repo: https://github.com/QwenLM/Qwen3-ASR
+- Official Qwen3-ASR: https://github.com/QwenLM/Qwen3-ASR
 - Paper: https://arxiv.org/abs/2601.21337
 - mlx-whisper (pattern): https://github.com/ml-explore/mlx-examples/tree/main/whisper
-- mlx-vlm MRoPE ref: https://github.com/Blaizzy/mlx-vlm
+- Swift port (third-party): https://github.com/ivan-digital/qwen3-asr-swift

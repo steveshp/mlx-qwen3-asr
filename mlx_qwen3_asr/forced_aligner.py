@@ -1,8 +1,6 @@
 """Forced alignment wrapper for word-level timestamps.
 
-Supports:
-- `qwen_asr` backend (official PyTorch forced aligner)
-- `mlx` backend (native MLX prototype path)
+Native MLX forced aligner backend only.
 """
 
 from __future__ import annotations
@@ -19,9 +17,7 @@ import numpy as np
 from .audio import compute_features
 
 DEFAULT_FORCED_ALIGNER_MODEL = "Qwen/Qwen3-ForcedAligner-0.6B"
-ALIGNER_BACKEND_QWEN_ASR = "qwen_asr"
 ALIGNER_BACKEND_MLX = "mlx"
-ALIGNER_BACKEND_AUTO = "auto"
 
 
 @dataclass(frozen=True)
@@ -397,60 +393,13 @@ class _MLXForcedAlignerBackend:
         return ForcedAlignTextProcessor.parse_timestamp_ms(words, timestamp_ms)
 
 
-class _QwenASRForcedAlignerBackend:
-    """Official qwen-asr forced aligner backend."""
-
-    def __init__(self, model_path: str):
-        try:
-            from qwen_asr import Qwen3ForcedAligner  # type: ignore
-        except ImportError as e:
-            raise RuntimeError(
-                "Timestamps require optional dependency `qwen-asr`. "
-                "Install with: pip install qwen-asr"
-            ) from e
-
-        # CPU keeps this portable and avoids silently requiring CUDA.
-        self._backend = Qwen3ForcedAligner.from_pretrained(
-            model_path,
-            device_map="cpu",
-        )
-
-    def align(self, audio: np.ndarray, text: str, language: str) -> list[AlignedWord]:
-        if text.strip() == "":
-            return []
-
-        results = self._backend.align(
-            audio=[(audio.astype(np.float32), 16000)],
-            text=[text],
-            language=[language],
-        )
-        if not results:
-            return []
-
-        first = results[0]
-        items = getattr(first, "items", None)
-        if items is None:
-            items = first
-
-        out: list[AlignedWord] = []
-        for item in items:
-            out.append(
-                AlignedWord(
-                    text=str(getattr(item, "text", "")),
-                    start_time=float(getattr(item, "start_time", 0.0)),
-                    end_time=float(getattr(item, "end_time", 0.0)),
-                )
-            )
-        return out
-
-
 class ForcedAligner:
     """Word-level forced aligner.
 
     Args:
         model_path: HF repo ID or local path for the forced aligner model.
         dtype: MLX dtype for native backend paths.
-        backend: One of `qwen_asr`, `mlx`, `auto`.
+        backend: Must be `mlx`.
     """
 
     def __init__(
@@ -468,37 +417,16 @@ class ForcedAligner:
         if self._backend is not None:
             return
 
-        if self.backend not in {
-            ALIGNER_BACKEND_QWEN_ASR,
-            ALIGNER_BACKEND_MLX,
-            ALIGNER_BACKEND_AUTO,
-        }:
+        if self.backend != ALIGNER_BACKEND_MLX:
             raise RuntimeError(
                 f"Unsupported aligner backend '{self.backend}'. "
-                f"Expected one of: {ALIGNER_BACKEND_QWEN_ASR}, "
-                f"{ALIGNER_BACKEND_MLX}, {ALIGNER_BACKEND_AUTO}."
+                f"Expected: {ALIGNER_BACKEND_MLX}."
             )
-
-        mlx_err: Optional[Exception] = None
-        if self.backend in {ALIGNER_BACKEND_MLX, ALIGNER_BACKEND_AUTO}:
-            try:
-                self._backend = _MLXForcedAlignerBackend(self.model_path, self.dtype)
-                return
-            except Exception as e:  # pragma: no cover - exercised via runtime integration
-                mlx_err = e
-                if self.backend == ALIGNER_BACKEND_MLX:
-                    raise RuntimeError(f"Failed to load MLX aligner backend: {e}") from e
-
         try:
-            self._backend = _QwenASRForcedAlignerBackend(self.model_path)
+            self._backend = _MLXForcedAlignerBackend(self.model_path, self.dtype)
             return
-        except Exception as e:
-            if mlx_err is not None:
-                raise RuntimeError(
-                    "Failed to load both MLX and qwen-asr aligner backends. "
-                    f"mlx_error={mlx_err}; qwen_asr_error={e}"
-                ) from e
-            raise
+        except Exception as e:  # pragma: no cover - exercised via runtime integration
+            raise RuntimeError(f"Failed to load MLX aligner backend: {e}") from e
 
     def align(
         self,

@@ -1,0 +1,23 @@
+{
+  "audio_path": "/tmp/test_speech_30s.wav",
+  "audio_duration_sec": 30.0,
+  "model": "Qwen/Qwen3-ASR-0.6B",
+  "dtype": "float16",
+  "chunk_size_sec": 2.0,
+  "max_context_sec": 30.0,
+  "unfixed_chunk_num": 2,
+  "unfixed_token_num": 5,
+  "num_chunks": 15,
+  "runs": 1,
+  "warmup_runs": 0,
+  "latency_sec": {
+    "total_mean": 11.15686516702408,
+    "total_median": 11.15686516702408,
+    "total_min": 11.15686516702408,
+    "total_max": 11.15686516702408,
+    "chunk_mean_mean": 0.7437897333332028,
+    "chunk_p95_mean": 2.1060180043015855,
+    "finish_mean": 2.207991201430559e-06
+  },
+  "rtf": 0.3718955055674693
+}

@@ -1,35 +1,31 @@
 """Tests for mlx_qwen3_asr/streaming.py."""
 
-import importlib
 from types import SimpleNamespace
 
+import mlx.core as mx
 import numpy as np
 
+import mlx_qwen3_asr.streaming as smod
 from mlx_qwen3_asr.config import DEFAULT_MODEL_ID
 from mlx_qwen3_asr.streaming import (
     UNFIXED_TOKEN_NUM,
     StreamingState,
+    _append_chunk_text,
     _split_stable_unstable,
     feed_audio,
     finish_streaming,
     init_streaming,
 )
 
-# ---------------------------------------------------------------------------
-# init_streaming
-# ---------------------------------------------------------------------------
-
 
 class TestInitStreaming:
-    """Test init_streaming() returns correct initial state."""
-
     def test_default_state(self):
         state = init_streaming()
         assert isinstance(state, StreamingState)
         assert state.unfixed_chunk_num == 2
         assert state.unfixed_token_num == 5
-        assert state.chunk_size_samples == 32000  # 2.0 * 16000
-        assert state.max_context_samples == 480000  # 30.0 * 16000
+        assert state.chunk_size_samples == 32000
+        assert state.max_context_samples == 480000
         assert state._model_path == DEFAULT_MODEL_ID
         assert state.text == ""
         assert state.language == "unknown"
@@ -40,11 +36,11 @@ class TestInitStreaming:
 
     def test_custom_chunk_size(self):
         state = init_streaming(chunk_size_sec=5.0)
-        assert state.chunk_size_samples == 80000  # 5.0 * 16000
+        assert state.chunk_size_samples == 80000
 
     def test_custom_sample_rate(self):
         state = init_streaming(chunk_size_sec=2.0, sample_rate=8000)
-        assert state.chunk_size_samples == 16000  # 2.0 * 8000
+        assert state.chunk_size_samples == 16000
 
     def test_custom_context_window(self):
         state = init_streaming(max_context_sec=5.0, sample_rate=8000)
@@ -75,15 +71,31 @@ class TestInitStreaming:
         with np.testing.assert_raises(ValueError):
             init_streaming(chunk_size_sec=2.0, max_context_sec=1.0)
 
+    def test_invalid_max_new_tokens_raises(self):
+        with np.testing.assert_raises(ValueError):
+            init_streaming(max_new_tokens=0)
 
-# ---------------------------------------------------------------------------
-# StreamingState defaults
-# ---------------------------------------------------------------------------
+    def test_tail_refine_flag(self):
+        state = init_streaming(enable_tail_refine=False)
+        assert state.enable_tail_refine is False
+        assert state.finalization_mode == "latency"
+
+    def test_finalization_mode_accuracy(self):
+        state = init_streaming(finalization_mode="accuracy")
+        assert state.finalization_mode == "accuracy"
+        assert state.enable_tail_refine is True
+
+    def test_finalization_mode_latency(self):
+        state = init_streaming(finalization_mode="latency")
+        assert state.finalization_mode == "latency"
+        assert state.enable_tail_refine is False
+
+    def test_invalid_finalization_mode_raises(self):
+        with np.testing.assert_raises(ValueError):
+            init_streaming(finalization_mode="fast")
 
 
 class TestStreamingStateDefaults:
-    """Test StreamingState default values."""
-
     def test_default_buffer(self):
         state = StreamingState()
         assert isinstance(state.buffer, np.ndarray)
@@ -96,16 +108,13 @@ class TestStreamingStateDefaults:
         assert len(state.audio_accum) == 0
 
     def test_default_text(self):
-        state = StreamingState()
-        assert state.text == ""
+        assert StreamingState().text == ""
 
     def test_default_language(self):
-        state = StreamingState()
-        assert state.language == "unknown"
+        assert StreamingState().language == "unknown"
 
     def test_default_chunk_id(self):
-        state = StreamingState()
-        assert state.chunk_id == 0
+        assert StreamingState().chunk_id == 0
 
     def test_default_unfixed_controls(self):
         state = StreamingState()
@@ -113,47 +122,32 @@ class TestStreamingStateDefaults:
         assert state.unfixed_token_num == 5
 
     def test_default_chunk_size_samples(self):
-        state = StreamingState()
-        assert state.chunk_size_samples == 32000
+        assert StreamingState().chunk_size_samples == 32000
 
     def test_default_max_context_samples(self):
-        state = StreamingState()
-        assert state.max_context_samples == 480000
+        assert StreamingState().max_context_samples == 480000
 
     def test_default_stable_text(self):
-        state = StreamingState()
-        assert state.stable_text == ""
-
-
-# ---------------------------------------------------------------------------
-# _split_stable_unstable
-# ---------------------------------------------------------------------------
+        assert StreamingState().stable_text == ""
 
 
 class TestSplitStableUnstable:
-    """Test _split_stable_unstable() with various inputs."""
-
     def test_short_text_all_unstable(self):
-        """Text with fewer words than unfixed_tokens is all unstable."""
         stable, unstable = _split_stable_unstable("", "hello world")
-        # "hello world" = 2 words, unfixed_tokens=5 by default
         assert stable == ""
         assert unstable == "hello world"
 
     def test_long_text_splits_correctly(self):
-        """Text with more words than unfixed_tokens should split."""
         text = "one two three four five six seven eight"
         stable, unstable = _split_stable_unstable("", text)
-        # 8 words, unfixed_tokens=5 -> stable = first 3, unstable = last 5
         assert stable == "one two three"
         assert unstable == "four five six seven eight"
 
     def test_preserves_previous_stable_text(self):
-        """New stable text should be at least as long as previous stable."""
         prev_stable = "this is already stable text that is long"
-        text = "hello world"  # Too short, all unstable
-        stable, unstable = _split_stable_unstable(prev_stable, text)
+        stable, unstable = _split_stable_unstable(prev_stable, "hello world")
         assert stable == prev_stable
+        assert unstable == "hello world"
 
     def test_empty_text(self):
         stable, unstable = _split_stable_unstable("", "")
@@ -161,7 +155,6 @@ class TestSplitStableUnstable:
         assert unstable == ""
 
     def test_exactly_unfixed_tokens(self):
-        """Text with exactly unfixed_tokens words should be all unstable."""
         words = ["word"] * UNFIXED_TOKEN_NUM
         text = " ".join(words)
         stable, unstable = _split_stable_unstable("", text)
@@ -169,7 +162,6 @@ class TestSplitStableUnstable:
         assert unstable == text
 
     def test_one_more_than_unfixed(self):
-        """Text with unfixed_tokens + 1 words: 1 stable, rest unstable."""
         words = [f"word{i}" for i in range(UNFIXED_TOKEN_NUM + 1)]
         text = " ".join(words)
         stable, unstable = _split_stable_unstable("", text)
@@ -177,8 +169,7 @@ class TestSplitStableUnstable:
         assert unstable == " ".join(words[1:])
 
     def test_custom_unfixed_tokens(self):
-        text = "a b c d e f g h"
-        stable, unstable = _split_stable_unstable("", text, unfixed_tokens=3)
+        stable, unstable = _split_stable_unstable("", "a b c d e f g h", unfixed_tokens=3)
         assert stable == "a b c d e"
         assert unstable == "f g h"
 
@@ -189,26 +180,37 @@ class TestSplitStableUnstable:
         assert unstable == text[-3:]
 
     def test_stable_grows_monotonically(self):
-        """Stable text should only grow, never shrink."""
         prev_stable = "one two three"
-        # New transcription has more words
         text = "one two three four five six seven eight nine ten"
-        stable, unstable = _split_stable_unstable(prev_stable, text)
+        stable, _ = _split_stable_unstable(prev_stable, text)
         assert len(stable) >= len(prev_stable)
 
 
-class TestFeedAudio:
-    """Test rolling streaming decode behavior."""
+class TestAppendChunkText:
+    def test_exact_repeat_is_deduped(self):
+        assert _append_chunk_text("a b c", "a b c", "English") == "a b c"
 
+    def test_suffix_prefix_overlap_appends_only_tail(self):
+        assert _append_chunk_text("a b c", "b c d", "English") == "a b c d"
+
+    def test_cjk_overlap_appends_without_spaces(self):
+        assert _append_chunk_text("你好世界", "世界和平", "Chinese") == "你好世界和平"
+
+    def test_rewrite_superset_prefers_replacement(self):
+        cur = "The quick brown fox jumps over the lazy."
+        new = "The quick brown fox jumps over the lazy dog."
+        assert _append_chunk_text(cur, new, "English") == new
+
+
+class TestFeedAudio:
     def test_feed_audio_reuses_same_state_object(self, monkeypatch):
         calls = []
 
-        def fake_transcribe(audio, model, verbose):  # noqa: ANN001
-            calls.append((len(audio), model, verbose))
-            return SimpleNamespace(text="hello world", language="English")
+        def fake_decode(audio, state, model=None):  # noqa: ANN001
+            calls.append((len(audio), model))
+            return "hello world", "English"
 
-        transcribe_module = importlib.import_module("mlx_qwen3_asr.transcribe")
-        monkeypatch.setattr(transcribe_module, "transcribe", fake_transcribe)
+        monkeypatch.setattr(smod, "_decode_chunk_incremental", fake_decode)
 
         state = init_streaming(chunk_size_sec=1.0, sample_rate=10)
         out = feed_audio(np.ones(10, dtype=np.float32), state)
@@ -216,29 +218,40 @@ class TestFeedAudio:
         assert state.chunk_id == 1
         assert calls[0][0] == 10
 
-    def test_feed_audio_caps_decode_context_window(self, monkeypatch):
+    def test_feed_audio_decodes_only_new_chunk(self, monkeypatch):
         call_lengths = []
 
-        def fake_transcribe(audio, model, verbose):  # noqa: ANN001
+        def fake_decode(audio, state, model=None):  # noqa: ANN001
             call_lengths.append(len(audio))
-            return SimpleNamespace(text="a b c d e f g", language="English")
+            return "a b c d e f g", "English"
 
-        transcribe_module = importlib.import_module("mlx_qwen3_asr.transcribe")
-        monkeypatch.setattr(transcribe_module, "transcribe", fake_transcribe)
+        monkeypatch.setattr(smod, "_decode_chunk_incremental", fake_decode)
 
         state = init_streaming(chunk_size_sec=1.0, max_context_sec=2.0, sample_rate=10)
         feed_audio(np.ones(10, dtype=np.float32), state)
         feed_audio(np.ones(10, dtype=np.float32), state)
         feed_audio(np.ones(10, dtype=np.float32), state)
 
-        assert call_lengths == [10, 20, 20]
+        assert call_lengths == [10, 10, 10]
+
+    def test_feed_audio_consumes_multiple_full_chunks_in_single_call(self, monkeypatch):
+        call_lengths = []
+
+        def fake_decode(audio, state, model=None):  # noqa: ANN001
+            call_lengths.append(len(audio))
+            return "chunk", "English"
+
+        monkeypatch.setattr(smod, "_decode_chunk_incremental", fake_decode)
+
+        state = init_streaming(chunk_size_sec=1.0, sample_rate=10)
+        feed_audio(np.ones(25, dtype=np.float32), state)
+
+        assert call_lengths == [10, 10]
+        assert state.chunk_id == 2
+        assert len(state.buffer) == 5
 
     def test_feed_audio_caps_audio_accum_memory(self, monkeypatch):
-        def fake_transcribe(audio, model, verbose):  # noqa: ANN001
-            return SimpleNamespace(text="a b c d e f g", language="English")
-
-        transcribe_module = importlib.import_module("mlx_qwen3_asr.transcribe")
-        monkeypatch.setattr(transcribe_module, "transcribe", fake_transcribe)
+        monkeypatch.setattr(smod, "_decode_chunk_incremental", lambda *_a, **_k: ("ok", "English"))
 
         state = init_streaming(chunk_size_sec=1.0, max_context_sec=2.0, sample_rate=10)
         feed_audio(np.ones(10, dtype=np.float32), state)
@@ -248,11 +261,11 @@ class TestFeedAudio:
         assert len(state.audio_accum) == 20
 
     def test_feed_audio_honors_unfixed_chunk_warmup(self, monkeypatch):
-        def fake_transcribe(audio, model, verbose):  # noqa: ANN001
-            return SimpleNamespace(text="one two three four five six", language="English")
-
-        transcribe_module = importlib.import_module("mlx_qwen3_asr.transcribe")
-        monkeypatch.setattr(transcribe_module, "transcribe", fake_transcribe)
+        monkeypatch.setattr(
+            smod,
+            "_decode_chunk_incremental",
+            lambda *_a, **_k: ("one two three four", "English"),
+        )
 
         state = init_streaming(
             chunk_size_sec=1.0,
@@ -262,23 +275,21 @@ class TestFeedAudio:
         )
 
         feed_audio(np.ones(10, dtype=np.float32), state)
-        # First chunk is warmup: stable text should not advance.
         assert state.stable_text == ""
 
         feed_audio(np.ones(10, dtype=np.float32), state)
-        # After warmup, keep trailing 2 words unstable.
-        assert state.stable_text == "one two three four"
+        assert state.stable_text == "one two"
 
     def test_feed_audio_accepts_int16_pcm(self, monkeypatch):
         captured = {}
 
-        def fake_transcribe(audio, model, verbose):  # noqa: ANN001
-            captured["dtype"] = np.asarray(audio).dtype
-            captured["max_abs"] = float(np.max(np.abs(np.asarray(audio))))
-            return SimpleNamespace(text="hello", language="English")
+        def fake_decode(audio, state, model=None):  # noqa: ANN001
+            arr = np.asarray(audio)
+            captured["dtype"] = arr.dtype
+            captured["max_abs"] = float(np.max(np.abs(arr)))
+            return "hello", "English"
 
-        transcribe_module = importlib.import_module("mlx_qwen3_asr.transcribe")
-        monkeypatch.setattr(transcribe_module, "transcribe", fake_transcribe)
+        monkeypatch.setattr(smod, "_decode_chunk_incremental", fake_decode)
 
         state = init_streaming(chunk_size_sec=1.0, sample_rate=10)
         feed_audio(np.full((10,), 16384, dtype=np.int16), state)
@@ -289,12 +300,11 @@ class TestFeedAudio:
     def test_feed_audio_downmixes_multichannel_input(self, monkeypatch):
         call_lengths = []
 
-        def fake_transcribe(audio, model, verbose):  # noqa: ANN001
+        def fake_decode(audio, state, model=None):  # noqa: ANN001
             call_lengths.append(len(audio))
-            return SimpleNamespace(text="hello", language="English")
+            return "hello", "English"
 
-        transcribe_module = importlib.import_module("mlx_qwen3_asr.transcribe")
-        monkeypatch.setattr(transcribe_module, "transcribe", fake_transcribe)
+        monkeypatch.setattr(smod, "_decode_chunk_incremental", fake_decode)
 
         state = init_streaming(chunk_size_sec=0.5, sample_rate=10)
         feed_audio(np.ones((2, 5), dtype=np.float32), state)
@@ -308,13 +318,11 @@ class TestFeedAudio:
 
     def test_feed_audio_empty_array_is_noop(self, monkeypatch):
         calls = []
-
-        def fake_transcribe(audio, model, verbose):  # noqa: ANN001
-            calls.append(1)
-            return SimpleNamespace(text="hello", language="English")
-
-        transcribe_module = importlib.import_module("mlx_qwen3_asr.transcribe")
-        monkeypatch.setattr(transcribe_module, "transcribe", fake_transcribe)
+        monkeypatch.setattr(
+            smod,
+            "_decode_chunk_incremental",
+            lambda *_a, **_k: (calls.append(1), "English"),  # type: ignore[misc]
+        )
 
         state = init_streaming(chunk_size_sec=1.0, sample_rate=10)
         out = feed_audio(np.array([], dtype=np.float32), state)
@@ -325,14 +333,11 @@ class TestFeedAudio:
 
 
 class TestFinishStreaming:
-    """Test finalization behavior for streaming decode state."""
-
     def test_finish_streaming_skips_decode_when_no_pending_buffer(self, monkeypatch):
-        def fake_transcribe(audio, model, verbose):  # noqa: ANN001
+        def fail_decode(*_args, **_kwargs):  # noqa: ANN001
             raise AssertionError("finish_streaming should not decode without pending buffer")
 
-        transcribe_module = importlib.import_module("mlx_qwen3_asr.transcribe")
-        monkeypatch.setattr(transcribe_module, "transcribe", fake_transcribe)
+        monkeypatch.setattr(smod, "_decode_chunk_incremental", fail_decode)
 
         state = init_streaming(chunk_size_sec=1.0, sample_rate=10)
         state.audio_accum = np.ones(10, dtype=np.float32)
@@ -348,12 +353,11 @@ class TestFinishStreaming:
     def test_finish_streaming_decodes_pending_tail(self, monkeypatch):
         calls = []
 
-        def fake_transcribe(audio, model, verbose):  # noqa: ANN001
+        def fake_decode(audio, state, model=None):  # noqa: ANN001
             calls.append(len(audio))
-            return SimpleNamespace(text="tail text", language="English")
+            return "tail text", "English"
 
-        transcribe_module = importlib.import_module("mlx_qwen3_asr.transcribe")
-        monkeypatch.setattr(transcribe_module, "transcribe", fake_transcribe)
+        monkeypatch.setattr(smod, "_decode_chunk_incremental", fake_decode)
 
         state = init_streaming(
             chunk_size_sec=1.0,
@@ -371,3 +375,159 @@ class TestFinishStreaming:
         assert len(state.buffer) == 0
         assert state.language == "English"
         assert state.stable_text == state.text
+
+    def test_finish_streaming_falls_back_when_tail_makes_no_progress(self, monkeypatch):
+        monkeypatch.setattr(
+            smod,
+            "_decode_chunk_incremental",
+            lambda *_a, **_k: ("same text", "English"),
+        )
+
+        calls = {"full": 0}
+
+        def fake_transcribe(audio, model, max_new_tokens, verbose):  # noqa: ANN001
+            calls["full"] += 1
+            return SimpleNamespace(text="same text plus tail", language="English")
+
+        transcribe_module = __import__("mlx_qwen3_asr.transcribe", fromlist=["transcribe"])
+        monkeypatch.setattr(transcribe_module, "transcribe", fake_transcribe)
+
+        state = init_streaming(chunk_size_sec=1.0, sample_rate=10)
+        state.text = "same text"
+        state.language = "English"
+        state.buffer = np.ones(3, dtype=np.float32)
+        state.audio_accum = np.ones(13, dtype=np.float32)
+
+        out = finish_streaming(state)
+        assert out is state
+        assert calls["full"] == 1
+        assert state.text == "same text plus tail"
+        assert len(state.buffer) == 0
+        assert state.stable_text == state.text
+
+    def test_finish_streaming_fallback_uses_bounded_refine_window(self, monkeypatch):
+        monkeypatch.setattr(
+            smod,
+            "_decode_chunk_incremental",
+            lambda *_a, **_k: ("prefix", "English"),
+        )
+
+        seen = {}
+
+        def fake_transcribe(audio, model, max_new_tokens, verbose):  # noqa: ANN001
+            seen["len"] = len(np.asarray(audio))
+            return SimpleNamespace(text="tail", language="English")
+
+        transcribe_module = __import__("mlx_qwen3_asr.transcribe", fromlist=["transcribe"])
+        monkeypatch.setattr(transcribe_module, "transcribe", fake_transcribe)
+
+        state = init_streaming(chunk_size_sec=1.0, sample_rate=10)
+        state.text = "prefix"
+        state.language = "English"
+        state.buffer = np.ones(3, dtype=np.float32)
+        state.audio_accum = np.ones(25, dtype=np.float32)
+
+        out = finish_streaming(state)
+        assert out is state
+        assert seen["len"] == 13  # chunk_size_samples (10) + tail (3)
+        assert state.text == "prefix tail"
+        assert len(state.buffer) == 0
+
+    def test_finish_streaming_skip_fallback_when_disabled(self, monkeypatch):
+        monkeypatch.setattr(
+            smod,
+            "_decode_chunk_incremental",
+            lambda *_a, **_k: ("same text", "English"),
+        )
+
+        def fail_transcribe(*_a, **_k):  # noqa: ANN001
+            raise AssertionError("fallback transcribe should be disabled")
+
+        transcribe_module = __import__("mlx_qwen3_asr.transcribe", fromlist=["transcribe"])
+        monkeypatch.setattr(transcribe_module, "transcribe", fail_transcribe)
+
+        state = init_streaming(chunk_size_sec=1.0, sample_rate=10, enable_tail_refine=False)
+        state.text = "same text"
+        state.language = "English"
+        state.buffer = np.ones(3, dtype=np.float32)
+        state.audio_accum = np.ones(13, dtype=np.float32)
+
+        out = finish_streaming(state)
+        assert out is state
+        assert state.text == "same text"
+        assert len(state.buffer) == 0
+
+
+class TestIncrementalDecode:
+    def test_decode_chunk_reuses_single_cache_instance(self, monkeypatch):
+        state = init_streaming(chunk_size_sec=1.0, sample_rate=10, max_new_tokens=4)
+
+        class _FakeModel:
+            audio_token_id = 151676
+
+            def __init__(self):
+                self.create_cache_calls = 0
+                self.prefill_cache_ids = []
+                self.prefill_starts = []
+
+            def create_cache(self):
+                self.create_cache_calls += 1
+                return object()
+
+            def audio_tower(self, mel, feature_lens):  # noqa: ANN001
+                return mx.zeros((1, 2, 8), dtype=mx.float16), mx.array([2], dtype=mx.int32)
+
+            def prefill(self, input_ids, audio_features, position_ids, cache):  # noqa: ANN001
+                self.prefill_cache_ids.append(id(cache))
+                self.prefill_starts.append(int(np.array(position_ids)[0, 0, 0]))
+                return mx.array([[[0.0, 1.0, 0.0]]], dtype=mx.float32)
+
+        class _FakeTokenizer:
+            EOS_TOKEN_IDS = [2]
+
+            def build_prompt_tokens(self, n_audio_tokens, language=None):  # noqa: ANN001
+                return [11, 12]
+
+            def build_followup_prompt_tokens(self, n_audio_tokens, language=None):  # noqa: ANN001
+                return [13]
+
+            def decode(self, ids):  # noqa: ANN001
+                return "language English<asr_text>hello"
+
+        fake_model = _FakeModel()
+        fake_tokenizer = _FakeTokenizer()
+
+        monkeypatch.setattr(
+            smod,
+            "_ensure_stream_runtime",
+            lambda _state, _model: (fake_model, fake_tokenizer, mx.float16),
+        )
+        monkeypatch.setattr(
+            smod,
+            "compute_features",
+            lambda _audio: (
+                mx.zeros((1, 128, 10), dtype=mx.float32),
+                mx.array([10], dtype=mx.int32),
+            ),
+        )
+        monkeypatch.setattr(
+            smod,
+            "_decode_tokens_incremental",
+            lambda **_kwargs: [1],
+        )
+        monkeypatch.setattr(
+            smod,
+            "parse_asr_output",
+            lambda _raw, user_language=None: ("English", "hello"),
+        )
+
+        text_1, lang_1 = smod._decode_chunk_incremental(np.ones(10, dtype=np.float32), state)
+        text_2, lang_2 = smod._decode_chunk_incremental(np.ones(10, dtype=np.float32), state)
+
+        assert (text_1, lang_1) == ("hello", "English")
+        assert (text_2, lang_2) == ("hello", "English")
+        assert fake_model.create_cache_calls == 1
+        assert len(fake_model.prefill_cache_ids) == 2
+        assert fake_model.prefill_cache_ids[0] == fake_model.prefill_cache_ids[1]
+        assert fake_model.prefill_starts == [0, 3]
+        assert state._next_position == 5

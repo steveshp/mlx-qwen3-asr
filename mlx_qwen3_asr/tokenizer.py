@@ -216,6 +216,36 @@ class Tokenizer:
 
         return tokens
 
+    def build_followup_prompt_tokens(
+        self,
+        n_audio_tokens: int,
+        language: Optional[str] = None,
+    ) -> list[int]:
+        """Build a follow-up chat turn for incremental streaming.
+
+        Template:
+            <|im_end|>
+            <|im_start|>user
+            <|audio_start|><|audio_pad|>*N<|audio_end|><|im_end|>
+            <|im_start|>assistant
+        """
+        tokens = [self.IM_END_ID, self._newline_id, self.IM_START_ID]
+        tokens.extend(self._user_tokens)
+        tokens.append(self.AUDIO_START_TOKEN_ID)
+        tokens.extend([self.AUDIO_TOKEN_ID] * n_audio_tokens)
+        tokens.append(self.AUDIO_END_TOKEN_ID)
+        tokens.append(self.IM_END_ID)
+        tokens.append(self._newline_id)
+        tokens.append(self.IM_START_ID)
+        tokens.extend(self._assistant_tokens)
+
+        if language:
+            canon_lang = canonicalize_language(language)
+            if canon_lang:
+                tokens.extend(self.encode(f"language {canon_lang}<asr_text>"))
+
+        return tokens
+
 
 class _TokenizerHolder:
     """Simple process-local cache for tokenizer instances."""

@@ -104,6 +104,35 @@ def _norm_text_list(items) -> list[str]:
     return out
 
 
+def _load_qwen_asr_reference(model_path: str):
+    try:
+        from qwen_asr import Qwen3ForcedAligner  # type: ignore
+    except ImportError as exc:  # pragma: no cover - integration dependency gate
+        raise RuntimeError(
+            "Aligner parity reference requires optional dependency `qwen-asr`. "
+            "Install with: pip install qwen-asr"
+        ) from exc
+    return Qwen3ForcedAligner.from_pretrained(model_path, device_map="cpu")
+
+
+def _align_qwen_asr(
+    ref_backend,
+    audio: np.ndarray,
+    text: str,
+    language: str,
+):
+    out = ref_backend.align(
+        audio=[(audio.astype(np.float32), 16000)],
+        text=[text],
+        language=[language],
+    )
+    if not out:
+        return []
+    first = out[0]
+    items = getattr(first, "items", None)
+    return items if items is not None else first
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Evaluate MLX/qwen_asr aligner parity.")
     parser.add_argument(
@@ -164,7 +193,7 @@ def main() -> int:
         raise RuntimeError(f"No samples found under {split_root}")
 
     aligner_mlx = ForcedAligner(model_path=args.model, dtype=dtype, backend="mlx")
-    aligner_qwen = ForcedAligner(model_path=args.model, dtype=dtype, backend="qwen_asr")
+    aligner_qwen = _load_qwen_asr_reference(args.model)
 
     rows: list[dict] = []
     mlx_lat: list[float] = []
@@ -180,7 +209,7 @@ def main() -> int:
         mlx_lat.append(time.perf_counter() - t0)
 
         t1 = time.perf_counter()
-        qwen_items = aligner_qwen.align(audio, sample.text, args.language)
+        qwen_items = _align_qwen_asr(aligner_qwen, audio, sample.text, args.language)
         qwen_lat.append(time.perf_counter() - t1)
 
         mlx_words = _norm_text_list(mlx_items)

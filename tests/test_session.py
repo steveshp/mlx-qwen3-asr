@@ -127,3 +127,82 @@ def test_session_with_preloaded_model_uses_embedded_tokenizer_metadata(monkeypat
     session = sessmod.Session(_DummyModel())
     assert session.model_id == "repo/preloaded"
     assert created["tokenizer_path"] == "/tmp/preloaded-tokenizer-model"
+
+
+def test_session_init_streaming_forwards_session_defaults(monkeypatch):
+    class _DummyTokenizer:
+        def __init__(self, path):  # noqa: ANN001
+            self.path = path
+
+    class _DummyModel:
+        pass
+
+    calls = {}
+
+    monkeypatch.setattr(sessmod, "Tokenizer", _DummyTokenizer)
+    monkeypatch.setattr(sessmod, "load_model", lambda model, dtype: (_DummyModel(), object()))
+    monkeypatch.setattr(sessmod, "_resolve_path", lambda model: "/tmp/resolved-model")
+
+    def fake_streaming_init(**kwargs):  # noqa: ANN003
+        calls.update(kwargs)
+        return object()
+
+    monkeypatch.setattr(sessmod.streaming_mod, "init_streaming", fake_streaming_init)
+
+    session = sessmod.Session("repo/a", dtype=mx.float32)
+    state = session.init_streaming(
+        chunk_size_sec=1.5,
+        max_context_sec=10.0,
+        max_new_tokens=77,
+        finalization_mode="latency",
+        enable_tail_refine=None,
+    )
+
+    assert state is not None
+    assert calls["model"] == "repo/a"
+    assert calls["dtype"] == mx.float32
+    assert calls["chunk_size_sec"] == 1.5
+    assert calls["max_context_sec"] == 10.0
+    assert calls["max_new_tokens"] == 77
+    assert calls["finalization_mode"] == "latency"
+    assert calls["enable_tail_refine"] is None
+
+
+def test_session_streaming_methods_use_loaded_model(monkeypatch):
+    class _DummyTokenizer:
+        def __init__(self, path):  # noqa: ANN001
+            self.path = path
+
+    class _DummyModel:
+        pass
+
+    calls = {"feed": None, "finish": None}
+
+    monkeypatch.setattr(sessmod, "Tokenizer", _DummyTokenizer)
+    monkeypatch.setattr(sessmod, "load_model", lambda model, dtype: (_DummyModel(), object()))
+    monkeypatch.setattr(sessmod, "_resolve_path", lambda model: "/tmp/resolved-model")
+    monkeypatch.setattr(sessmod.streaming_mod, "init_streaming", lambda **kwargs: object())
+
+    def fake_feed_audio(pcm, state, model):  # noqa: ANN001
+        calls["feed"] = {"pcm_len": len(pcm), "state": state, "model": model}
+        return "FEED_OUT"
+
+    def fake_finish_streaming(state, model):  # noqa: ANN001
+        calls["finish"] = {"state": state, "model": model}
+        return "FINISH_OUT"
+
+    monkeypatch.setattr(sessmod.streaming_mod, "feed_audio", fake_feed_audio)
+    monkeypatch.setattr(sessmod.streaming_mod, "finish_streaming", fake_finish_streaming)
+
+    session = sessmod.Session("repo/a", dtype=mx.float16)
+    state = object()
+    out_feed = session.feed_audio(np.zeros(12, dtype=np.float32), state)
+    out_finish = session.finish_streaming(state)
+
+    assert out_feed == "FEED_OUT"
+    assert out_finish == "FINISH_OUT"
+    assert calls["feed"]["pcm_len"] == 12
+    assert calls["feed"]["state"] is state
+    assert calls["feed"]["model"] is session.model
+    assert calls["finish"]["state"] is state
+    assert calls["finish"]["model"] is session.model

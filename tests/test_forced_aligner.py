@@ -179,6 +179,12 @@ def test_forced_aligner_rejects_invalid_backend():
         aligner._ensure_loaded()
 
 
+def test_forced_aligner_rejects_legacy_qwen_backend():
+    aligner = famod.ForcedAligner(backend="qwen_asr")
+    with pytest.raises(RuntimeError, match="Expected: mlx"):
+        aligner._ensure_loaded()
+
+
 def test_forced_aligner_default_backend_is_native_mlx():
     aligner = famod.ForcedAligner()
     assert aligner.backend == famod.ALIGNER_BACKEND_MLX

@@ -6,6 +6,7 @@ import importlib
 import subprocess
 import sys
 
+import numpy as np
 import pytest
 
 
@@ -22,7 +23,7 @@ def test_cli_timestamps_flag_is_accepted():
     assert "File not found: dummy.wav" in result.stderr
 
 
-def test_cli_timestamps_preflight_error_is_clear(monkeypatch, capsys, tmp_path):
+def test_cli_rejects_legacy_aligner_backend_flag(monkeypatch, capsys, tmp_path):
     cli = __import__("mlx_qwen3_asr.cli", fromlist=["main"])
     audio_path = tmp_path / "audio.wav"
     audio_path.write_bytes(b"RIFF")
@@ -38,51 +39,11 @@ def test_cli_timestamps_preflight_error_is_clear(monkeypatch, capsys, tmp_path):
             str(audio_path),
         ],
     )
-    monkeypatch.setattr(
-        "importlib.util.find_spec",
-        lambda name: None if name == "qwen_asr" else object(),
-    )
 
     with pytest.raises(SystemExit) as exc:
         cli.main()
-    assert exc.value.code == 1
-    assert "--timestamps requires optional dependency `qwen-asr`" in capsys.readouterr().err
-
-
-def test_cli_timestamps_mlx_backend_skips_qwen_preflight(monkeypatch, capsys, tmp_path):
-    cli = __import__("mlx_qwen3_asr.cli", fromlist=["main"])
-    transcribe_mod = importlib.import_module("mlx_qwen3_asr.transcribe")
-    writers_mod = importlib.import_module("mlx_qwen3_asr.writers")
-    audio_path = tmp_path / "audio.wav"
-    audio_path.write_bytes(b"RIFF")
-
-    class _DummyResult:
-        text = "ok"
-        language = "English"
-        segments = None
-
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "mlx-qwen3-asr",
-            "--timestamps",
-            "--aligner-backend",
-            "mlx",
-            str(audio_path),
-        ],
-    )
-    monkeypatch.setattr(
-        "importlib.util.find_spec",
-        lambda name: None if name == "qwen_asr" else object(),
-    )
-    monkeypatch.setattr(transcribe_mod, "transcribe", lambda **kwargs: _DummyResult())
-    monkeypatch.setattr(writers_mod, "get_writer", lambda fmt: (lambda result, out_path: None))
-
-    cli.main()
-    out = capsys.readouterr()
-    assert "--timestamps requires optional dependency `qwen-asr`" not in out.err
-    assert "ok" in out.out
+    assert exc.value.code == 2
+    assert "unrecognized arguments: --aligner-backend" in capsys.readouterr().err
 
 
 def test_cli_continues_batch_on_non_runtime_errors(monkeypatch, capsys, tmp_path):
@@ -124,3 +85,86 @@ def test_cli_continues_batch_on_non_runtime_errors(monkeypatch, capsys, tmp_path
     captured = capsys.readouterr()
     assert "decode failed" in captured.err
     assert "good" in captured.out
+
+
+def test_cli_streaming_rejects_timestamps(monkeypatch, capsys, tmp_path):
+    cli = __import__("mlx_qwen3_asr.cli", fromlist=["main"])
+    audio_path = tmp_path / "audio.wav"
+    audio_path.write_bytes(b"RIFF")
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "mlx-qwen3-asr",
+            "--streaming",
+            "--timestamps",
+            str(audio_path),
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        cli.main()
+    assert exc.value.code == 1
+    assert "--streaming does not support --timestamps" in capsys.readouterr().err
+
+
+def test_cli_streaming_mode_uses_streaming_pipeline(monkeypatch, capsys, tmp_path):
+    cli = __import__("mlx_qwen3_asr.cli", fromlist=["main"])
+    audio_mod = importlib.import_module("mlx_qwen3_asr.audio")
+    stream_mod = importlib.import_module("mlx_qwen3_asr.streaming")
+    writers_mod = importlib.import_module("mlx_qwen3_asr.writers")
+
+    audio_path = tmp_path / "audio.wav"
+    audio_path.write_bytes(b"RIFF")
+
+    calls = {"feed": 0, "finish": 0}
+
+    class _DummyState:
+        text = ""
+        language = "unknown"
+
+    def fake_load_audio(path):  # noqa: ANN001
+        assert path == str(audio_path)
+        return np.zeros(12, dtype=np.float32)
+
+    def fake_init_streaming(**kwargs):  # noqa: ANN003
+        assert kwargs["finalization_mode"] == "latency"
+        return _DummyState()
+
+    def fake_feed_audio(chunk, state):  # noqa: ANN001
+        calls["feed"] += 1
+        state.text = f"chunk{calls['feed']}"
+        state.language = "English"
+        return state
+
+    def fake_finish_streaming(state):  # noqa: ANN001
+        calls["finish"] += 1
+        state.text = "final streaming text"
+        state.language = "English"
+        return state
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "mlx-qwen3-asr",
+            "--streaming",
+            "--stream-chunk-sec",
+            "1.0",
+            "--stream-finalization-mode",
+            "latency",
+            str(audio_path),
+        ],
+    )
+    monkeypatch.setattr(audio_mod, "load_audio", fake_load_audio)
+    monkeypatch.setattr(stream_mod, "init_streaming", fake_init_streaming)
+    monkeypatch.setattr(stream_mod, "feed_audio", fake_feed_audio)
+    monkeypatch.setattr(stream_mod, "finish_streaming", fake_finish_streaming)
+    monkeypatch.setattr(writers_mod, "get_writer", lambda fmt: (lambda result, out_path: None))
+
+    cli.main()
+    out = capsys.readouterr()
+    assert "final streaming text" in out.out
+    assert calls["feed"] == 1
+    assert calls["finish"] == 1

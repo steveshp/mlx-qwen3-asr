@@ -37,6 +37,14 @@ python scripts/benchmark_streaming.py tests/fixtures/test_speech.wav \
   --max-context-sec 30.0 \
   --runs 3 \
   --json-output docs/benchmarks/latest-streaming.json
+
+# Latency-first variant (skips finish-time tail refinement fallback)
+python scripts/benchmark_streaming.py tests/fixtures/test_speech.wav \
+  --model Qwen/Qwen3-ASR-0.6B \
+  --chunk-size-sec 2.0 \
+  --max-context-sec 30.0 \
+  --finalization-mode latency \
+  --runs 3
 ```
 
 Latest streaming baseline artifact:
@@ -288,8 +296,8 @@ To avoid rediscovering low-signal paths, these were tested and not kept:
 
 ## Forced Aligner Backend Smoke (2026-02-14)
 
-Native MLX timestamp backend (`--aligner-backend mlx`) was compared against
-`qwen_asr` on a short deterministic fixture.
+Native MLX timestamp alignment was compared against `qwen_asr` on a short
+deterministic fixture.
 
 Artifacts:
 - `docs/benchmarks/2026-02-14-aligner-backend-smoke.json`

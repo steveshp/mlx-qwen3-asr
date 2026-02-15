@@ -1,0 +1,24 @@
+{
+  "audio_path": "tests/fixtures/test_speech.wav",
+  "audio_duration_sec": 2.53325,
+  "model": "Qwen/Qwen3-ASR-0.6B",
+  "dtype": "float16",
+  "chunk_size_sec": 2.0,
+  "max_context_sec": 30.0,
+  "unfixed_chunk_num": 2,
+  "unfixed_token_num": 5,
+  "enable_tail_refine": false,
+  "num_chunks": 2,
+  "runs": 3,
+  "warmup_runs": 1,
+  "latency_sec": {
+    "total_mean": 1.0837570136645809,
+    "total_median": 1.2741222080076113,
+    "total_min": 0.6911097499832977,
+    "total_max": 1.2860390830028336,
+    "chunk_mean_mean": 0.30673881933519925,
+    "chunk_p95_mean": 0.5827479816410535,
+    "finish_mean": 0.47027626365888864
+  },
+  "rtf": 0.42781289397595224
+}

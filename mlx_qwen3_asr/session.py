@@ -5,7 +5,9 @@ from __future__ import annotations
 from typing import Optional, Union
 
 import mlx.core as mx
+import numpy as np
 
+from . import streaming as streaming_mod
 from .config import DEFAULT_MODEL_ID
 from .forced_aligner import ForcedAligner
 from .load_models import _resolve_path, load_model
@@ -90,3 +92,44 @@ class Session:
             num_draft_tokens=num_draft_tokens,
             verbose=verbose,
         )
+
+    def init_streaming(
+        self,
+        *,
+        unfixed_chunk_num: int = 2,
+        unfixed_token_num: int = 5,
+        chunk_size_sec: float = 2.0,
+        max_context_sec: float = 30.0,
+        sample_rate: int = 16000,
+        max_new_tokens: int = 1024,
+        finalization_mode: str = "accuracy",
+        enable_tail_refine: Optional[bool] = None,
+    ) -> streaming_mod.StreamingState:
+        """Create streaming state bound to this session's model settings."""
+        return streaming_mod.init_streaming(
+            model=self.model_id,
+            unfixed_chunk_num=unfixed_chunk_num,
+            unfixed_token_num=unfixed_token_num,
+            chunk_size_sec=chunk_size_sec,
+            max_context_sec=max_context_sec,
+            sample_rate=sample_rate,
+            dtype=self.dtype,
+            max_new_tokens=max_new_tokens,
+            finalization_mode=finalization_mode,
+            enable_tail_refine=enable_tail_refine,
+        )
+
+    def feed_audio(
+        self,
+        pcm: np.ndarray,
+        state: streaming_mod.StreamingState,
+    ) -> streaming_mod.StreamingState:
+        """Feed streaming audio using this session's loaded model."""
+        return streaming_mod.feed_audio(pcm=pcm, state=state, model=self.model)
+
+    def finish_streaming(
+        self,
+        state: streaming_mod.StreamingState,
+    ) -> streaming_mod.StreamingState:
+        """Finalize streaming decode using this session's loaded model."""
+        return streaming_mod.finish_streaming(state=state, model=self.model)

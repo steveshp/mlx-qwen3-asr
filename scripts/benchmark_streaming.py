@@ -69,6 +69,17 @@ def main() -> int:
     parser.add_argument("--max-context-sec", type=float, default=30.0)
     parser.add_argument("--unfixed-chunk-num", type=int, default=2)
     parser.add_argument("--unfixed-token-num", type=int, default=5)
+    parser.add_argument(
+        "--finalization-mode",
+        choices=["accuracy", "latency"],
+        default="accuracy",
+        help="Finish policy: accuracy runs tail refinement fallback; latency skips it.",
+    )
+    parser.add_argument(
+        "--disable-tail-refine",
+        action="store_true",
+        help="Deprecated alias for --finalization-mode latency",
+    )
     parser.add_argument("--warmup-runs", type=int, default=1)
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--json-output", default=None)
@@ -87,6 +98,7 @@ def main() -> int:
     chunks = _chunk_audio(audio_np, chunk_size_samples)
 
     def run_once() -> tuple[float, list[float], float]:
+        finalization_mode = "latency" if args.disable_tail_refine else args.finalization_mode
         state = init_streaming(
             model=args.model,
             unfixed_chunk_num=args.unfixed_chunk_num,
@@ -94,6 +106,7 @@ def main() -> int:
             chunk_size_sec=args.chunk_size_sec,
             max_context_sec=args.max_context_sec,
             sample_rate=16000,
+            finalization_mode=finalization_mode,
         )
 
         chunk_latencies: list[float] = []
@@ -136,6 +149,9 @@ def main() -> int:
         "max_context_sec": args.max_context_sec,
         "unfixed_chunk_num": args.unfixed_chunk_num,
         "unfixed_token_num": args.unfixed_token_num,
+        "finalization_mode": "latency" if args.disable_tail_refine else args.finalization_mode,
+        "enable_tail_refine": not args.disable_tail_refine
+        and args.finalization_mode == "accuracy",
         "num_chunks": len(chunks),
         "runs": args.runs,
         "warmup_runs": args.warmup_runs,

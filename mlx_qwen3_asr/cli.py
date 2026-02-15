@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import sys
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 from ._version import __version__
 from .config import DEFAULT_MODEL_ID
@@ -48,21 +48,12 @@ def main():
     parser.add_argument(
         "--timestamps",
         action="store_true",
-        help=(
-            "Request word-level timestamps. Native MLX backend is default; "
-            "qwen-asr is only required with --aligner-backend qwen_asr."
-        ),
+        help="Request word-level timestamps via native MLX forced aligner.",
     )
     parser.add_argument(
         "--forced-aligner",
         default="Qwen/Qwen3-ForcedAligner-0.6B",
         help="Forced aligner model (default: Qwen/Qwen3-ForcedAligner-0.6B)",
-    )
-    parser.add_argument(
-        "--aligner-backend",
-        default="mlx",
-        choices=["qwen_asr", "mlx", "auto"],
-        help="Timestamp backend (default: mlx)",
     )
     parser.add_argument(
         "--dtype",
@@ -93,6 +84,29 @@ def main():
         help="Print progress information",
     )
     parser.add_argument(
+        "--streaming",
+        action="store_true",
+        help="Run experimental chunked streaming decode instead of offline transcribe",
+    )
+    parser.add_argument(
+        "--stream-chunk-sec",
+        type=float,
+        default=2.0,
+        help="Streaming chunk size in seconds (default: 2.0)",
+    )
+    parser.add_argument(
+        "--stream-max-context-sec",
+        type=float,
+        default=30.0,
+        help="Streaming max context window in seconds (default: 30.0)",
+    )
+    parser.add_argument(
+        "--stream-finalization-mode",
+        choices=["accuracy", "latency"],
+        default="accuracy",
+        help="Streaming finish policy (default: accuracy)",
+    )
+    parser.add_argument(
         "--version",
         action="version",
         version=f"%(prog)s {__version__}",
@@ -100,21 +114,26 @@ def main():
 
     args = parser.parse_args()
 
-    existing_files = [p for p in args.audio if Path(p).exists()]
-    if args.timestamps and existing_files and args.aligner_backend == "qwen_asr":
-        if importlib.util.find_spec("qwen_asr") is None:
-            print(
-                "Error: --timestamps requires optional dependency `qwen-asr`. "
-                "Install with: pip install \"mlx-qwen3-asr[aligner]\" "
-                "or switch to --aligner-backend mlx",
-                file=sys.stderr,
-            )
-            raise SystemExit(1)
+    if args.streaming and args.timestamps:
+        print(
+            "Error: --streaming does not support --timestamps.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    if args.streaming and args.draft_model is not None:
+        print(
+            "Error: --streaming does not support --draft-model yet.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
 
     # Lazy imports for faster --help
     import mlx.core as mx
+    import numpy as np
 
+    from .audio import SAMPLE_RATE, load_audio
     from .forced_aligner import ForcedAligner
+    from .streaming import feed_audio, finish_streaming, init_streaming
     from .transcribe import transcribe
     from .writers import get_writer
 
@@ -140,7 +159,7 @@ def main():
         ForcedAligner(
             model_path=args.forced_aligner,
             dtype=dtype,
-            backend=args.aligner_backend,
+            backend="mlx",
         )
         if args.timestamps
         else None
@@ -158,18 +177,39 @@ def main():
         start_time = time.time()
 
         try:
-            result = transcribe(
-                audio=audio_path,
-                model=args.model,
-                draft_model=args.draft_model,
-                language=args.language,
-                return_timestamps=args.timestamps,
-                forced_aligner=aligner,
-                dtype=dtype,
-                max_new_tokens=args.max_new_tokens,
-                num_draft_tokens=args.num_draft_tokens,
-                verbose=args.verbose,
-            )
+            if not args.streaming:
+                result = transcribe(
+                    audio=audio_path,
+                    model=args.model,
+                    draft_model=args.draft_model,
+                    language=args.language,
+                    return_timestamps=args.timestamps,
+                    forced_aligner=aligner,
+                    dtype=dtype,
+                    max_new_tokens=args.max_new_tokens,
+                    num_draft_tokens=args.num_draft_tokens,
+                    verbose=args.verbose,
+                )
+            else:
+                audio_np = np.asarray(load_audio(audio_path), dtype=np.float32)
+                chunk_samples = max(1, int(args.stream_chunk_sec * SAMPLE_RATE))
+                state = init_streaming(
+                    model=args.model,
+                    chunk_size_sec=args.stream_chunk_sec,
+                    max_context_sec=args.stream_max_context_sec,
+                    sample_rate=SAMPLE_RATE,
+                    dtype=dtype,
+                    max_new_tokens=args.max_new_tokens,
+                    finalization_mode=args.stream_finalization_mode,
+                )
+                for i in range(0, len(audio_np), chunk_samples):
+                    state = feed_audio(audio_np[i : i + chunk_samples], state)
+                state = finish_streaming(state)
+                result = SimpleNamespace(
+                    text=state.text,
+                    language=state.language,
+                    segments=None,
+                )
         except Exception as e:
             print(f"Error: {e}", file=sys.stderr)
             had_error = True

@@ -45,7 +45,7 @@ Install from PyPI:
 pip install mlx-qwen3-asr
 ```
 
-Install with optional timestamp alignment extras (for Japanese/Korean tokenization parity and official reference backend):
+Install with optional timestamp alignment extras (for Japanese/Korean tokenization parity):
 
 ```bash
 pip install "mlx-qwen3-asr[aligner]"
@@ -262,17 +262,10 @@ result = transcribe("audio.wav", model="Qwen/Qwen3-ASR-1.7B")
 
 ## Timestamps
 
-Word-level timestamps via forced alignment using a dedicated aligner model (`Qwen/Qwen3-ForcedAligner-0.6B`). The native MLX backend is the default — no PyTorch required:
+Word-level timestamps via forced alignment using a dedicated aligner model (`Qwen/Qwen3-ForcedAligner-0.6B`). This path is native MLX (no PyTorch backend bridge):
 
 ```bash
-# Default: native MLX backend
 mlx-qwen3-asr audio.wav --timestamps
-
-# Official Qwen backend (requires: pip install qwen-asr)
-mlx-qwen3-asr audio.wav --timestamps --aligner-backend qwen_asr
-
-# Auto: try MLX first, fall back to official
-mlx-qwen3-asr audio.wav --timestamps --aligner-backend auto
 ```
 
 ```python
@@ -387,12 +380,18 @@ for chunk in audio_chunks:
 state = finish_streaming(state)
 ```
 
-- Ingests small PCM chunks (default 2s)
-- Bounded context window (default 30s) for stable per-chunk runtime
-- Prefix rollback controls (`unfixed_chunk_num`, `unfixed_token_num`)
-- Input validation: handles int16 PCM normalization, non-1D arrays, empty input
+CLI:
+```bash
+mlx-qwen3-asr --streaming --stream-finalization-mode accuracy audio.wav
+```
 
-Not a true incremental decoder with KV cache reuse — it re-decodes the recent context window on each chunk.
+- Ingests small PCM chunks (default 2s)
+- Incremental decoder KV-cache reuse across chunk turns (avoids O(n²) re-transcription)
+- Bounded context window (default 30s) for stable memory/runtime
+- Prefix rollback controls (`unfixed_chunk_num`, `unfixed_token_num`)
+- Configurable finalization policy: `finalization_mode="accuracy"` (default) or `"latency"`
+- Backward-compatible override: `enable_tail_refine=True|False`
+- Input validation: handles int16 PCM normalization, non-1D arrays, empty input
 
 ## API reference
 
@@ -402,7 +401,9 @@ Transcribe audio to text. Accepts a file path, numpy array, `mx.array`, or `(arr
 
 ### `Session(model, *, dtype, tokenizer_model)`
 
-Explicit transcription session. Owns model and tokenizer state with no hidden globals. Call `session.transcribe(audio, ...)` with the same parameters as the top-level function.
+Explicit transcription session. Owns model and tokenizer state with no hidden globals.
+- Offline: `session.transcribe(audio, ...)` with the same parameters as top-level `transcribe`.
+- Streaming: `session.init_streaming(...)`, `session.feed_audio(pcm, state)`, `session.finish_streaming(state)`.
 
 ### `load_model(name_or_path, *, dtype)`
 
@@ -414,7 +415,7 @@ Load and resample audio to mono 16 kHz. Returns an `mx.array`.
 
 ### `ForcedAligner(model_path, *, dtype, backend)`
 
-Word-level forced aligner. Backends: `mlx` (default, native), `qwen_asr` (official PyTorch), `auto` (MLX-first with fallback).
+Word-level forced aligner. Native backend: `mlx` (default).
 
 ### `TranscriptionResult`
 
