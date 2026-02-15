@@ -154,6 +154,10 @@ Long-form multilingual parity artifacts (2026-02-15):
   - `docs/benchmarks/2026-02-15-reference-parity-suite-longform10.json`
   - `docs/benchmarks/2026-02-15-reference-parity-suite-longform10.md`
 
+Release-gate quality-lane artifact (2026-02-15):
+
+- `docs/benchmarks/2026-02-15-librispeech-release-gate-20.json`
+
 Generate with:
 
 ```bash

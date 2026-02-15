@@ -536,3 +536,21 @@ Intent:
 - token parity remains necessary for correctness drift detection,
 - WER/CER is now first-class in default release validation to prevent
   over-indexing on token-exact metrics alone.
+
+### 32) Release-gate quality lane validated at default sample size
+
+- Ran release gate with default quality lane semantics and 20 deterministic
+  LibriSpeech samples:
+
+```bash
+RUN_QUALITY_EVAL=1 QUALITY_EVAL_SAMPLES=20 \
+python scripts/quality_gate.py --mode release
+```
+
+- Result: PASS.
+- Quality snapshot (`Qwen/Qwen3-ASR-0.6B`, `test-clean`, `n=20`):
+  - WER: `0.020446`
+  - CER: `0.004052`
+  - mean latency: `1.40s` per sample
+- Saved standalone artifact:
+  - `docs/benchmarks/2026-02-15-librispeech-release-gate-20.json`

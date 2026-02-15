@@ -1,0 +1,220 @@
+{
+  "suite": "librispeech-v1",
+  "subset": "test-clean",
+  "sampling": "speaker_round_robin",
+  "samples": 20,
+  "unique_speakers": 20,
+  "speaker_counts": {
+    "1089": 1,
+    "1188": 1,
+    "121": 1,
+    "1221": 1,
+    "1284": 1,
+    "1320": 1,
+    "1580": 1,
+    "1995": 1,
+    "2094": 1,
+    "2300": 1,
+    "237": 1,
+    "260": 1,
+    "2830": 1,
+    "2961": 1,
+    "3570": 1,
+    "3575": 1,
+    "3729": 1,
+    "4077": 1,
+    "4446": 1,
+    "4507": 1
+  },
+  "model": "Qwen/Qwen3-ASR-0.6B",
+  "dtype": "float16",
+  "max_new_tokens": 256,
+  "wer": 0.020446096654275093,
+  "cer": 0.004051863857374392,
+  "mean_latency_sec": 1.3066110895495513,
+  "audio_duration_sec_total": 210.49,
+  "rtf": 0.12414946929066001,
+  "elapsed_sec": 26.736923000018578,
+  "rows": [
+    {
+      "index": 1,
+      "sample_id": "1089-134686-0000",
+      "speaker_id": "1089",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1089/134686/1089-134686-0000.flac",
+      "reference": "he hoped there would be stew for dinner turnips and carrots and bruised potatoes and fat mutton pieces to be ladled out in thick peppered flour fattened sauce",
+      "hypothesis": "he hoped there would be stew for dinner turnips and carrots and bruised potatoes and fat mutton pieces to be ladled out in thick peppered flour fatted sauce",
+      "latency_sec": 2.94974949999596
+    },
+    {
+      "index": 2,
+      "sample_id": "1188-133604-0000",
+      "speaker_id": "1188",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1188/133604/1188-133604-0000.flac",
+      "reference": "you will find me continually speaking of four men titian holbein turner and tintoret in almost the same terms",
+      "hypothesis": "you will find me continually speaking of four men tichen holbein turner and tintoret in almost the same terms",
+      "latency_sec": 1.1559192079876084
+    },
+    {
+      "index": 3,
+      "sample_id": "121-121726-0000",
+      "speaker_id": "121",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/121/121726/121-121726-0000.flac",
+      "reference": "also a popular contrivance whereby love making may be suspended but not stopped during the picnic season",
+      "hypothesis": "also a popular contrivance whereby love making may be suspended but not stopped during the picnic season",
+      "latency_sec": 0.8312752499768976
+    },
+    {
+      "index": 4,
+      "sample_id": "1221-135766-0000",
+      "speaker_id": "1221",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1221/135766/1221-135766-0000.flac",
+      "reference": "how strange it seemed to the sad woman as she watched the growth and the beauty that became every day more brilliant and the intelligence that threw its quivering sunshine over the tiny features of this child",
+      "hypothesis": "how strange it seemed to the sad woman as she watched the growth and the beauty that became every day more brilliant and the intelligence that threw its quivering sunshine over the tiny features of this child",
+      "latency_sec": 1.5144417919800617
+    },
+    {
+      "index": 5,
+      "sample_id": "1284-1180-0000",
+      "speaker_id": "1284",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1284/1180/1284-1180-0000.flac",
+      "reference": "he wore blue silk stockings blue knee pants with gold buckles a blue ruffled waist and a jacket of bright blue braided with gold",
+      "hypothesis": "he wore blue silk stockings blue knee pants with gold buckles a blue ruffled waist and a jacket of bright blue braided with gold",
+      "latency_sec": 1.1859610830142628
+    },
+    {
+      "index": 6,
+      "sample_id": "1320-122612-0000",
+      "speaker_id": "1320",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1320/122612/1320-122612-0000.flac",
+      "reference": "since the period of our tale the active spirit of the country has surrounded it with a belt of rich and thriving settlements though none but the hunter or the savage is ever known even now to penetrate its wild recesses",
+      "hypothesis": "since the period of our tale the active spirit of the country has surrounded it with a belt of rich and thriving settlements though none but the hunter or the savage is ever known even now to penetrate its wild recesses",
+      "latency_sec": 1.6656310830148868
+    },
+    {
+      "index": 7,
+      "sample_id": "1580-141083-0000",
+      "speaker_id": "1580",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1580/141083/1580-141083-0000.flac",
+      "reference": "i will endeavour in my statement to avoid such terms as would serve to limit the events to any particular place or give a clue as to the people concerned",
+      "hypothesis": "i will endeavor in my statement to avoid such terms as would serve to limit the events to any particular place or give a clue as to the people concerned",
+      "latency_sec": 1.1538880839943886
+    },
+    {
+      "index": 8,
+      "sample_id": "1995-1826-0000",
+      "speaker_id": "1995",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/1995/1826/1995-1826-0000.flac",
+      "reference": "in the debate between the senior societies her defence of the fifteenth amendment had been not only a notable bit of reasoning but delivered with real enthusiasm",
+      "hypothesis": "in the debate between the senior societies her defense of the fifteenth amendment had been not only a notable bit of reasoning but delivered with real enthusiasm",
+      "latency_sec": 1.14373433298897
+    },
+    {
+      "index": 9,
+      "sample_id": "2094-142345-0000",
+      "speaker_id": "2094",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/2094/142345/2094-142345-0000.flac",
+      "reference": "it is a very fine old place of red brick softened by a pale powdery lichen which has dispersed itself with happy irregularity so as to bring the red brick into terms of friendly companionship with the limestone ornaments surrounding the three gables the windows and the door place",
+      "hypothesis": "it is a very fine old place of red brick softened by a pale powdery lichen which has dispersed itself with happy irregularity so as to bring the red brick into terms of friendly companionship with the limestone ornaments surrounding the three gables the windows and the doorplace",
+      "latency_sec": 2.274303542013513
+    },
+    {
+      "index": 10,
+      "sample_id": "2300-131720-0000",
+      "speaker_id": "2300",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/2300/131720/2300-131720-0000.flac",
+      "reference": "the paris plant like that at the crystal palace was a temporary exhibit",
+      "hypothesis": "the paris plant like that at the crystal palace was a temporary exhibit",
+      "latency_sec": 0.6405548749899026
+    },
+    {
+      "index": 11,
+      "sample_id": "237-126133-0000",
+      "speaker_id": "237",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/237/126133/237-126133-0000.flac",
+      "reference": "here she would stay comforted and soothed among the lovely plants and rich exotics rejoicing the heart of old turner the gardener who since polly's first rapturous entrance had taken her into his good graces for all time",
+      "hypothesis": "here she would stay comforted and soothed among the lovely plants and rich exotics rejoicing the heart of old turner the gardener who since polly's first rapturous entrance had taken her into his good graces for all time",
+      "latency_sec": 1.9270951669896021
+    },
+    {
+      "index": 12,
+      "sample_id": "260-123286-0000",
+      "speaker_id": "260",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/260/123286/260-123286-0000.flac",
+      "reference": "saturday august fifteenth the sea unbroken all round no land in sight",
+      "hypothesis": "saturday august fifteenth the sea unbroken all round no land in sight",
+      "latency_sec": 0.7196477079996839
+    },
+    {
+      "index": 13,
+      "sample_id": "2830-3979-0000",
+      "speaker_id": "2830",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/2830/3979/2830-3979-0000.flac",
+      "reference": "we want you to help us publish some leading work of luther's for the general american market will you do it",
+      "hypothesis": "we want you to help us publish some leading work of luther's for the general american market will you do it",
+      "latency_sec": 0.9313280830101576
+    },
+    {
+      "index": 14,
+      "sample_id": "2961-960-0000",
+      "speaker_id": "2961",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/2961/960/2961-960-0000.flac",
+      "reference": "he passes abruptly from persons to ideas and numbers and from ideas and numbers to persons from the heavens to man from astronomy to physiology he confuses or rather does not distinguish subject and object first and final causes and is dreaming of geometrical figures lost in a flux of sense",
+      "hypothesis": "he passes abruptly from persons to ideas and numbers and from ideas and numbers to persons from the heavens to men from astronomy to physiology he confuses or rather does not distinguish subject and object first and final causes and is dreaming of geometrical figures lost in a flux of sense",
+      "latency_sec": 2.265470667014597
+    },
+    {
+      "index": 15,
+      "sample_id": "3570-5694-0000",
+      "speaker_id": "3570",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/3570/5694/3570-5694-0000.flac",
+      "reference": "but already at a point in economic evolution far antedating the emergence of the lady specialised consumption of goods as an evidence of pecuniary strength had begun to work out in a more or less elaborate system",
+      "hypothesis": "but already at a point in economic evolution far antedating the emergence of the lady specialized consumption of goods as an evidence of pecuniary strength had begun to work out in a more or less elaborate system",
+      "latency_sec": 1.5971094170236029
+    },
+    {
+      "index": 16,
+      "sample_id": "3575-170457-0000",
+      "speaker_id": "3575",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/3575/170457/3575-170457-0000.flac",
+      "reference": "and often has my mother said while on her lap i laid my head she feared for time i was not made but for eternity",
+      "hypothesis": "and often has my mother said while on her lap i laid my head she feared for time i was not made but for eternity",
+      "latency_sec": 1.0864734170027077
+    },
+    {
+      "index": 17,
+      "sample_id": "3729-6852-0000",
+      "speaker_id": "3729",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/3729/6852/3729-6852-0000.flac",
+      "reference": "to celebrate the arrival of her son silvia gave a splendid supper to which she had invited all her relatives and it was a good opportunity for me to make their acquaintance",
+      "hypothesis": "to celebrate the arrival of her son sylvia gave a splendid supper to which she had invited all her relatives and it was a good opportunity for me to make their acquaintance",
+      "latency_sec": 1.3320712079876103
+    },
+    {
+      "index": 18,
+      "sample_id": "4077-13751-0000",
+      "speaker_id": "4077",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/4077/13751/4077-13751-0000.flac",
+      "reference": "on the sixth of april eighteen thirty the church of jesus christ of latter day saints was formally organized and thus took on a legal existence",
+      "hypothesis": "on the sixth of april eighteen thirty the church of jesus christ of latter day saints was formally organized and thus took on a legal existence",
+      "latency_sec": 1.0709933750040364
+    },
+    {
+      "index": 19,
+      "sample_id": "4446-2271-0000",
+      "speaker_id": "4446",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/4446/2271/4446-2271-0000.flac",
+      "reference": "mainhall liked alexander because he was an engineer",
+      "hypothesis": "main hall liked alexander because he was an engineer",
+      "latency_sec": 0.43610129100852646
+    },
+    {
+      "index": 20,
+      "sample_id": "4507-16021-0000",
+      "speaker_id": "4507",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/LibriSpeech/test-clean/4507/16021/4507-16021-0000.flac",
+      "reference": "chapter one origin",
+      "hypothesis": "chapter one origin",
+      "latency_sec": 0.2504727079940494
+    }
+  ]
+}
