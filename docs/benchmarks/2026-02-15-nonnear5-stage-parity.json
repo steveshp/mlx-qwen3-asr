@@ -1,0 +1,84 @@
+{
+  "suite": "nonnear-stage-parity-v1",
+  "model": "Qwen/Qwen3-ASR-0.6B",
+  "dtype": "float16",
+  "samples": 5,
+  "elapsed_sec": 41.65203749999637,
+  "rows": [
+    {
+      "sample_id": "en_us-394135166243682296",
+      "language": "English",
+      "audio_feature_shape": [
+        140,
+        1024
+      ],
+      "audio_feature_mae": 0.0030729668214917183,
+      "audio_feature_max_abs": 0.11565379053354263,
+      "audio_feature_cosine": 0.9519202709197998,
+      "teacher_forced_steps": 25,
+      "teacher_forced_top1_match_count": 24,
+      "teacher_forced_top1_match_rate": 0.96,
+      "teacher_forced_first_top1_mismatch_step": 17
+    },
+    {
+      "sample_id": "ja_jp-8922261396806111795",
+      "language": "Japanese",
+      "audio_feature_shape": [
+        352,
+        1024
+      ],
+      "audio_feature_mae": 0.007013754453510046,
+      "audio_feature_max_abs": 0.12708698213100433,
+      "audio_feature_cosine": 0.8933029174804688,
+      "teacher_forced_steps": 66,
+      "teacher_forced_top1_match_count": 62,
+      "teacher_forced_top1_match_rate": 0.9393939393939394,
+      "teacher_forced_first_top1_mismatch_step": 7
+    },
+    {
+      "sample_id": "de_de-11906634980733046933",
+      "language": "German",
+      "audio_feature_shape": [
+        182,
+        1024
+      ],
+      "audio_feature_mae": 0.003704527858644724,
+      "audio_feature_max_abs": 0.10274968296289444,
+      "audio_feature_cosine": 0.948103129863739,
+      "teacher_forced_steps": 51,
+      "teacher_forced_top1_match_count": 50,
+      "teacher_forced_top1_match_rate": 0.9803921568627451,
+      "teacher_forced_first_top1_mismatch_step": 29
+    },
+    {
+      "sample_id": "ar_eg-14219101187915533421",
+      "language": "Arabic",
+      "audio_feature_shape": [
+        227,
+        1024
+      ],
+      "audio_feature_mae": 0.003906058380380273,
+      "audio_feature_max_abs": 0.12875936925411224,
+      "audio_feature_cosine": 0.9440816640853882,
+      "teacher_forced_steps": 54,
+      "teacher_forced_top1_match_count": 51,
+      "teacher_forced_top1_match_rate": 0.9444444444444444,
+      "teacher_forced_first_top1_mismatch_step": 29
+    },
+    {
+      "sample_id": "hi_in-17876469696694013955",
+      "language": "Hindi",
+      "audio_feature_shape": [
+        178,
+        1024
+      ],
+      "audio_feature_mae": 0.003048466518521309,
+      "audio_feature_max_abs": 0.1306714415550232,
+      "audio_feature_cosine": 0.9570450186729431,
+      "teacher_forced_steps": 117,
+      "teacher_forced_top1_match_count": 115,
+      "teacher_forced_top1_match_rate": 0.9829059829059829,
+      "teacher_forced_first_top1_mismatch_step": 61
+    }
+  ]
+}

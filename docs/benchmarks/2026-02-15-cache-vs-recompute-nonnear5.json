@@ -1,0 +1,50 @@
+{
+  "suite": "cache-vs-recompute-nonnear5-v1",
+  "model": "Qwen/Qwen3-ASR-0.6B",
+  "dtype": "float16",
+  "samples": 5,
+  "cache_equal_rows": 5,
+  "rows": [
+    {
+      "sample_id": "en_us-394135166243682296",
+      "language": "English",
+      "cache_equals_recompute": true,
+      "first_mismatch_cache_vs_recompute": -1,
+      "len_cached": 26,
+      "len_recompute": 26
+    },
+    {
+      "sample_id": "ja_jp-8922261396806111795",
+      "language": "Japanese",
+      "cache_equals_recompute": true,
+      "first_mismatch_cache_vs_recompute": -1,
+      "len_cached": 65,
+      "len_recompute": 65
+    },
+    {
+      "sample_id": "de_de-11906634980733046933",
+      "language": "German",
+      "cache_equals_recompute": true,
+      "first_mismatch_cache_vs_recompute": -1,
+      "len_cached": 49,
+      "len_recompute": 49
+    },
+    {
+      "sample_id": "ar_eg-14219101187915533421",
+      "language": "Arabic",
+      "cache_equals_recompute": true,
+      "first_mismatch_cache_vs_recompute": -1,
+      "len_cached": 52,
+      "len_recompute": 52
+    },
+    {
+      "sample_id": "hi_in-17876469696694013955",
+      "language": "Hindi",
+      "cache_equals_recompute": true,
+      "first_mismatch_cache_vs_recompute": -1,
+      "len_cached": 118,
+      "len_recompute": 118
+    }
+  ],
+  "generated_at_epoch": 1771123126.855126
+}

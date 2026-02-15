@@ -772,3 +772,44 @@ Observed:
 Conclusion:
 - this residual subset is not explained by fp16 precision effects; follow-up
   should target model-path/logit-source parity for these specific rows.
+
+### 42) Non-near subset stage-localization (encoder + teacher-forced decode)
+
+Added stage-level parity artifact on the five non-near rows:
+
+- `docs/benchmarks/2026-02-15-nonnear5-stage-parity.json`
+- `docs/benchmarks/2026-02-15-nonnear5-stage-parity.md`
+
+Method:
+- same input features/prompt path as reference,
+- compared MLX vs reference audio-encoder outputs,
+- ran teacher-forced decode parity using reference-generated token prefixes.
+
+Observed:
+- audio-feature cosine on this subset: ~`0.89` to `0.96` (close, not identical),
+- teacher-forced top1 parity remains high (`~0.94` to `~0.98`),
+- each sample still has a deterministic first top1 divergence step matching the
+  non-near mismatch location.
+
+Interpretation:
+- residual gaps are reproducible beyond free-running decode; evidence points to
+  model-path numeric/representation parity (not just decode policy effects).
+
+### 43) Cache semantics ruled out on non-near subset
+
+Added cache-consistency artifact:
+
+- `docs/benchmarks/2026-02-15-cache-vs-recompute-nonnear5.json`
+- `docs/benchmarks/2026-02-15-cache-vs-recompute-nonnear5.md`
+
+Method:
+- for each non-near row, compared:
+  - normal cached decode path,
+  - full-prefix recompute decode path (rebuild cache every step).
+
+Result:
+- `5/5` rows exactly equal; first mismatch index `-1` for all rows.
+
+Interpretation:
+- residual multilingual non-near mismatches are not caused by KV-cache update
+  semantics in MLX decode.

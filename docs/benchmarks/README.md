@@ -182,6 +182,10 @@ Post-canonicalization multilingual triage artifacts (2026-02-15):
 - `docs/benchmarks/2026-02-15-logit-parity-probe-multilingual100-mismatches.md`
 - `docs/benchmarks/2026-02-15-logit-parity-probe-nonnear5-fp32.json`
 - `docs/benchmarks/2026-02-15-logit-parity-probe-nonnear5-fp32.md`
+- `docs/benchmarks/2026-02-15-nonnear5-stage-parity.json`
+- `docs/benchmarks/2026-02-15-nonnear5-stage-parity.md`
+- `docs/benchmarks/2026-02-15-cache-vs-recompute-nonnear5.json`
+- `docs/benchmarks/2026-02-15-cache-vs-recompute-nonnear5.md`
 
 Generate with:
 
