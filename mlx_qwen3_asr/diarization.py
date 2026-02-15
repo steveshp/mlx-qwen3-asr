@@ -7,6 +7,7 @@ speaker-turn inference to pyannote when ``diarize=True``.
 from __future__ import annotations
 
 import os
+import warnings
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -66,8 +67,18 @@ def infer_speaker_turns(
 
     try:
         diarization = pipeline(_pyannote_input(audio_np, sr), **kwargs)
-    except TypeError:
-        # Some pyannote versions expect no speaker-count kwargs.
+    except TypeError as exc:
+        # Some pyannote versions reject speaker-count kwargs.
+        if not _is_retryable_kwargs_type_error(exc):
+            raise RuntimeError(
+                "pyannote diarization inference failed. "
+                "Verify the installed '[diarize]' extra and any required "
+                "Hugging Face token/terms for your diarization model."
+            ) from exc
+        warnings.warn(
+            "pyannote backend rejected speaker-count kwargs; retrying without them.",
+            stacklevel=2,
+        )
         try:
             diarization = pipeline(_pyannote_input(audio_np, sr))
         except Exception as exc:
@@ -271,6 +282,8 @@ def _load_pyannote_pipeline() -> object:
 
 def _pyannote_input(audio_np: np.ndarray, sr: int) -> dict[str, Any]:
     try:
+        # Intentional: diarization is optional and this torch import is gated
+        # behind `[diarize]` + `diarize=True`, never in the core ASR path.
         import torch
     except ImportError as exc:
         raise ImportError(
@@ -280,6 +293,21 @@ def _pyannote_input(audio_np: np.ndarray, sr: int) -> dict[str, Any]:
 
     waveform = torch.from_numpy(audio_np).unsqueeze(0)
     return {"waveform": waveform, "sample_rate": sr}
+
+
+def _is_retryable_kwargs_type_error(exc: TypeError) -> bool:
+    msg = str(exc).casefold()
+    if "unexpected keyword" not in msg:
+        return False
+    return any(
+        key in msg
+        for key in (
+            "num_speakers",
+            "min_speakers",
+            "max_speakers",
+            "speaker",
+        )
+    )
 
 
 def _speaker_count_kwargs(config: DiarizationConfig) -> dict[str, int]:

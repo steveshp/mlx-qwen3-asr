@@ -282,6 +282,35 @@ def test_cli_list_languages_exits_without_audio(monkeypatch, capsys):
     assert "Supported language aliases" in captured.out
 
 
+def test_cli_diarize_preflight_requires_pyannote(monkeypatch, capsys):
+    cli = __import__("mlx_qwen3_asr.cli", fromlist=["main"])
+
+    def _fake_find_spec(name):  # noqa: ANN001
+        if name == "pyannote.audio":
+            return None
+        return object()
+
+    monkeypatch.setattr(cli.importlib.util, "find_spec", _fake_find_spec)
+
+    with pytest.raises(SystemExit) as exc:
+        cli._preflight_diarization_runtime()  # noqa: SLF001
+
+    assert exc.value.code == 1
+    assert "requires optional dependency 'pyannote.audio'" in capsys.readouterr().err
+
+
+def test_cli_diarize_preflight_emits_token_hint(monkeypatch, capsys):
+    cli = __import__("mlx_qwen3_asr.cli", fromlist=["main"])
+
+    monkeypatch.setattr(cli.importlib.util, "find_spec", lambda name: object())
+    monkeypatch.delenv("PYANNOTE_AUTH_TOKEN", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_TOKEN", raising=False)
+
+    cli._preflight_diarization_runtime()  # noqa: SLF001
+    assert "may require Hugging Face auth" in capsys.readouterr().err
+
+
 def test_cli_auto_enables_timestamps_for_subtitles(monkeypatch, tmp_path):
     cli = __import__("mlx_qwen3_asr.cli", fromlist=["main"])
     transcribe_mod = importlib.import_module("mlx_qwen3_asr.transcribe")
@@ -355,6 +384,7 @@ def test_cli_diarize_auto_enables_timestamps_and_forwards_args(monkeypatch, tmp_
             str(audio_path),
         ],
     )
+    monkeypatch.setattr(cli, "_preflight_diarization_runtime", lambda: None)
     monkeypatch.setattr(transcribe_mod, "transcribe", _fake_transcribe)
     monkeypatch.setattr(writers_mod, "get_writer", lambda fmt: (lambda result, out_path: None))
 

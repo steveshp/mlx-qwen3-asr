@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
+import os
 import sys
 import time
 from datetime import datetime
@@ -71,6 +73,50 @@ def _print_languages() -> None:
     print("Supported language aliases:")
     for language, values in aliases.items():
         print(f"- {language}: {', '.join(values)}")
+
+
+def _preflight_diarization_runtime() -> None:
+    def _has_spec(name: str) -> bool:
+        try:
+            return importlib.util.find_spec(name) is not None
+        except ModuleNotFoundError:
+            return False
+
+    if not _has_spec("pyannote.audio"):
+        print(
+            "Error: --diarize requires optional dependency 'pyannote.audio'.",
+            file=sys.stderr,
+        )
+        print(
+            'Install with: pip install "mlx-qwen3-asr[diarize]"',
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    if not _has_spec("torch"):
+        print(
+            "Error: --diarize requires PyTorch via pyannote dependencies.",
+            file=sys.stderr,
+        )
+        print(
+            'Install with: pip install "mlx-qwen3-asr[diarize]"',
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+    token = (
+        os.environ.get("PYANNOTE_AUTH_TOKEN")
+        or os.environ.get("HF_TOKEN")
+        or os.environ.get("HUGGINGFACE_TOKEN")
+        or ""
+    )
+    if not token:
+        print(
+            (
+                "Info: --diarize may require Hugging Face auth for gated models. "
+                "Set PYANNOTE_AUTH_TOKEN (or HF_TOKEN) if model access fails."
+            ),
+            file=sys.stderr,
+        )
 
 
 def _emit_new_stable_text(
@@ -341,6 +387,8 @@ def main():
             file=sys.stderr,
         )
         raise SystemExit(1)
+    if args.diarize and not args.streaming and not args.mic:
+        _preflight_diarization_runtime()
 
     # Lazy imports for faster --help
     import mlx.core as mx

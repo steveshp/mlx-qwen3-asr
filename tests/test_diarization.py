@@ -194,6 +194,79 @@ def test_infer_speaker_turns_wraps_pipeline_runtime_errors(monkeypatch):
         )
 
 
+def test_infer_speaker_turns_retries_on_speaker_kwargs_type_error(monkeypatch):
+    dmod = importlib.import_module("mlx_qwen3_asr.diarization")
+    monkeypatch.setattr(
+        dmod,
+        "_pyannote_input",
+        lambda audio, sr: {"waveform": audio[None, :], "sample_rate": sr},
+    )
+
+    class _RetryPipeline:
+        def __init__(self):
+            self.calls = 0
+
+        def __call__(self, payload, **kwargs):  # noqa: ANN001
+            _ = payload
+            self.calls += 1
+            if self.calls == 1:
+                raise TypeError("got an unexpected keyword argument 'min_speakers'")
+            assert kwargs == {}
+            return _FakeAnnotation([(0.0, 0.8, "spk")])
+
+    cfg = validate_diarization_config(
+        num_speakers=None,
+        min_speakers=1,
+        max_speakers=2,
+    )
+    pipe = _RetryPipeline()
+
+    with pytest.warns(UserWarning, match="rejected speaker-count kwargs"):
+        turns = infer_speaker_turns(
+            np.zeros((8000,), dtype=np.float32),
+            sr=8000,
+            config=cfg,
+            _pipeline=pipe,
+        )
+
+    assert pipe.calls == 2
+    assert turns == [{"speaker": "SPEAKER_00", "start": 0.0, "end": 0.8}]
+
+
+def test_infer_speaker_turns_does_not_retry_on_non_kwargs_type_error(monkeypatch):
+    dmod = importlib.import_module("mlx_qwen3_asr.diarization")
+    monkeypatch.setattr(
+        dmod,
+        "_pyannote_input",
+        lambda audio, sr: {"waveform": audio[None, :], "sample_rate": sr},
+    )
+
+    class _TypeErrorPipeline:
+        def __init__(self):
+            self.calls = 0
+
+        def __call__(self, payload, **kwargs):  # noqa: ANN001
+            _ = payload, kwargs
+            self.calls += 1
+            raise TypeError("shape mismatch in backend")
+
+    cfg = validate_diarization_config(
+        num_speakers=1,
+        min_speakers=1,
+        max_speakers=2,
+    )
+    pipe = _TypeErrorPipeline()
+
+    with pytest.raises(RuntimeError, match="pyannote diarization inference failed"):
+        infer_speaker_turns(
+            np.zeros((8000,), dtype=np.float32),
+            sr=8000,
+            config=cfg,
+            _pipeline=pipe,
+        )
+    assert pipe.calls == 1
+
+
 def test_load_pyannote_pipeline_wraps_from_pretrained_errors(monkeypatch):
     dmod = importlib.import_module("mlx_qwen3_asr.diarization")
 

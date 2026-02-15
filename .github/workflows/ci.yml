@@ -38,3 +38,30 @@ jobs:
 
       - name: Run quality gate (fast)
         run: python scripts/quality_gate.py --mode fast
+
+  diarization-integration:
+    if: ${{ vars.RUN_DIARIZATION_INTEGRATION == '1' }}
+    runs-on: macos-14
+    timeout-minutes: 90
+    env:
+      PYANNOTE_AUTH_TOKEN: ${{ secrets.PYANNOTE_AUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -e ".[dev,diarize]"
+
+      - name: Validate diarization integration credentials
+        run: |
+          if [ -z "${PYANNOTE_AUTH_TOKEN}" ]; then
+            echo "PYANNOTE_AUTH_TOKEN secret is required when RUN_DIARIZATION_INTEGRATION=1"
+            exit 1
+          fi
+
+      - name: Run live diarization integration smoke test
+        run: RUN_DIARIZATION_LIVE_INTEGRATION=1 python -m pytest -q tests/test_diarization_live_integration.py
