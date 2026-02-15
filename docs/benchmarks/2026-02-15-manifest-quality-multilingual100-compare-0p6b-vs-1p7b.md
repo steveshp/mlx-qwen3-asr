@@ -17,3 +17,15 @@
 | Korean | 0.067 | 0.055 | -0.012 | 2.85x |
 | Russian | 0.088 | 0.049 | -0.039 | 2.84x |
 | Spanish | 0.030 | 0.007 | -0.022 | 2.84x |
+
+## Notes
+
+**Chinese CER regression is a numeric surface form artifact, not a quality issue.**
+The 1.7B model spells out numbers in Chinese characters (e.g., `二十九` instead of
+`29`, `二零零六` instead of `2006`), while FLEURS ground truth uses Arabic numerals.
+Both are correct transcriptions of the spoken audio. All 3 Chinese samples where 1.7B
+CER exceeds 0.6B CER are explained by this pattern. A number-aware text normalizer
+would eliminate the gap.
+
+**Hindi near-parity (+0.007) on 10 samples is not statistically meaningful.**
+Both models struggle similarly on Hindi FLEURS at this sample size.

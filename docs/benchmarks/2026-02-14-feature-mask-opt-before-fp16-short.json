@@ -1,0 +1,17 @@
+{
+  "audio_path": "tests/fixtures/test_speech.wav",
+  "audio_duration_sec": 2.53325,
+  "model": "Qwen/Qwen3-ASR-0.6B",
+  "dtype": "float16",
+  "runs": 7,
+  "warmup_runs": 1,
+  "latency_sec": {
+    "mean": 0.6662891131459868,
+    "median": 0.6466324170032749,
+    "min": 0.4928302910120692,
+    "max": 0.8908799170021666,
+    "std": 0.11672770773633924
+  },
+  "rtf": 0.26301751234421666,
+  "transcript_preview": "The quick brown fox jumps over the lazy dog."
+}

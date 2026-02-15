@@ -17,14 +17,17 @@ python scripts/quality_gate.py --mode fast
 Checks:
 - Ruff lint on tracked Python files.
 - Full pytest suite.
-- Static typing (`mypy`) is currently advisory only:
+- Typed-core `mypy` gate on selected modules:
 
 ```bash
-python -m mypy mlx_qwen3_asr scripts tests
+python -m mypy --follow-imports=skip --ignore-missing-imports \
+  mlx_qwen3_asr/config.py \
+  mlx_qwen3_asr/chunking.py \
+  mlx_qwen3_asr/attention.py \
+  mlx_qwen3_asr/encoder.py \
+  mlx_qwen3_asr/decoder.py \
+  mlx_qwen3_asr/model.py
 ```
-
-As of February 15, 2026, baseline is not yet clean enough to make this a
-required gate; track debt reduction before promotion to CI-required status.
 
 ### Release Gate (required before tags/releases)
 

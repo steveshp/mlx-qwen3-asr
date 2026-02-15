@@ -1,0 +1,48 @@
+{
+  "change": "compute_features skips attention-mask construction for padding=do_not_pad",
+  "method": "same-process microbenchmark on WhisperFeatureExtractor call path",
+  "results": {
+    "short_2s": {
+      "old_with_attention_mask": {
+        "mean_sec": 0.0004999753646552562,
+        "median_sec": 0.0004974374969606288,
+        "min_sec": 0.00042129200301133096,
+        "max_sec": 0.0006186660029925406,
+        "std_sec": 3.440469100738616e-05,
+        "runs": 200
+      },
+      "new_without_attention_mask": {
+        "mean_sec": 0.0005283549551677424,
+        "median_sec": 0.0004895210004178807,
+        "min_sec": 0.0003953749983338639,
+        "max_sec": 0.0026737500011222437,
+        "std_sec": 0.00019178799386768359,
+        "runs": 200
+      },
+      "delta_sec": 2.8379590512486166e-05,
+      "delta_pct": 5.6761977726751605,
+      "speedup_x": 0.9462868849153194
+    },
+    "long_10s": {
+      "old_with_attention_mask": {
+        "mean_sec": 0.0011727166501562655,
+        "median_sec": 0.0011443745024735108,
+        "min_sec": 0.0011022500111721456,
+        "max_sec": 0.002106583007844165,
+        "std_sec": 0.00012651601607959465,
+        "runs": 120
+      },
+      "new_without_attention_mask": {
+        "mean_sec": 0.0011109152592932029,
+        "median_sec": 0.0011102290081907995,
+        "min_sec": 0.0010480420023668557,
+        "max_sec": 0.001236457988852635,
+        "std_sec": 2.874581780412181e-05,
+        "runs": 120
+      },
+      "delta_sec": -6.180139086306262e-05,
+      "delta_pct": -5.2699337776800155,
+      "speedup_x": 1.0556310576761565
+    }
+  }
+}

@@ -2,6 +2,12 @@
 
 Store benchmark JSON outputs here.
 
+## Curation Policy
+
+- Keep a small set of canonical, current artifacts in `main` (for release-gate and latest regressions).
+- Archive one-off historical runs in GitHub Releases or tagged snapshots instead of accumulating every local run here.
+- Prefer updating a canonical artifact (for example `latest.json` or current gate files) over adding new dated files unless the run is part of a documented decision.
+
 Suggested naming:
 
 - `baseline_<machine>_<model>_<dtype>.json`

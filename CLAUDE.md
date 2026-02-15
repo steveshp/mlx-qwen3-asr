@@ -92,7 +92,10 @@ mlx_qwen3_asr/
 ├── config.py                # Dataclass configs (no MLX imports)
 ├── audio.py                 # Audio I/O + mel spectrogram (MLX)
 ├── mrope.py                 # Interleaved Multi-RoPE (critical correctness)
-├── model.py                 # All nn.Module classes (~600 lines)
+├── attention.py             # Shared SDPA helper (fused + fallback)
+├── encoder.py               # Audio encoder modules + windowed attention helpers
+├── decoder.py               # Text decoder modules + KV cache + causal mask
+├── model.py                 # Qwen3ASRModel top-level glue + compatibility exports
 ├── convert.py               # Weight key remapping + Conv2d transpose
 ├── load_models.py           # HuggingFace download + model instantiation
 ├── generate.py              # Autoregressive decode loop + KV cache
@@ -232,12 +235,12 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 These are known structural improvements to pursue as the codebase evolves. They represent the target architecture — implement them when touching the relevant code.
 
-### Split model.py into encoder.py + decoder.py + model.py
+### Completed: Split model.py into encoder.py + decoder.py + model.py
 
-model.py is 1068 lines containing two completely different architectures (audio encoder with LayerNorm/bias/GELU/bidirectional attention vs text decoder with RMSNorm/no-bias/SwiGLU/causal attention). Split into:
+Model modules are now separated by responsibility:
 - `encoder.py` — `SinusoidalPositionEmbedding`, `AudioAttention`, `AudioEncoderLayer`, `AudioEncoder`, `_create_windowed_mask`
 - `decoder.py` — `TextAttention`, `SwiGLU`, `TextDecoderLayer`, `TextDecoder`, `KVCache`, `_create_causal_mask`
-- `model.py` — `Qwen3ASRModel` (top-level glue, audio injection, lm_head)
+- `model.py` — `Qwen3ASRModel` (top-level glue, audio injection, lm_head, compatibility re-exports)
 
 ### Add model.prefill() and model.step() methods
 

@@ -1,0 +1,29 @@
+{
+  "shape": {
+    "batch": 1,
+    "seq_len": 1664,
+    "window_len": 104,
+    "d_model": 256,
+    "num_heads": 8,
+    "ffn_dim": 1024,
+    "layers": 8,
+    "num_windows": 16
+  },
+  "accuracy": {
+    "max_abs_diff": 2.5033950805664062e-06,
+    "mean_abs_diff": 3.5303958156873705e-07
+  },
+  "dense_mask": {
+    "mean_sec": 0.02753495820215903,
+    "median_sec": 0.02729535399703309,
+    "min_sec": 0.026112375024240464,
+    "max_sec": 0.030085416015936062
+  },
+  "windowed_segments": {
+    "mean_sec": 0.02951038350001909,
+    "median_sec": 0.02982139599043876,
+    "min_sec": 0.027856750006321818,
+    "max_sec": 0.030467333999695256
+  },
+  "speedup_x": 0.933059992329182
+}
