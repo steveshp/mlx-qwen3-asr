@@ -3,7 +3,8 @@
 
 Usage:
   python scripts/quality_gate.py --mode fast
-  RUN_REFERENCE_PARITY=1 python scripts/quality_gate.py --mode release
+  python scripts/quality_gate.py --mode release
+  RUN_STRICT_RELEASE=1 MANIFEST_QUALITY_EVAL_JSONL=... python scripts/quality_gate.py --mode release
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ import os
 import shlex
 import subprocess
 import sys
+import tempfile
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -38,9 +40,9 @@ class StepResult:
     note: str = ""
 
 
-def _run(cmd: list[str], cwd: Path) -> StepResult:
+def _run(cmd: list[str], cwd: Path, env: dict[str, str] | None = None) -> StepResult:
     started = time.perf_counter()
-    proc = subprocess.run(cmd, cwd=str(cwd), check=False)
+    proc = subprocess.run(cmd, cwd=str(cwd), check=False, env=env)
     elapsed = time.perf_counter() - started
     return StepResult(
         name=cmd[0],
@@ -63,8 +65,118 @@ def _tracked_py_files(repo: Path) -> list[str]:
     return [path for path in tracked if (repo / path).exists()]
 
 
+def _module_available(python_bin: str, module_name: str, repo: Path) -> bool:
+    probe = "import importlib.util,sys;sys.exit(0 if importlib.util.find_spec(sys.argv[1]) else 1)"
+    proc = subprocess.run(
+        [python_bin, "-c", probe, module_name],
+        cwd=str(repo),
+        check=False,
+    )
+    return proc.returncode == 0
+
+
+def _run_perf_benchmark_gate(
+    *,
+    repo: Path,
+    python_bin: str,
+    strict_release: bool,
+) -> StepResult:
+    audio_path = os.environ.get("PERF_BENCH_AUDIO")
+    if not audio_path:
+        default_audio = repo / "tests" / "fixtures" / "test_speech.wav"
+        if default_audio.exists():
+            audio_path = str(default_audio)
+        else:
+            return StepResult(
+                name="perf-benchmark",
+                cmd="scripts/benchmark_asr.py",
+                passed=False,
+                duration_sec=0.0,
+                returncode=1,
+                note="PERF_BENCH_AUDIO is required and no default fixture was found.",
+            )
+
+    fd, temp_json = tempfile.mkstemp(prefix="mlx_qwen3_asr_perf_", suffix=".json")
+    os.close(fd)
+    perf_json_output = os.environ.get("PERF_BENCH_JSON_OUTPUT", temp_json)
+
+    cmd = [
+        python_bin,
+        str(repo / "scripts" / "benchmark_asr.py"),
+        audio_path,
+        "--model",
+        os.environ.get("PERF_BENCH_MODEL", "Qwen/Qwen3-ASR-0.6B"),
+        "--dtype",
+        os.environ.get("PERF_BENCH_DTYPE", "float16"),
+        "--warmup-runs",
+        os.environ.get("PERF_BENCH_WARMUP_RUNS", "1"),
+        "--runs",
+        os.environ.get("PERF_BENCH_RUNS", "3"),
+        "--max-new-tokens",
+        os.environ.get("PERF_BENCH_MAX_NEW_TOKENS", "256"),
+        "--json-output",
+        perf_json_output,
+    ]
+    step = _run(cmd, repo)
+    if not step.passed:
+        return StepResult(
+            name="perf-benchmark",
+            cmd=step.cmd,
+            passed=False,
+            duration_sec=step.duration_sec,
+            returncode=step.returncode,
+        )
+
+    try:
+        payload = json.loads(Path(perf_json_output).read_text(encoding="utf-8"))
+    except Exception as exc:  # noqa: BLE001
+        return StepResult(
+            name="perf-benchmark",
+            cmd=step.cmd,
+            passed=False,
+            duration_sec=step.duration_sec,
+            returncode=1,
+            note=f"Failed to parse perf benchmark JSON: {exc}",
+        )
+
+    rtf_threshold = float(
+        os.environ.get(
+            "PERF_BENCH_FAIL_RTF_ABOVE",
+            "0.50" if strict_release else "1.00",
+        )
+    )
+    latency_threshold_env = os.environ.get("PERF_BENCH_FAIL_LATENCY_MEAN_ABOVE")
+    if strict_release and not latency_threshold_env:
+        latency_threshold_env = "2.00"
+    latency_threshold = float(latency_threshold_env) if latency_threshold_env else None
+
+    rtf = float(payload.get("rtf", 0.0))
+    latency_mean = float(payload.get("latency_sec", {}).get("mean", 0.0))
+    failures: list[str] = []
+    if rtf > rtf_threshold:
+        failures.append(f"rtf={rtf:.4f} > threshold={rtf_threshold:.4f}")
+    if latency_threshold is not None and latency_mean > latency_threshold:
+        failures.append(
+            f"latency_mean={latency_mean:.4f}s > threshold={latency_threshold:.4f}s"
+        )
+
+    return StepResult(
+        name="perf-benchmark",
+        cmd=step.cmd,
+        passed=not failures,
+        duration_sec=step.duration_sec,
+        returncode=0 if not failures else 1,
+        note=(
+            f"rtf={rtf:.4f}, latency_mean={latency_mean:.4f}s"
+            if not failures
+            else "; ".join(failures)
+        ),
+    )
+
+
 def run_gate(mode: str, repo: Path, python_bin: str) -> tuple[list[StepResult], bool]:
     steps: list[StepResult] = []
+    strict_release = mode == "release" and os.environ.get("RUN_STRICT_RELEASE", "0") == "1"
 
     tracked = _tracked_py_files(repo)
     if not tracked:
@@ -109,9 +221,37 @@ def run_gate(mode: str, repo: Path, python_bin: str) -> tuple[list[StepResult], 
                 )
             )
         else:
-            steps.append(
-                _run([python_bin, "-m", "pytest", "-q", "tests/test_reference_parity.py"], repo)
-            )
+            require_parity_deps = os.environ.get("REQUIRE_REFERENCE_PARITY_DEPS", "1") == "1"
+            missing = [
+                mod
+                for mod in ("torch", "qwen_asr")
+                if not _module_available(python_bin, mod, repo)
+            ]
+            if missing and require_parity_deps:
+                steps.append(
+                    StepResult(
+                        name="reference-parity",
+                        cmd=f"{python_bin} -m pytest -q tests/test_reference_parity.py",
+                        passed=False,
+                        duration_sec=0.0,
+                        returncode=1,
+                        note=(
+                            "Missing required parity dependencies: "
+                            f"{', '.join(missing)}. Install with: "
+                            "pip install 'mlx-qwen3-asr[aligner]'"
+                        ),
+                    )
+                )
+            else:
+                parity_env = dict(os.environ)
+                parity_env["RUN_REFERENCE_PARITY"] = "1"
+                steps.append(
+                    _run(
+                        [python_bin, "-m", "pytest", "-q", "tests/test_reference_parity.py"],
+                        repo,
+                        env=parity_env,
+                    )
+                )
 
         if os.environ.get("RUN_QUALITY_EVAL", "1") == "1":
             quality_eval_cmd = [
@@ -139,7 +279,7 @@ def run_gate(mode: str, repo: Path, python_bin: str) -> tuple[list[StepResult], 
                 quality_eval_cmd.extend(["--json-output", quality_json])
             steps.append(_run(quality_eval_cmd, repo))
 
-        if os.environ.get("RUN_MANIFEST_QUALITY_EVAL", "0") == "1":
+        if os.environ.get("RUN_MANIFEST_QUALITY_EVAL", "1" if strict_release else "0") == "1":
             manifest_jsonl = os.environ.get("MANIFEST_QUALITY_EVAL_JSONL")
             if not manifest_jsonl:
                 steps.append(
@@ -203,10 +343,13 @@ def run_gate(mode: str, repo: Path, python_bin: str) -> tuple[list[StepResult], 
                 )
             )
 
-        if os.environ.get("RUN_REFERENCE_PARITY_SUITE") == "1":
+        if os.environ.get(
+            "RUN_REFERENCE_PARITY_SUITE",
+            "1" if strict_release else "0",
+        ) == "1":
             subsets = os.environ.get(
                 "REFERENCE_PARITY_SUITE_SUBSETS",
-                "test-clean,test-other",
+                "" if strict_release else "test-clean,test-other",
             )
             samples_per_subset = os.environ.get(
                 "REFERENCE_PARITY_SUITE_SAMPLES_PER_SUBSET",
@@ -215,10 +358,11 @@ def run_gate(mode: str, repo: Path, python_bin: str) -> tuple[list[StepResult], 
             max_new_tokens = os.environ.get("REFERENCE_PARITY_SUITE_MAX_NEW_TOKENS", "128")
             fail_match_rate = os.environ.get(
                 "REFERENCE_PARITY_SUITE_FAIL_MATCH_RATE_BELOW",
-                "1.0",
+                "0.58" if strict_release else "1.0",
             )
             fail_text_match_rate = os.environ.get(
                 "REFERENCE_PARITY_SUITE_FAIL_TEXT_MATCH_RATE_BELOW",
+                "0.61" if strict_release else None,
             )
             cmd = [
                 python_bin,
@@ -235,6 +379,15 @@ def run_gate(mode: str, repo: Path, python_bin: str) -> tuple[list[StepResult], 
                 fail_match_rate,
             ]
             manifest_jsonl = os.environ.get("REFERENCE_PARITY_SUITE_MANIFEST_JSONL")
+            if strict_release and not manifest_jsonl:
+                default_manifest = (
+                    repo
+                    / "docs"
+                    / "benchmarks"
+                    / "2026-02-14-fleurs-multilingual-100-manifest.jsonl"
+                )
+                if default_manifest.exists():
+                    manifest_jsonl = str(default_manifest)
             if manifest_jsonl:
                 cmd.extend(["--manifest-jsonl", manifest_jsonl])
             if os.environ.get("REFERENCE_PARITY_SUITE_INCLUDE_LONG_MIXES", "1") == "1":
@@ -266,6 +419,18 @@ def run_gate(mode: str, repo: Path, python_bin: str) -> tuple[list[StepResult], 
                 cmd.extend(["--json-output", json_output])
             steps.append(_run(cmd, repo))
 
+        if os.environ.get(
+            "RUN_PERF_BENCHMARK",
+            "1" if strict_release else "0",
+        ) == "1":
+            steps.append(
+                _run_perf_benchmark_gate(
+                    repo=repo,
+                    python_bin=python_bin,
+                    strict_release=strict_release,
+                )
+            )
+
     ok = all(step.passed for step in steps)
     return steps, ok
 
@@ -283,7 +448,7 @@ def main() -> int:
         "--mode",
         choices=["fast", "release"],
         default="fast",
-        help="fast: lint+tests, release: fast + reference parity test",
+        help="fast: lint+tests, release: fast + quality/parity/perf release lanes",
     )
     parser.add_argument(
         "--json-output",

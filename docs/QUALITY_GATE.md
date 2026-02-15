@@ -37,7 +37,10 @@ RUN_REFERENCE_PARITY=1 python scripts/quality_gate.py --mode release
 
 Checks:
 - Everything in fast gate.
-- Reference parity test (`tests/test_reference_parity.py`).
+- Reference parity test (`tests/test_reference_parity.py`) with `RUN_REFERENCE_PARITY=1`.
+  - By default, missing `torch`/`qwen_asr` now fails release gate.
+  - Override only if intentionally running in lightweight mode:
+    - `REQUIRE_REFERENCE_PARITY_DEPS=0`
 - Default quality-metrics lane (deterministic LibriSpeech sample):
   - runs `scripts/eval_librispeech.py`
   - enforces both WER and CER thresholds (`--fail-wer-above`, `--fail-cer-above`)
@@ -51,6 +54,42 @@ Checks:
 - Optional aligner parity lane when explicitly enabled:
   - `RUN_ALIGNER_PARITY=1`
   - runs `scripts/eval_aligner_parity.py` on deterministic LibriSpeech samples.
+
+### Strict Release Profile (recommended for highest bar)
+
+Use this before publishing quality/performance claims:
+
+```bash
+RUN_STRICT_RELEASE=1 \
+MANIFEST_QUALITY_EVAL_JSONL=docs/benchmarks/2026-02-14-fleurs-multilingual-100-manifest.jsonl \
+python scripts/quality_gate.py --mode release
+```
+
+What strict profile turns on by default:
+- Manifest quality lane (`RUN_MANIFEST_QUALITY_EVAL=1`) with required manifest.
+- Reference parity suite (`RUN_REFERENCE_PARITY_SUITE=1`) with multilingual defaults:
+  - `REFERENCE_PARITY_SUITE_SUBSETS=''`
+  - `REFERENCE_PARITY_SUITE_MANIFEST_JSONL` defaults to
+    `docs/benchmarks/2026-02-14-fleurs-multilingual-100-manifest.jsonl` if present.
+  - regression floors:
+    - `REFERENCE_PARITY_SUITE_FAIL_MATCH_RATE_BELOW=0.58`
+    - `REFERENCE_PARITY_SUITE_FAIL_TEXT_MATCH_RATE_BELOW=0.61`
+- Performance lane (`RUN_PERF_BENCHMARK=1`) using `scripts/benchmark_asr.py`:
+  - default audio: `tests/fixtures/test_speech.wav`
+  - default fail thresholds:
+    - `PERF_BENCH_FAIL_RTF_ABOVE=0.50`
+    - `PERF_BENCH_FAIL_LATENCY_MEAN_ABOVE=2.00`
+
+Relevant perf env overrides:
+- `PERF_BENCH_AUDIO`
+- `PERF_BENCH_MODEL`
+- `PERF_BENCH_DTYPE`
+- `PERF_BENCH_WARMUP_RUNS`
+- `PERF_BENCH_RUNS`
+- `PERF_BENCH_MAX_NEW_TOKENS`
+- `PERF_BENCH_FAIL_RTF_ABOVE`
+- `PERF_BENCH_FAIL_LATENCY_MEAN_ABOVE`
+- `PERF_BENCH_JSON_OUTPUT`
 
 ### Nightly Regression Lane (scheduled/manual)
 
@@ -120,8 +159,8 @@ python scripts/quality_gate.py --mode release
 ```
 
 Current status:
-- this lane is exploratory and intended for gap discovery before promotion to a
-  required release gate.
+- this lane is required by default when `RUN_STRICT_RELEASE=1` and otherwise
+  remains opt-in for lighter release checks.
 
 ### Optional Manifest Quality Gate (multilingual/long-form WER/CER)
 
