@@ -755,3 +755,20 @@ Interpretation:
   candidate-set divergence; this supports prioritizing targeted model-path
   parity investigation on the small non-near subset before making larger
   decoding changes.
+
+### 41) FP32 recheck of non-near mismatch subset
+
+Ran logit probe on the five highest-priority non-near rows from section 40
+with `dtype=float32`:
+
+- `docs/benchmarks/2026-02-15-logit-parity-probe-nonnear5-fp32.json`
+- `docs/benchmarks/2026-02-15-logit-parity-probe-nonnear5-fp32.md`
+
+Observed:
+- mismatches remain `5/5`,
+- near-tie rows remain `0/5`,
+- strict top1/top2 cross-swaps still present on `3/5`.
+
+Conclusion:
+- this residual subset is not explained by fp16 precision effects; follow-up
+  should target model-path/logit-source parity for these specific rows.

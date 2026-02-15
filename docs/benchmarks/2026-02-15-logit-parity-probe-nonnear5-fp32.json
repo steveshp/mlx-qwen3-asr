@@ -1,0 +1,282 @@
+{
+  "suite": "logit-parity-probe-v1",
+  "model": "Qwen/Qwen3-ASR-0.6B",
+  "dtype": "float32",
+  "samples": 5,
+  "near_tie_margin": 0.5,
+  "mismatch_rows": 5,
+  "near_tie_rows": 0,
+  "elapsed_sec": 31.082096459023887,
+  "rows": [
+    {
+      "sample_id": "en_us-394135166243682296",
+      "language": "English",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/fleurs-audio/en_us/en_us-394135166243682296.wav",
+      "mismatch_index": 17,
+      "common_prefix_len": 17,
+      "ref_token_count": 24,
+      "mlx_token_count": 26,
+      "ref_token_at_probe": 1378,
+      "mlx_token_at_probe": 220,
+      "probe_step_index": 17,
+      "near_tie_margin_threshold": 0.5,
+      "near_tie_at_probe": false,
+      "ref_probe": {
+        "top_token_id": 1378,
+        "top_logit": 33.4375,
+        "margin_top1_top2": 0.71875,
+        "topk_token_ids": [
+          1378,
+          220,
+          9043,
+          17073,
+          279
+        ],
+        "topk_logits": [
+          33.4375,
+          32.71875,
+          28.671875,
+          28.359375,
+          27.546875
+        ]
+      },
+      "mlx_probe": {
+        "top_token_id": 220,
+        "top_logit": 33.652618408203125,
+        "margin_top1_top2": 1.3968734741210938,
+        "topk_token_ids": [
+          220,
+          1378,
+          17073,
+          279,
+          9043
+        ],
+        "topk_logits": [
+          33.652618408203125,
+          32.25574493408203,
+          27.98748207092285,
+          27.878929138183594,
+          27.578189849853516
+        ]
+      },
+      "ref_token_surface_at_probe": " two",
+      "mlx_token_surface_at_probe": " "
+    },
+    {
+      "sample_id": "ja_jp-8922261396806111795",
+      "language": "Japanese",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/fleurs-audio/ja_jp/ja_jp-8922261396806111795.wav",
+      "mismatch_index": 7,
+      "common_prefix_len": 7,
+      "ref_token_count": 65,
+      "mlx_token_count": 63,
+      "ref_token_at_probe": 17587,
+      "mlx_token_at_probe": 11387,
+      "probe_step_index": 7,
+      "near_tie_margin_threshold": 0.5,
+      "near_tie_at_probe": false,
+      "ref_probe": {
+        "top_token_id": 17587,
+        "top_logit": 20.734375,
+        "margin_top1_top2": 1.453125,
+        "topk_token_ids": [
+          17587,
+          20711,
+          27833,
+          3757,
+          125607
+        ],
+        "topk_logits": [
+          20.734375,
+          19.28125,
+          19.21875,
+          18.65625,
+          18.59375
+        ]
+      },
+      "mlx_probe": {
+        "top_token_id": 11387,
+        "top_logit": 20.79636573791504,
+        "margin_top1_top2": 0.5125045776367188,
+        "topk_token_ids": [
+          11387,
+          27833,
+          17587,
+          3757,
+          619
+        ],
+        "topk_logits": [
+          20.79636573791504,
+          20.28386116027832,
+          20.038530349731445,
+          19.854419708251953,
+          18.47233009338379
+        ]
+      },
+      "ref_token_surface_at_probe": " �",
+      "mlx_token_surface_at_probe": " Jim"
+    },
+    {
+      "sample_id": "de_de-11906634980733046933",
+      "language": "German",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/fleurs-audio/de_de/de_de-11906634980733046933.wav",
+      "mismatch_index": 29,
+      "common_prefix_len": 29,
+      "ref_token_count": 50,
+      "mlx_token_count": 49,
+      "ref_token_at_probe": 92979,
+      "mlx_token_at_probe": 58534,
+      "probe_step_index": 29,
+      "near_tie_margin_threshold": 0.5,
+      "near_tie_at_probe": false,
+      "ref_probe": {
+        "top_token_id": 92979,
+        "top_logit": 21.390625,
+        "margin_top1_top2": 2.671875,
+        "topk_token_ids": [
+          92979,
+          4863,
+          9740,
+          80129,
+          90080
+        ],
+        "topk_logits": [
+          21.390625,
+          18.71875,
+          17.28125,
+          14.9609375,
+          13.7265625
+        ]
+      },
+      "mlx_probe": {
+        "top_token_id": 58534,
+        "top_logit": 20.41079330444336,
+        "margin_top1_top2": 3.1180458068847656,
+        "topk_token_ids": [
+          58534,
+          467,
+          43693,
+          90080,
+          3184
+        ],
+        "topk_logits": [
+          20.41079330444336,
+          17.292747497558594,
+          15.960594177246094,
+          14.519155502319336,
+          14.505821228027344
+        ]
+      },
+      "ref_token_surface_at_probe": " Entwicklung",
+      "mlx_token_surface_at_probe": " Weg"
+    },
+    {
+      "sample_id": "ar_eg-14219101187915533421",
+      "language": "Arabic",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/fleurs-audio/ar_eg/ar_eg-14219101187915533421.wav",
+      "mismatch_index": 29,
+      "common_prefix_len": 29,
+      "ref_token_count": 53,
+      "mlx_token_count": 54,
+      "ref_token_at_probe": 131211,
+      "mlx_token_at_probe": 86941,
+      "probe_step_index": 29,
+      "near_tie_margin_threshold": 0.5,
+      "near_tie_at_probe": false,
+      "ref_probe": {
+        "top_token_id": 131211,
+        "top_logit": 28.015625,
+        "margin_top1_top2": 0.71875,
+        "topk_token_ids": [
+          131211,
+          86941,
+          129724,
+          124514,
+          134145
+        ],
+        "topk_logits": [
+          28.015625,
+          27.296875,
+          21.203125,
+          19.890625,
+          19.734375
+        ]
+      },
+      "mlx_probe": {
+        "top_token_id": 86941,
+        "top_logit": 27.418752670288086,
+        "margin_top1_top2": 1.6373043060302734,
+        "topk_token_ids": [
+          86941,
+          131211,
+          124326,
+          124514,
+          129724
+        ],
+        "topk_logits": [
+          27.418752670288086,
+          25.781448364257812,
+          21.132732391357422,
+          20.49642562866211,
+          20.29520606994629
+        ]
+      },
+      "ref_token_surface_at_probe": " كتاب",
+      "mlx_token_surface_at_probe": " ك"
+    },
+    {
+      "sample_id": "hi_in-17876469696694013955",
+      "language": "Hindi",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/fleurs-audio/hi_in/hi_in-17876469696694013955.wav",
+      "mismatch_index": 61,
+      "common_prefix_len": 61,
+      "ref_token_count": 116,
+      "mlx_token_count": 118,
+      "ref_token_at_probe": 113,
+      "mlx_token_at_probe": 105,
+      "probe_step_index": 61,
+      "near_tie_margin_threshold": 0.5,
+      "near_tie_at_probe": false,
+      "ref_probe": {
+        "top_token_id": 113,
+        "top_logit": 32.5625,
+        "margin_top1_top2": 1.21875,
+        "topk_token_ids": [
+          113,
+          105,
+          255,
+          227,
+          99
+        ],
+        "topk_logits": [
+          32.5625,
+          31.34375,
+          28.015625,
+          24.40625,
+          24.15625
+        ]
+      },
+      "mlx_probe": {
+        "top_token_id": 105,
+        "top_logit": 31.245708465576172,
+        "margin_top1_top2": 0.7283115386962891,
+        "topk_token_ids": [
+          105,
+          113,
+          255,
+          227,
+          231
+        ],
+        "topk_logits": [
+          31.245708465576172,
+          30.517396926879883,
+          27.73682975769043,
+          23.37214469909668,
+          22.4937801361084
+        ]
+      },
+      "ref_token_surface_at_probe": "�",
+      "mlx_token_surface_at_probe": "�"
+    }
+  ]
+}
