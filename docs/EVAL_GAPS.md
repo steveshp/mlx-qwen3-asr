@@ -19,6 +19,9 @@ make broad "production-grade across languages/conditions" quality claims.
 - WER/CER lane:
   - LibriSpeech test-clean, 100 samples, speaker-balanced, 0.6B model
     (`fp16`, `4-bit`, `8-bit`).
+  - FLEURS multilingual manifest-quality lane:
+    - 100 short-form samples (10 languages x 10),
+    - Unicode-safe WER/CER + language-aware primary metric.
   - Long-form multilingual manifest-quality lane:
     - 10 synthetic concatenated clips (~75-90s each, 10 languages),
     - Unicode-safe WER/CER with language-aware primary metric
@@ -36,9 +39,9 @@ make broad "production-grade across languages/conditions" quality claims.
 
 3. `P0` Non-English quality lane (beyond token parity)
 - Why: token parity != ground-truth accuracy. Need quality metrics per language.
-- Status: partial. Long-form synthetic multilingual WER/CER is now measured
-  (`n=10`, 10 languages), but we still need larger short-form multilingual
-  ground-truth lanes for statistical confidence.
+- Status: partial. We now have multilingual quality lanes for both short-form
+  (`n=100`) and long-form synthetic (`n=10`) across 10 languages, but still
+  need larger-scale and non-synthetic ground-truth coverage.
 
 4. `P0` Long-form quality lane (`>30s`, multi-minute)
 - Why: chunking/context behavior can drift differently than short utterances.

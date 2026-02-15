@@ -162,6 +162,8 @@ Manifest quality artifacts (2026-02-15):
 
 - `docs/benchmarks/2026-02-15-manifest-quality-longform10.json`
 - `docs/benchmarks/2026-02-15-manifest-quality-longform10.md`
+- `docs/benchmarks/2026-02-15-manifest-quality-multilingual100.json`
+- `docs/benchmarks/2026-02-15-manifest-quality-multilingual100.md`
 
 Generate with:
 

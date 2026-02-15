@@ -598,3 +598,38 @@ Interpretation:
 - this closes a major gap where long-form quality was inferred only from token
   parity; we now have direct WER/CER for multilingual long-form synthetic data.
 - remaining gap is scale/domain breadth (real-world audio + larger sample size).
+
+### 34) Multilingual short-form quality lane (FLEURS manifest, n=100)
+
+- Ran manifest-quality evaluator on deterministic multilingual short-form set:
+
+```bash
+python scripts/eval_manifest_quality.py \
+  --manifest-jsonl docs/benchmarks/2026-02-14-fleurs-multilingual-100-manifest.jsonl \
+  --model Qwen/Qwen3-ASR-0.6B \
+  --dtype float16 \
+  --max-new-tokens 256 \
+  --json-output docs/benchmarks/2026-02-15-manifest-quality-multilingual100.json
+```
+
+- Aggregate results (`10 languages x 10`):
+  - samples: `100`
+  - WER: `0.1589`
+  - CER: `0.0541`
+  - primary error rate: `0.0937`
+  - mean latency: `1.35s`
+- Notable per-language primary metrics:
+  - English: `0.0463`
+  - Chinese: `0.0437` (CER primary)
+  - Japanese: `0.0846` (CER primary)
+  - Korean: `0.0675` (CER primary)
+  - Hindi: `0.1667`
+  - Arabic: `0.2150`
+
+Artifacts:
+- `docs/benchmarks/2026-02-15-manifest-quality-multilingual100.json`
+- `docs/benchmarks/2026-02-15-manifest-quality-multilingual100.md`
+
+Impact:
+- this upgrades non-English quality validation from parity-only to direct
+  reference-based metrics on a broader multilingual sample.
