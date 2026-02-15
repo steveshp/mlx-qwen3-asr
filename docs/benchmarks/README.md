@@ -194,6 +194,8 @@ Post-canonicalization multilingual triage artifacts (2026-02-15):
 - `docs/benchmarks/2026-02-15-logit-parity-probe-nonnear5-post-maskmin.json`
 - `docs/benchmarks/2026-02-15-logit-parity-probe-nonnear5-post-maskmin.md`
 - `docs/benchmarks/2026-02-15-logit-parity-probe-nonnear5-post-maskmin-compare.json`
+- `docs/benchmarks/2026-02-15-nonnear-parity-matrix.json`
+- `docs/benchmarks/2026-02-15-nonnear-parity-matrix.md`
 
 Generate with:
 

@@ -1,0 +1,333 @@
+{
+  "suite": "nonnear-parity-matrix-v1",
+  "date": "2026-02-15",
+  "model": "Qwen/Qwen3-ASR-0.6B",
+  "max_new_tokens": 256,
+  "samples_source": "docs/benchmarks/2026-02-14-fleurs-multilingual-100-manifest.jsonl",
+  "sample_ids": [
+    "en_us-394135166243682296",
+    "ja_jp-8922261396806111795",
+    "de_de-11906634980733046933",
+    "ar_eg-14219101187915533421",
+    "hi_in-17876469696694013955"
+  ],
+  "sample_count": 5,
+  "elapsed_sec": 46.92034424998565,
+  "cases": [
+    {
+      "case": {
+        "name": "baseline-f16",
+        "dtype": "float16",
+        "force_dense_windows": false,
+        "force_segmented_windows": false,
+        "force_attention_fallback": false
+      },
+      "samples": 5,
+      "token_matches": 0,
+      "token_match_rate": 0.0,
+      "mismatch_rows": 5,
+      "mean_first_mismatch_index": 28.6,
+      "latency_sec_mlx_mean": 1.8780610332032666,
+      "elapsed_sec": 9.390403583005536,
+      "rows": [
+        {
+          "sample_id": "en_us-394135166243682296",
+          "language": "English",
+          "token_match": false,
+          "first_mismatch_index": 17,
+          "token_count_mlx": 26,
+          "token_count_ref": 24,
+          "latency_sec_mlx": 0.8786568329960573
+        },
+        {
+          "sample_id": "ja_jp-8922261396806111795",
+          "language": "Japanese",
+          "token_match": false,
+          "first_mismatch_index": 7,
+          "token_count_mlx": 63,
+          "token_count_ref": 65,
+          "latency_sec_mlx": 1.911907333007548
+        },
+        {
+          "sample_id": "de_de-11906634980733046933",
+          "language": "German",
+          "token_match": false,
+          "first_mismatch_index": 29,
+          "token_count_mlx": 49,
+          "token_count_ref": 50,
+          "latency_sec_mlx": 1.52855516699492
+        },
+        {
+          "sample_id": "ar_eg-14219101187915533421",
+          "language": "Arabic",
+          "token_match": false,
+          "first_mismatch_index": 29,
+          "token_count_mlx": 54,
+          "token_count_ref": 53,
+          "latency_sec_mlx": 1.6333488750096876
+        },
+        {
+          "sample_id": "hi_in-17876469696694013955",
+          "language": "Hindi",
+          "token_match": false,
+          "first_mismatch_index": 61,
+          "token_count_mlx": 118,
+          "token_count_ref": 116,
+          "latency_sec_mlx": 3.43783695800812
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "baseline-f32",
+        "dtype": "float32",
+        "force_dense_windows": false,
+        "force_segmented_windows": false,
+        "force_attention_fallback": false
+      },
+      "samples": 5,
+      "token_matches": 0,
+      "token_match_rate": 0.0,
+      "mismatch_rows": 5,
+      "mean_first_mismatch_index": 28.6,
+      "latency_sec_mlx_mean": 1.803899666602956,
+      "elapsed_sec": 9.019540625013178,
+      "rows": [
+        {
+          "sample_id": "en_us-394135166243682296",
+          "language": "English",
+          "token_match": false,
+          "first_mismatch_index": 17,
+          "token_count_mlx": 26,
+          "token_count_ref": 24,
+          "latency_sec_mlx": 0.8155399590032175
+        },
+        {
+          "sample_id": "ja_jp-8922261396806111795",
+          "language": "Japanese",
+          "token_match": false,
+          "first_mismatch_index": 7,
+          "token_count_mlx": 63,
+          "token_count_ref": 65,
+          "latency_sec_mlx": 1.8767079579993151
+        },
+        {
+          "sample_id": "de_de-11906634980733046933",
+          "language": "German",
+          "token_match": false,
+          "first_mismatch_index": 29,
+          "token_count_mlx": 49,
+          "token_count_ref": 50,
+          "latency_sec_mlx": 1.4270634160202462
+        },
+        {
+          "sample_id": "ar_eg-14219101187915533421",
+          "language": "Arabic",
+          "token_match": false,
+          "first_mismatch_index": 29,
+          "token_count_mlx": 54,
+          "token_count_ref": 53,
+          "latency_sec_mlx": 1.5859752499964088
+        },
+        {
+          "sample_id": "hi_in-17876469696694013955",
+          "language": "Hindi",
+          "token_match": false,
+          "first_mismatch_index": 61,
+          "token_count_mlx": 118,
+          "token_count_ref": 116,
+          "latency_sec_mlx": 3.314211749995593
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "force-dense-f16",
+        "dtype": "float16",
+        "force_dense_windows": true,
+        "force_segmented_windows": false,
+        "force_attention_fallback": false
+      },
+      "samples": 5,
+      "token_matches": 0,
+      "token_match_rate": 0.0,
+      "mismatch_rows": 5,
+      "mean_first_mismatch_index": 28.6,
+      "latency_sec_mlx_mean": 1.7655144079995808,
+      "elapsed_sec": 8.8276082079974,
+      "rows": [
+        {
+          "sample_id": "en_us-394135166243682296",
+          "language": "English",
+          "token_match": false,
+          "first_mismatch_index": 17,
+          "token_count_mlx": 26,
+          "token_count_ref": 24,
+          "latency_sec_mlx": 0.8007656249974389
+        },
+        {
+          "sample_id": "ja_jp-8922261396806111795",
+          "language": "Japanese",
+          "token_match": false,
+          "first_mismatch_index": 7,
+          "token_count_mlx": 63,
+          "token_count_ref": 65,
+          "latency_sec_mlx": 1.8862181660078932
+        },
+        {
+          "sample_id": "de_de-11906634980733046933",
+          "language": "German",
+          "token_match": false,
+          "first_mismatch_index": 29,
+          "token_count_mlx": 49,
+          "token_count_ref": 50,
+          "latency_sec_mlx": 1.4098832499876153
+        },
+        {
+          "sample_id": "ar_eg-14219101187915533421",
+          "language": "Arabic",
+          "token_match": false,
+          "first_mismatch_index": 29,
+          "token_count_mlx": 54,
+          "token_count_ref": 53,
+          "latency_sec_mlx": 1.5213809580018278
+        },
+        {
+          "sample_id": "hi_in-17876469696694013955",
+          "language": "Hindi",
+          "token_match": false,
+          "first_mismatch_index": 61,
+          "token_count_mlx": 118,
+          "token_count_ref": 116,
+          "latency_sec_mlx": 3.2093240410031285
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "force-segmented-f16",
+        "dtype": "float16",
+        "force_dense_windows": false,
+        "force_segmented_windows": true,
+        "force_attention_fallback": false
+      },
+      "samples": 5,
+      "token_matches": 0,
+      "token_match_rate": 0.0,
+      "mismatch_rows": 5,
+      "mean_first_mismatch_index": 28.6,
+      "latency_sec_mlx_mean": 1.820227533398429,
+      "elapsed_sec": 9.10118374999729,
+      "rows": [
+        {
+          "sample_id": "en_us-394135166243682296",
+          "language": "English",
+          "token_match": false,
+          "first_mismatch_index": 17,
+          "token_count_mlx": 26,
+          "token_count_ref": 24,
+          "latency_sec_mlx": 0.805708792002406
+        },
+        {
+          "sample_id": "ja_jp-8922261396806111795",
+          "language": "Japanese",
+          "token_match": false,
+          "first_mismatch_index": 7,
+          "token_count_mlx": 63,
+          "token_count_ref": 65,
+          "latency_sec_mlx": 1.9073855000024196
+        },
+        {
+          "sample_id": "de_de-11906634980733046933",
+          "language": "German",
+          "token_match": false,
+          "first_mismatch_index": 29,
+          "token_count_mlx": 49,
+          "token_count_ref": 50,
+          "latency_sec_mlx": 1.4309396249882411
+        },
+        {
+          "sample_id": "ar_eg-14219101187915533421",
+          "language": "Arabic",
+          "token_match": false,
+          "first_mismatch_index": 29,
+          "token_count_mlx": 54,
+          "token_count_ref": 53,
+          "latency_sec_mlx": 1.6252553329977673
+        },
+        {
+          "sample_id": "hi_in-17876469696694013955",
+          "language": "Hindi",
+          "token_match": false,
+          "first_mismatch_index": 61,
+          "token_count_mlx": 118,
+          "token_count_ref": 116,
+          "latency_sec_mlx": 3.3318484170013107
+        }
+      ]
+    },
+    {
+      "case": {
+        "name": "force-attn-fallback-f16",
+        "dtype": "float16",
+        "force_dense_windows": false,
+        "force_segmented_windows": false,
+        "force_attention_fallback": true
+      },
+      "samples": 5,
+      "token_matches": 0,
+      "token_match_rate": 0.0,
+      "mismatch_rows": 5,
+      "mean_first_mismatch_index": 28.6,
+      "latency_sec_mlx_mean": 1.9109903163916897,
+      "elapsed_sec": 9.554993375000777,
+      "rows": [
+        {
+          "sample_id": "en_us-394135166243682296",
+          "language": "English",
+          "token_match": false,
+          "first_mismatch_index": 17,
+          "token_count_mlx": 26,
+          "token_count_ref": 24,
+          "latency_sec_mlx": 0.8319274579989724
+        },
+        {
+          "sample_id": "ja_jp-8922261396806111795",
+          "language": "Japanese",
+          "token_match": false,
+          "first_mismatch_index": 7,
+          "token_count_mlx": 63,
+          "token_count_ref": 65,
+          "latency_sec_mlx": 2.070718582981499
+        },
+        {
+          "sample_id": "de_de-11906634980733046933",
+          "language": "German",
+          "token_match": false,
+          "first_mismatch_index": 29,
+          "token_count_mlx": 49,
+          "token_count_ref": 50,
+          "latency_sec_mlx": 1.5254264579853043
+        },
+        {
+          "sample_id": "ar_eg-14219101187915533421",
+          "language": "Arabic",
+          "token_match": false,
+          "first_mismatch_index": 29,
+          "token_count_mlx": 54,
+          "token_count_ref": 53,
+          "latency_sec_mlx": 1.6796074580051936
+        },
+        {
+          "sample_id": "hi_in-17876469696694013955",
+          "language": "Hindi",
+          "token_match": false,
+          "first_mismatch_index": 61,
+          "token_count_mlx": 118,
+          "token_count_ref": 116,
+          "latency_sec_mlx": 3.4472716249874793
+        }
+      ]
+    }
+  ]
+}

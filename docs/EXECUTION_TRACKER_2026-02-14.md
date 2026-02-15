@@ -883,3 +883,31 @@ Observed:
 Interpretation:
 - this fixes an upstream semantic mismatch and is the safer mask behavior, but
   it is not the dominant cause of the current residual non-near parity gap.
+
+### 47) Bounded non-near parity matrix (hard stop gate)
+
+Added reproducible bounded matrix runner:
+
+- `scripts/eval_nonnear_parity_matrix.py`
+
+Artifacts:
+
+- `docs/benchmarks/2026-02-15-nonnear-parity-matrix.json`
+- `docs/benchmarks/2026-02-15-nonnear-parity-matrix.md`
+
+Case set (fixed, intentionally small):
+- baseline-f16
+- baseline-f32
+- force-dense-f16
+- force-segmented-f16
+- force-attn-fallback-f16
+
+Result on non-near subset (`n=5`):
+- all cases remained `0/5` token parity,
+- mismatch rows unchanged (`5`),
+- mean first mismatch index unchanged (`28.6`).
+
+Decision:
+- no improvement under this bounded matrix, so exploratory parity tuning stops
+  here for this phase; preserve current implementation and carry forward the
+  documented residual gap for future targeted work.
