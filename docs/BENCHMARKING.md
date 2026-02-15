@@ -147,6 +147,32 @@ python scripts/eval_manifest_head2head.py \
   --md-output docs/benchmarks/2026-02-15-quality-head2head-mlx-vs-pytorch-longform10.md
 ```
 
+Real-world manifest lane (AMI + Earnings22 chunked, deterministic speaker-balanced sample):
+
+```bash
+python scripts/build_realworld_manifest.py \
+  --sources ami_ihm_test,earnings22_chunked_test \
+  --samples-per-source 20 \
+  --seed 20260215 \
+  --candidate-multiplier 8 \
+  --min-unique-speakers 10 \
+  --max-shards 20 \
+  --output-manifest docs/benchmarks/2026-02-15-realworld-manifest-40.jsonl
+
+python scripts/eval_manifest_quality.py \
+  --manifest-jsonl docs/benchmarks/2026-02-15-realworld-manifest-40.jsonl \
+  --model Qwen/Qwen3-ASR-0.6B \
+  --dtype float16 \
+  --json-output docs/benchmarks/2026-02-15-manifest-quality-realworld40-0p6b.json
+
+python scripts/eval_manifest_head2head.py \
+  --mlx-json docs/benchmarks/2026-02-15-manifest-quality-realworld40-0p6b.json \
+  --model Qwen/Qwen3-ASR-0.6B \
+  --max-new-tokens 1024 \
+  --json-output docs/benchmarks/2026-02-15-quality-head2head-mlx-vs-pytorch-realworld40.json \
+  --md-output docs/benchmarks/2026-02-15-quality-head2head-mlx-vs-pytorch-realworld40.md
+```
+
 Latest multilingual smoke artifacts:
 - `docs/benchmarks/2026-02-14-fleurs-multilingual-smoke-manifest.jsonl`
 - `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-smoke.json`

@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 import time
 import unicodedata
 from pathlib import Path
@@ -14,7 +15,6 @@ from typing import Optional
 import numpy as np
 
 _SCRIPTS_DIR = Path(__file__).resolve().parent
-import sys
 
 if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
@@ -129,8 +129,8 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        import torch
         import qwen_asr
+        import torch
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError(
             "qwen_asr + torch are required for head-to-head reference evaluation."
@@ -308,8 +308,9 @@ def main() -> int:
         out_md = Path(args.md_output).expanduser().resolve()
         out_md.parent.mkdir(parents=True, exist_ok=True)
         systems = payload["systems"]
+        suite_name = mlx_payload.get("suite", "manifest")
         lines = [
-            f"# MLX vs PyTorch Quality Head-to-Head ({mlx_payload.get('suite', 'manifest')}, n={len(rows)})",
+            f"# MLX vs PyTorch Quality Head-to-Head ({suite_name}, n={len(rows)})",
             "",
             f"- model: `{args.model}`",
             f"- samples: `{len(rows)}`",
