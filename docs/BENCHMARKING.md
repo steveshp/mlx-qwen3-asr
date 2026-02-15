@@ -66,7 +66,7 @@ Multilingual manifest parity benchmark:
 ```bash
 python scripts/build_multilingual_manifest.py \
   --languages en_us,zh_cn,ja_jp,de_de,fr_fr,es_419,ru_ru,ar_eg,hi_in,ko_kr \
-  --samples-per-language 2 \
+  --samples-per-language 10 \
   --output-manifest docs/benchmarks/fleurs-multilingual-manifest.jsonl
 
 python scripts/eval_reference_parity_suite.py \
@@ -74,12 +74,29 @@ python scripts/eval_reference_parity_suite.py \
   --samples-per-subset 1 \
   --manifest-jsonl docs/benchmarks/fleurs-multilingual-manifest.jsonl \
   --json-output docs/benchmarks/reference-parity-suite-multilingual.json
+
+python scripts/analyze_reference_parity_mismatches.py \
+  --input-json docs/benchmarks/reference-parity-suite-multilingual.json \
+  --json-output docs/benchmarks/reference-parity-suite-multilingual-analysis.json \
+  --md-output docs/benchmarks/reference-parity-suite-multilingual-analysis.md
 ```
 
 Latest multilingual smoke artifacts:
 - `docs/benchmarks/2026-02-14-fleurs-multilingual-smoke-manifest.jsonl`
 - `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-smoke.json`
 - `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-smoke.md`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-smoke-analysis.json`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-smoke-analysis.md`
+
+Latest multilingual expanded artifacts:
+- `docs/benchmarks/2026-02-14-fleurs-multilingual-20-manifest.jsonl`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-20.json`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-20-analysis.json`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-20-analysis.md`
+- `docs/benchmarks/2026-02-14-fleurs-multilingual-100-manifest.jsonl`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-100.json`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-100-analysis.json`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-100-analysis.md`
 
 Latest smoke artifacts:
 - `docs/benchmarks/2026-02-14-reference-parity-suite-smoke.json`

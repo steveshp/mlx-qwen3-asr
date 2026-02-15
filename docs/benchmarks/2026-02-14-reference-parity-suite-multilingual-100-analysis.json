@@ -1,0 +1,412 @@
+{
+  "suite": "reference-parity-suite-v1",
+  "model": "Qwen/Qwen3-ASR-0.6B",
+  "samples": 100,
+  "token_match_rate": 0.64,
+  "text_match_rate": 0.67,
+  "category_counts": {
+    "exact_match": 64,
+    "punctuation_or_tokenization": 3,
+    "numeric_surface_form": 5,
+    "minor_lexical_shift": 25,
+    "content_shift": 3
+  },
+  "by_language": {
+    "English": {
+      "samples": 10,
+      "token_matches": 8,
+      "text_matches": 9,
+      "categories": {
+        "exact_match": 8,
+        "punctuation_or_tokenization": 1,
+        "numeric_surface_form": 1
+      },
+      "token_match_rate": 0.8,
+      "text_match_rate": 0.9
+    },
+    "Chinese": {
+      "samples": 10,
+      "token_matches": 7,
+      "text_matches": 8,
+      "categories": {
+        "exact_match": 7,
+        "minor_lexical_shift": 1,
+        "punctuation_or_tokenization": 1,
+        "numeric_surface_form": 1
+      },
+      "token_match_rate": 0.7,
+      "text_match_rate": 0.8
+    },
+    "Japanese": {
+      "samples": 10,
+      "token_matches": 6,
+      "text_matches": 6,
+      "categories": {
+        "exact_match": 6,
+        "numeric_surface_form": 1,
+        "content_shift": 1,
+        "minor_lexical_shift": 2
+      },
+      "token_match_rate": 0.6,
+      "text_match_rate": 0.6
+    },
+    "German": {
+      "samples": 10,
+      "token_matches": 6,
+      "text_matches": 6,
+      "categories": {
+        "numeric_surface_form": 1,
+        "exact_match": 6,
+        "minor_lexical_shift": 3
+      },
+      "token_match_rate": 0.6,
+      "text_match_rate": 0.6
+    },
+    "French": {
+      "samples": 10,
+      "token_matches": 4,
+      "text_matches": 4,
+      "categories": {
+        "exact_match": 4,
+        "minor_lexical_shift": 5,
+        "numeric_surface_form": 1
+      },
+      "token_match_rate": 0.4,
+      "text_match_rate": 0.4
+    },
+    "Spanish": {
+      "samples": 10,
+      "token_matches": 7,
+      "text_matches": 7,
+      "categories": {
+        "exact_match": 7,
+        "minor_lexical_shift": 3
+      },
+      "token_match_rate": 0.7,
+      "text_match_rate": 0.7
+    },
+    "Russian": {
+      "samples": 10,
+      "token_matches": 9,
+      "text_matches": 9,
+      "categories": {
+        "exact_match": 9,
+        "minor_lexical_shift": 1
+      },
+      "token_match_rate": 0.9,
+      "text_match_rate": 0.9
+    },
+    "Arabic": {
+      "samples": 10,
+      "token_matches": 4,
+      "text_matches": 5,
+      "categories": {
+        "punctuation_or_tokenization": 1,
+        "minor_lexical_shift": 5,
+        "exact_match": 4
+      },
+      "token_match_rate": 0.4,
+      "text_match_rate": 0.5
+    },
+    "Hindi": {
+      "samples": 10,
+      "token_matches": 4,
+      "text_matches": 4,
+      "categories": {
+        "exact_match": 4,
+        "minor_lexical_shift": 4,
+        "content_shift": 2
+      },
+      "token_match_rate": 0.4,
+      "text_match_rate": 0.4
+    },
+    "Korean": {
+      "samples": 10,
+      "token_matches": 9,
+      "text_matches": 9,
+      "categories": {
+        "exact_match": 9,
+        "minor_lexical_shift": 1
+      },
+      "token_match_rate": 0.9,
+      "text_match_rate": 0.9
+    }
+  },
+  "top_mismatches": [
+    {
+      "sample_id": "hi_in-12919174378536885221",
+      "subset": "fleurs-test-hi_in",
+      "language": "Hindi",
+      "category": "content_shift",
+      "first_mismatch_index": 7,
+      "edit_distance": 44,
+      "edit_ratio": 0.3235294117647059,
+      "ref_text_normalized": "यह संबंध कितना लेकिन आम तक परिश्रम अल्पाइंस लिकिस की टूरिंग या मार्केंट मेलिंग समय रहेंगे जिसे खड़ी लाखों में किया जाता है तो जिसके लिए",
+      "mlx_text_normalized": "यह संबंधित है लेकिन आम तौर पर इसमें अल्पाइंस लिकिस की ट्विंग या मार्केंट मरिंग सम्मेलन होती है जिसे कड़ी लक्ष्यों में किया जाता है और जि"
+    },
+    {
+      "sample_id": "fr_fr-691450202103973076",
+      "subset": "fleurs-test-fr_fr",
+      "language": "French",
+      "category": "numeric_surface_form",
+      "first_mismatch_index": 12,
+      "edit_distance": 41,
+      "edit_ratio": 0.25153374233128833,
+      "ref_text_normalized": "la présence d'une réelle équipe invisible larson et la faceau 1989 page 109 est également un élément unique d'une équipe virtuelle",
+      "mlx_text_normalized": "la présence d'une réelle équipe invisible larson et la faso mille neuf cent quatre vingt neuf page cent neuf est également un élément unique d'une équipe virtuelle"
+    },
+    {
+      "sample_id": "ja_jp-8922261396806111795",
+      "subset": "fleurs-test-ja_jp",
+      "language": "Japanese",
+      "category": "content_shift",
+      "first_mismatch_index": 7,
+      "edit_distance": 15,
+      "edit_ratio": 0.16129032258064516,
+      "ref_text_normalized": "米国大統領米usa ジブナスティックスは米国オリンピック委員会の書官を支持し 選手全員のための安全な環境づくりを促進するためにオリンピックファミリーの絶対的な必要性を受け入れます",
+      "mlx_text_normalized": "米国大統領米usa jimin asticsは 米国オリンピック委員会の所管を支持し 選手全員のための安全な環境づくりを促進するためにオリンピックファミリーの絶対的な必要性を受け入れます"
+    },
+    {
+      "sample_id": "en_us-394135166243682296",
+      "subset": "fleurs-test-en_us",
+      "language": "English",
+      "category": "numeric_surface_form",
+      "first_mismatch_index": 17,
+      "edit_distance": 18,
+      "edit_ratio": 0.13846153846153847,
+      "ref_text_normalized": "asus epc earlier launched worldwide for cost saving functionality factors became a hot topic in two thousand seven taipei it month",
+      "mlx_text_normalized": "asus epc earlier launched worldwide for cost saving functionality factors became a hot topic in 2007 taipei it month"
+    },
+    {
+      "sample_id": "hi_in-16674359696770797961",
+      "subset": "fleurs-test-hi_in",
+      "language": "Hindi",
+      "category": "content_shift",
+      "first_mismatch_index": 66,
+      "edit_distance": 17,
+      "edit_ratio": 0.1223021582733813,
+      "ref_text_normalized": "रणनीति महत्वपूर्ण सैन और असैन ने आपूर्ति को काटते हुए प्रभावी साबित हुई हालांकि इस नाकावंती स्थिति में पिछले दो शताब्दियों के कई अंतर्राष्ट",
+      "mlx_text_normalized": "रणनीति महत्वपूर्ण सैन और असैन ने आपूर्ति को काटते हुए प्रभावी साबित हुई हालांकि इस नाकावंती ने पिछले दो शताब्दियों के कई अंतर्राष्ट्रीय समझ"
+    },
+    {
+      "sample_id": "cmn_hans_cn-15052299507121145030",
+      "subset": "fleurs-test-cmn_hans_cn",
+      "language": "Chinese",
+      "category": "numeric_surface_form",
+      "first_mismatch_index": 1,
+      "edit_distance": 4,
+      "edit_ratio": 0.11428571428571428,
+      "ref_text_normalized": "天使二零零六将连续体方案解释为可以帮助组组织达到更高绩效水平的一种方法",
+      "mlx_text_normalized": "天使2006将连续体方案解释为可以帮助组组织达到更高绩效水平的一种方法"
+    },
+    {
+      "sample_id": "de_de-4963712857525084701",
+      "subset": "fleurs-test-de_de",
+      "language": "German",
+      "category": "numeric_surface_form",
+      "first_mismatch_index": 12,
+      "edit_distance": 11,
+      "edit_ratio": 0.10679611650485436,
+      "ref_text_normalized": "ziegen wurden anscheinend bereits vor ungefähr 10 000 jahren in zagrosgebirge im iran domestiziert",
+      "mlx_text_normalized": "ziegen wurden anscheinend bereits vor ungefähr zehntausend jahren in zagrosgebirge im iran domestiziert"
+    },
+    {
+      "sample_id": "ar_eg-16702308927396950177",
+      "subset": "fleurs-test-ar_eg",
+      "language": "Arabic",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 19,
+      "edit_distance": 11,
+      "edit_ratio": 0.06962025316455696,
+      "ref_text_normalized": "قام المعهد الهيتي للعدالة والديمقراطية بالإشارة إلى دراسات مستقلة تقترح أنه قد جلب كتابة حفظ السلام نبليا التابعة للأمم المتحدة المرة بدون علم منها إلى هايتى",
+      "mlx_text_normalized": "قام المعهد الهيتي للعدالة والديمقراطية بالإشارة إلى دراسة مستقلة تقترح أنه قد جلبت كتيبة حفظ السلام النبيلية التابعة للأمن المتحد المرة بدون علم منها إلى هايت"
+    },
+    {
+      "sample_id": "de_de-11906634980733046933",
+      "subset": "fleurs-test-de_de",
+      "language": "German",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 29,
+      "edit_distance": 12,
+      "edit_ratio": 0.0670391061452514,
+      "ref_text_normalized": "er fügte hinzu dass jedoch nicht dazu aufgefordert werden sollten verpflichtungen einzugehen die über ihren entwicklungszustand ihre verantwortung und ihre fähigkeiten hinausgehen",
+      "mlx_text_normalized": "er fügte hinzu dass jedoch nicht dazu aufgefordert werden sollten verpflichtungen einzugehen die über ihren weggestand ihre verantwortung und ihre fähigkeiten hinausgehen"
+    },
+    {
+      "sample_id": "ar_eg-6322491731206225587",
+      "subset": "fleurs-test-ar_eg",
+      "language": "Arabic",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 0,
+      "edit_distance": 10,
+      "edit_ratio": 0.05263157894736842,
+      "ref_text_normalized": "إنه مرتبط بجولات التزلق على جبال القلب أو تسلق الجبال ولكنه لا ينطوي عادة على جولات التزلق على الجليد أو تسلق الجبال يميزان في تضاريس منحدرة بشدة ويتطلبان جلاجات أكثر صلابة وأحذية طويلة",
+      "mlx_text_normalized": "إنها مرتبط بجولات التزلج على جبال القلب أو تسلق الجبال ولكنها لا ينطوي عادة على جولات التزلج على الجليد أو تسلق الجبال إزيمارسان في تضاريس منحدرة بشدة ويتطلبان جلادات أكثر صلابة وأحذية طويلة"
+    },
+    {
+      "sample_id": "fr_fr-10929892609691631011",
+      "subset": "fleurs-test-fr_fr",
+      "language": "French",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 5,
+      "edit_distance": 8,
+      "edit_ratio": 0.043010752688172046,
+      "ref_text_normalized": "bien que goma soit réservement sûr toute visite à l'extérieur de goma doit faire l'objet de recherches pour comprendre l'état des combats qui persistent dans la province du nord kivu",
+      "mlx_text_normalized": "bien que goma soit raisonnablement sûr toute visite à l'extérieur de goma doit faire l'objet de recherches pour comprendre l'état des combats qui persistent dans la province du nord kivu"
+    },
+    {
+      "sample_id": "cmn_hans_cn-17232158003733395215",
+      "subset": "fleurs-test-cmn_hans_cn",
+      "language": "Chinese",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 8,
+      "edit_distance": 2,
+      "edit_ratio": 0.04081632653061224,
+      "ref_text_normalized": "目前还没有发布海啸预警 根据雅加达地质局的说法 由于此次地震没有达到6 5级 因此不会发布海啸预警",
+      "mlx_text_normalized": "目前还没有发布海啸预警 根据牙加纳地质局的说法 由于此次地震没有达到6 5级 因此不会发布海啸预警"
+    },
+    {
+      "sample_id": "ja_jp-4376267553407989455",
+      "subset": "fleurs-test-ja_jp",
+      "language": "Japanese",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 6,
+      "edit_distance": 3,
+      "edit_ratio": 0.04054054054054054,
+      "ref_text_normalized": "私たちは資格を博達するよりも組織内で意味のある変革を進めた方が選手やクラブ そしてスポーズに死する可能性があるという uso氏の声明に同意しています",
+      "mlx_text_normalized": "私たちは資格を剥奪するよりも組織内で意味のある変革を進めた方が選手やクラブ そしてスポーズに死する可能性があるという usocの声明に同意しています"
+    },
+    {
+      "sample_id": "ja_jp-3483199886532772858",
+      "subset": "fleurs-test-ja_jp",
+      "language": "Japanese",
+      "category": "numeric_surface_form",
+      "first_mismatch_index": 2,
+      "edit_distance": 2,
+      "edit_ratio": 0.04,
+      "ref_text_normalized": "合金とは基本的には2種類以上の金属の混合物です 周囲表に載っているたくさんの元素を思い出してください",
+      "mlx_text_normalized": "合金とは基本的に二種類以上の金属の混合物です 周囲表に載っているたくさんの元素を思い出してください"
+    },
+    {
+      "sample_id": "ar_eg-14219101187915533421",
+      "subset": "fleurs-test-ar_eg",
+      "language": "Arabic",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 29,
+      "edit_distance": 6,
+      "edit_ratio": 0.03773584905660377,
+      "ref_text_normalized": "قام المعهد الهيتي للعدالة والديمقراطية بالإشارة إلى دراسات مستقلة تقترح أنه قد جلبت كتابة حفظ السلام نبالية تبع الأمم المتحدة المرض بدون علم منها إلى هايتى",
+      "mlx_text_normalized": "قام المعهد الهيتي للعدالة والديمقراطية بالإشارة إلى دراسات مستقلة تقترح أنه قد جلبت كتيبة حفظ السلام نبالية التابعة للأمم المتحدة المرض بدون علم منها إلى هايتى"
+    },
+    {
+      "sample_id": "hi_in-17876469696694013955",
+      "subset": "fleurs-test-hi_in",
+      "language": "Hindi",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 61,
+      "edit_distance": 5,
+      "edit_ratio": 0.03759398496240601,
+      "ref_text_normalized": "बच्चों को कई वजहों से faster career में रखा जाता है जिनमें अनदेखी करना बुरा वर्ताव करना और यहाँ तक की दबदस्ती वसूली करना भी शामिल है",
+      "mlx_text_normalized": "बच्चों को कई वजहों से faster career में रखा जाता है जिनमें अनदेखी करना बुरा बढ़ताव करना और यहाँ तक की जबरदस्ती वसूली करना भी शामिल है"
+    },
+    {
+      "sample_id": "fr_fr-16949862966091892699",
+      "subset": "fleurs-test-fr_fr",
+      "language": "French",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 12,
+      "edit_distance": 4,
+      "edit_ratio": 0.03636363636363636,
+      "ref_text_normalized": "c'est une bonne occasion d'admirer les horreurs boréales car le ciel sera sombre pratiquement toute la journée",
+      "mlx_text_normalized": "c'est une bonne occasion d'admirer les horaires boréales car le ciel sera sombre pratiquement toute la journée"
+    },
+    {
+      "sample_id": "ja_jp-12946582089204475428",
+      "subset": "fleurs-test-ja_jp",
+      "language": "Japanese",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 23,
+      "edit_distance": 2,
+      "edit_ratio": 0.03333333333333333,
+      "ref_text_normalized": "バリテの遺大には世界に残っている森林を保存し 開発途上国が低氧線で成長するために役立つ技術を共有することが含まれています",
+      "mlx_text_normalized": "バリテの遺大には世界に残っている森林を保存し 開発途上国が低汚染で成長するために役立つ技術を共有することが含まれています"
+    },
+    {
+      "sample_id": "fr_fr-10143749263702132703",
+      "subset": "fleurs-test-fr_fr",
+      "language": "French",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 9,
+      "edit_distance": 4,
+      "edit_ratio": 0.029197080291970802,
+      "ref_text_normalized": "rougement du ting ne ressemble pas rougement en plus du rien mais plutôt à une phrase dans les mots serait des cris et des grondements",
+      "mlx_text_normalized": "rougement du ting ne ressemble pas au rougement en plus de rien mais plutôt à une phrase dans les mots serait des cris et des grondements"
+    },
+    {
+      "sample_id": "hi_in-10847487616323903195",
+      "subset": "fleurs-test-hi_in",
+      "language": "Hindi",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 105,
+      "edit_distance": 3,
+      "edit_ratio": 0.02142857142857143,
+      "ref_text_normalized": "कुछ लोग यह सोचते थे कि कि यह सही था लेकिन बहुत से लोग इसके विपरीत मानते थे कि सौर मंडल सूर्य और यहाँ तक कि अनसितारेषहित पिथवी के चारों ओर च",
+      "mlx_text_normalized": "कुछ लोग यह सोचते थे कि कि यह सही था लेकिन बहुत से लोग इसके विपरीत मानते थे कि सौर मंडल सूर्य और यहाँ तक कि अनसितारे सहित पिशवी के चारों ओर च"
+    },
+    {
+      "sample_id": "de_de-8970395757894156280",
+      "subset": "fleurs-test-de_de",
+      "language": "German",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 30,
+      "edit_distance": 3,
+      "edit_ratio": 0.02054794520547945,
+      "ref_text_normalized": "feuchte kleidung zu bügeln kann beim trocknen helfen viele hotels verleihen bügeleisen und bügelnbrett auch wenn man nicht im zimmer anwesend ist",
+      "mlx_text_normalized": "feuchte kleidung zu bügeln kann beim trocknen helfen viele hotels verleihen bügeleisen und bügenbretter auch wenn man nicht im zimmer anwesend ist"
+    },
+    {
+      "sample_id": "ar_eg-13121245795898949537",
+      "subset": "fleurs-test-ar_eg",
+      "language": "Arabic",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 31,
+      "edit_distance": 2,
+      "edit_ratio": 0.01639344262295082,
+      "ref_text_normalized": "بصفة عامة يمكن أن يظهر سلوكان عندما يبدأ المديرون في قيادة أقرانهم السابقين أحدهم هو وحولت البقاء مثل الآخرين أو الآخريات",
+      "mlx_text_normalized": "بصفة عامة يمكن أن يظهر سلوكان عندما يبدأ المديرون في قيادة أقرانهم السابقين أحدهما هو وحولت البقاء مثل الآخرين أو الأخريات"
+    },
+    {
+      "sample_id": "fr_fr-17031409196685305809",
+      "subset": "fleurs-test-fr_fr",
+      "language": "French",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 25,
+      "edit_distance": 2,
+      "edit_ratio": 0.015151515151515152,
+      "ref_text_normalized": "l'australien mitchell goulart est arrivé 11e au super g debout homme le chec aldrich gelinec s'est classé 16e au super g assis homme",
+      "mlx_text_normalized": "l'australien mitchell goulart est arrivé 11e au super g debout homme le chek oldrich gelinec s'est classé 16e au super g assis homme"
+    },
+    {
+      "sample_id": "hi_in-12193749519479711646",
+      "subset": "fleurs-test-hi_in",
+      "language": "Hindi",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 35,
+      "edit_distance": 2,
+      "edit_ratio": 0.015151515151515152,
+      "ref_text_normalized": "सुंदर बन दुनिया का सबसे बड़ा तटीय मंगरूप क्षेत्र है जो तट से बांग्लादेशी और भारतीय पहाड़ी क्षेत्र में 80 किमी 50 मील तक फैला हुआ है",
+      "mlx_text_normalized": "सुंदर बन दुनिया का सबसे बड़ा तटीय मंग्रोप क्षेत्र है जो तट से बांग्लादेशी और भारतीय पहाड़ी क्षेत्र में 80 किमी 50 मील तक फैला हुआ है"
+    },
+    {
+      "sample_id": "ru_ru-14538972329666110700",
+      "subset": "fleurs-test-ru_ru",
+      "language": "Russian",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 40,
+      "edit_distance": 2,
+      "edit_ratio": 0.013245033112582781,
+      "ref_text_normalized": "в 2002 году город гома был разрушен лавой вулкана нирогонго которая похоронила под собой большую часть городской улиц особенно центральную часть города",
+      "mlx_text_normalized": "в 2002 году город гома был разрушен лавой вулкана нирогонго которая похоронила под собой большую часть городских улиц особенно центральную часть города"
+    }
+  ]
+}

@@ -11,6 +11,9 @@ This repository uses a two-level quality evaluation strategy:
 - Golden regression catches real transcription quality drift.
 - Both are required for enterprise-grade reliability.
 
+Coverage status and remaining evaluation gaps are tracked in:
+- `docs/EVAL_GAPS.md`
+
 ## Golden Suite v1
 
 Current default suite: **LibriSpeech test-clean** (OpenSLR 12), deterministic
@@ -56,10 +59,7 @@ python scripts/eval_librispeech.py \
 
 ## Future expansions
 
-- Add multilingual golden lane once non-gated, script-free datasets are pinned.
-- Add release-only full split quality evaluation (`test-clean`, `test-other`) before tags.
-- Add forced-aligner backend parity lane (`mlx` vs `qwen_asr`) as dataset
-  coverage expands beyond English deterministic samples.
+- See prioritized roadmap in `docs/EVAL_GAPS.md`.
 
 ## Reference Parity Suite Command
 

@@ -1,0 +1,221 @@
+{
+  "suite": "reference-parity-suite-v1",
+  "model": "Qwen/Qwen3-ASR-0.6B",
+  "samples": 20,
+  "token_match_rate": 0.55,
+  "text_match_rate": 0.55,
+  "category_counts": {
+    "exact_match": 11,
+    "minor_lexical_shift": 8,
+    "content_shift": 1
+  },
+  "by_language": {
+    "English": {
+      "samples": 2,
+      "token_matches": 2,
+      "text_matches": 2,
+      "categories": {
+        "exact_match": 2
+      },
+      "token_match_rate": 1.0,
+      "text_match_rate": 1.0
+    },
+    "Chinese": {
+      "samples": 2,
+      "token_matches": 1,
+      "text_matches": 1,
+      "categories": {
+        "minor_lexical_shift": 1,
+        "exact_match": 1
+      },
+      "token_match_rate": 0.5,
+      "text_match_rate": 0.5
+    },
+    "Japanese": {
+      "samples": 2,
+      "token_matches": 1,
+      "text_matches": 1,
+      "categories": {
+        "minor_lexical_shift": 1,
+        "exact_match": 1
+      },
+      "token_match_rate": 0.5,
+      "text_match_rate": 0.5
+    },
+    "German": {
+      "samples": 2,
+      "token_matches": 2,
+      "text_matches": 2,
+      "categories": {
+        "exact_match": 2
+      },
+      "token_match_rate": 1.0,
+      "text_match_rate": 1.0
+    },
+    "French": {
+      "samples": 2,
+      "token_matches": 0,
+      "text_matches": 0,
+      "categories": {
+        "minor_lexical_shift": 2
+      },
+      "token_match_rate": 0.0,
+      "text_match_rate": 0.0
+    },
+    "Spanish": {
+      "samples": 2,
+      "token_matches": 1,
+      "text_matches": 1,
+      "categories": {
+        "exact_match": 1,
+        "minor_lexical_shift": 1
+      },
+      "token_match_rate": 0.5,
+      "text_match_rate": 0.5
+    },
+    "Russian": {
+      "samples": 2,
+      "token_matches": 2,
+      "text_matches": 2,
+      "categories": {
+        "exact_match": 2
+      },
+      "token_match_rate": 1.0,
+      "text_match_rate": 1.0
+    },
+    "Arabic": {
+      "samples": 2,
+      "token_matches": 1,
+      "text_matches": 1,
+      "categories": {
+        "minor_lexical_shift": 1,
+        "exact_match": 1
+      },
+      "token_match_rate": 0.5,
+      "text_match_rate": 0.5
+    },
+    "Hindi": {
+      "samples": 2,
+      "token_matches": 0,
+      "text_matches": 0,
+      "categories": {
+        "content_shift": 1,
+        "minor_lexical_shift": 1
+      },
+      "token_match_rate": 0.0,
+      "text_match_rate": 0.0
+    },
+    "Korean": {
+      "samples": 2,
+      "token_matches": 1,
+      "text_matches": 1,
+      "categories": {
+        "minor_lexical_shift": 1,
+        "exact_match": 1
+      },
+      "token_match_rate": 0.5,
+      "text_match_rate": 0.5
+    }
+  },
+  "top_mismatches": [
+    {
+      "sample_id": "hi_in-10245365873747218908",
+      "subset": "fleurs-test-hi_in",
+      "language": "Hindi",
+      "category": "content_shift",
+      "first_mismatch_index": 33,
+      "edit_distance": 63,
+      "edit_ratio": 0.38414634146341464,
+      "ref_text_normalized": "यह संबंधित है लेकिन आमतौर पर इसमें alpine शैली की ski touring या mountain yearning शामिल नहीं होती है जिसे खड़े इलाकों में किया जाता है और जिसके लिए बहुत कड़ी ski औ",
+      "mlx_text_normalized": "यह संबंधित है लेकिन आमतौर पर इसमें अलपाईं शैली की स्की टूरिंग या माउंटेन हियरिंग शामिल नहीं होती है जिसे खड़े इलाकों में किया जाता ह"
+    },
+    {
+      "sample_id": "ja_jp-2377479830513507913",
+      "subset": "fleurs-test-ja_jp",
+      "language": "Japanese",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 9,
+      "edit_distance": 3,
+      "edit_ratio": 0.075,
+      "ref_text_normalized": "ピラミッドの音と光の章はこの観光地で特に子どもたちが楽しめる模様紙の一つです",
+      "mlx_text_normalized": "ピラミッドの音と光のショーはこの観光地で特に子どもたちが楽しめる模様紙の一つです"
+    },
+    {
+      "sample_id": "ar_eg-16702308927396950177",
+      "subset": "fleurs-test-ar_eg",
+      "language": "Arabic",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 19,
+      "edit_distance": 11,
+      "edit_ratio": 0.06962025316455696,
+      "ref_text_normalized": "قام المعهد الهيتي للعدالة والديمقراطية بالإشارة إلى دراسات مستقلة تقترح أنه قد جلب كتابة حفظ السلام نبليا التابعة للأمم المتحدة المرة بدون علم منها إلى هايتى",
+      "mlx_text_normalized": "قام المعهد الهيتي للعدالة والديمقراطية بالإشارة إلى دراسة مستقلة تقترح أنه قد جلبت كتيبة حفظ السلام النبيلية التابعة للأمن المتحد المرة بدون علم منها إلى هايت"
+    },
+    {
+      "sample_id": "fr_fr-13789433312930016037",
+      "subset": "fleurs-test-fr_fr",
+      "language": "French",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 33,
+      "edit_distance": 6,
+      "edit_ratio": 0.046153846153846156,
+      "ref_text_normalized": "ceci autorisera la rétrocontabilité avec les itérations 802 11a 802 11b et 802 11g sous réserve que la station possède deux radios",
+      "mlx_text_normalized": "ceci autorisera la rétrocontabilité avec les itérations 802 11a 802 11b et g sous réserve que la station possède deux radios"
+    },
+    {
+      "sample_id": "cmn_hans_cn-8061505693744764604",
+      "subset": "fleurs-test-cmn_hans_cn",
+      "language": "Chinese",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 38,
+      "edit_distance": 2,
+      "edit_ratio": 0.029411764705882353,
+      "ref_text_normalized": "其他提名包括 最佳影片 最佳导演 最佳摄影 最佳服装设计 最佳电影剪辑 最佳原创配乐 最佳艺术指导 最佳音效剪辑 最佳混音和最佳原创剧本",
+      "mlx_text_normalized": "其他提名包括 最佳影片 最佳导演 最佳摄影 最佳服装设计 最佳电影剪辑 最佳原创配乐 最佳艺术指导 最佳音效剪辑 最佳婚姻和最佳原创剧本"
+    },
+    {
+      "sample_id": "ko_kr-737801410327834892",
+      "subset": "fleurs-test-ko_kr",
+      "language": "Korean",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 3,
+      "edit_distance": 2,
+      "edit_ratio": 0.025974025974025976,
+      "ref_text_normalized": "ai는 공상 과학을 강력히 떠올리게 하지만 컴퓨터의 행동 학습 및 지능적 적응을 다루는 컴퓨터 과학에서 매우 중요한 분야를 이루고 있습니다",
+      "mlx_text_normalized": "ai는 공산과학을 강력히 떠올리게 하지만 컴퓨터의 행동 학습 및 지능적 적응을 다루는 컴퓨터 과학에서 매우 중요한 분야를 이루고 있습니다"
+    },
+    {
+      "sample_id": "hi_in-14793234393688530328",
+      "subset": "fleurs-test-hi_in",
+      "language": "Hindi",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 3,
+      "edit_distance": 2,
+      "edit_ratio": 0.024390243902439025,
+      "ref_text_normalized": "1937 में बांध बनाने के बाद मौसमी बाढ़ जो पूरी नदी में तलछट फैला दे की वह रुक गई थी",
+      "mlx_text_normalized": "1930 में बांध बनाने के बाद मौसमी बाढ़ जो पूरी नदी में तलछट फैला देकी वह रुक गई थी"
+    },
+    {
+      "sample_id": "fr_fr-2262832907340477841",
+      "subset": "fleurs-test-fr_fr",
+      "language": "French",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 25,
+      "edit_distance": 2,
+      "edit_ratio": 0.010256410256410256,
+      "ref_text_normalized": "tout bien considéré nous ne devrions pas être surpris si nos propres ancêtres ont résolu leurs problèmes de protéines un peu de la même manière que les chimpanzés de la savane le font aujourd'hui",
+      "mlx_text_normalized": "tout bien considéré nous ne devrions pas être surpris si nos propres ancêtres ont résolu leur problème de protéines un peu de la même manière que les chimpanzés de la savane le font aujourd'hui"
+    },
+    {
+      "sample_id": "es_419-6295972223351365462",
+      "subset": "fleurs-test-es_419",
+      "language": "Spanish",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 45,
+      "edit_distance": 1,
+      "edit_ratio": 0.0056179775280898875,
+      "ref_text_normalized": "los sundarbans han sido desde 1966 un templo de la vida silvestre y se calcula que en la actualidad existen en el área 400 tigres reales de bengal y unos 30 000 ciervos moteados",
+      "mlx_text_normalized": "los sundarbans han sido desde 1966 un templo de la vida silvestre y se calcula que en la actualidad existen en el área 400 tigres reales de bengala y unos 30 000 ciervos moteados"
+    }
+  ]
+}

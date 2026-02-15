@@ -121,12 +121,17 @@ Near-term work should remain correctness-gated and benchmark-driven:
 - Goal: extend golden eval + latency coverage beyond the current short fixture and 10s clip.
 - Gate: no quality regressions on >30s and multi-minute real-world clips.
 
-4. Decode API cleanliness and cache lifecycle rigor
+4. Evaluation coverage expansion (quality lanes)
+- Goal: close remaining WER/quality gaps tracked in `docs/EVAL_GAPS.md`
+  (`test-other`, 1.7B, multilingual quality, backend quality compare, real-world audio).
+- Gate: each lane must produce versioned benchmark artifacts and remain reproducible.
+
+5. Decode API cleanliness and cache lifecycle rigor
 - Goal: keep model/generation boundaries explicit (`prefill/step` + session ownership)
   to support maintainability and future low-risk optimizations.
 - Gate: no parity regression and no additional hidden global state.
 
-5. Speculative decoding prototype for 1.7B (paper-backed)
+6. Speculative decoding prototype for 1.7B (paper-backed)
 - Status: prototype implemented with strict-parity verification path and benchmark harness.
 - Result (current): parity passed, latency regressed on tested short/10s clips.
 - Next gate: require measurable latency win before any default-path adoption.
@@ -135,7 +140,7 @@ Near-term work should remain correctness-gated and benchmark-driven:
   - https://arxiv.org/abs/2507.18181
   - https://arxiv.org/abs/2507.21522
 
-6. Streaming policy (deprioritized)
+7. Streaming policy (deprioritized)
 - Keep streaming explicitly experimental and avoid major roadmap allocation
   until the core offline quality/speed/timestamp track is fully production-grade.
 

@@ -126,6 +126,16 @@ Reference parity suite smoke run (2026-02-14):
 - `docs/benchmarks/2026-02-14-fleurs-multilingual-smoke-manifest.jsonl`
 - `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-smoke.json`
 - `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-smoke.md`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-smoke-analysis.json`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-smoke-analysis.md`
+- `docs/benchmarks/2026-02-14-fleurs-multilingual-20-manifest.jsonl`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-20.json`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-20-analysis.json`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-20-analysis.md`
+- `docs/benchmarks/2026-02-14-fleurs-multilingual-100-manifest.jsonl`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-100.json`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-100-analysis.json`
+- `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-100-analysis.md`
 
 Generate with:
 

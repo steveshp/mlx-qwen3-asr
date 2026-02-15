@@ -1,0 +1,78 @@
+{
+  "suite": "reference-parity-suite-v1",
+  "model": "Qwen/Qwen3-ASR-0.6B",
+  "samples": 4,
+  "token_match_rate": 0.5,
+  "text_match_rate": 0.5,
+  "category_counts": {
+    "exact_match": 2,
+    "minor_lexical_shift": 1,
+    "numeric_surface_form": 1
+  },
+  "by_language": {
+    "English": {
+      "samples": 1,
+      "token_matches": 1,
+      "text_matches": 1,
+      "categories": {
+        "exact_match": 1
+      },
+      "token_match_rate": 1.0,
+      "text_match_rate": 1.0
+    },
+    "Chinese": {
+      "samples": 1,
+      "token_matches": 1,
+      "text_matches": 1,
+      "categories": {
+        "exact_match": 1
+      },
+      "token_match_rate": 1.0,
+      "text_match_rate": 1.0
+    },
+    "Japanese": {
+      "samples": 1,
+      "token_matches": 0,
+      "text_matches": 0,
+      "categories": {
+        "minor_lexical_shift": 1
+      },
+      "token_match_rate": 0.0,
+      "text_match_rate": 0.0
+    },
+    "German": {
+      "samples": 1,
+      "token_matches": 0,
+      "text_matches": 0,
+      "categories": {
+        "numeric_surface_form": 1
+      },
+      "token_match_rate": 0.0,
+      "text_match_rate": 0.0
+    }
+  },
+  "top_mismatches": [
+    {
+      "sample_id": "de_de-18173364472777163131",
+      "subset": "fleurs-test-de_de",
+      "language": "German",
+      "category": "numeric_surface_form",
+      "first_mismatch_index": 0,
+      "edit_distance": 15,
+      "edit_ratio": 0.08241758241758242,
+      "ref_text_normalized": "como 53 trat sein gouverneursamt früher in diesem jahr an und unterzeichnete letzten monat einen gesetzentwurf zur legalisierung der gleichgeschlechtlichen eheschliessung",
+      "mlx_text_normalized": "gomo dreiundfünfzig trat sein gouverneursamt früher in diesem jahr an und unterzeichnete letzten monat einen gesetzentwurf zur legalisierung der gleichgeschlechtlichen eheschliessung"
+    },
+    {
+      "sample_id": "ja_jp-2377479830513507913",
+      "subset": "fleurs-test-ja_jp",
+      "language": "Japanese",
+      "category": "minor_lexical_shift",
+      "first_mismatch_index": 9,
+      "edit_distance": 3,
+      "edit_ratio": 0.075,
+      "ref_text_normalized": "ピラミッドの音と光の章はこの観光地で特に子どもたちが楽しめる模様紙の一つです",
+      "mlx_text_normalized": "ピラミッドの音と光のショーはこの観光地で特に子どもたちが楽しめる模様紙の一つです"
+    }
+  ]
+}

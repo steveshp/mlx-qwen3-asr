@@ -405,3 +405,38 @@ Keep streaming marked experimental until:
   - `RUN_REFERENCE_PARITY=1 RUN_REFERENCE_PARITY_SUITE=1` with
     `REFERENCE_PARITY_SUITE_SUBSETS=''` and
     `REFERENCE_PARITY_SUITE_MANIFEST_JSONL=...` completed successfully.
+
+### 27) Multilingual parity scale-up (20 and 100 sample lanes)
+
+- Built deterministic multilingual manifests (10 languages):
+  - `docs/benchmarks/2026-02-14-fleurs-multilingual-20-manifest.jsonl`
+  - `docs/benchmarks/2026-02-14-fleurs-multilingual-100-manifest.jsonl`
+- Ran manifest-only parity suite for each:
+  - `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-20.json`
+  - `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-100.json`
+- Added mismatch taxonomy analyzer:
+  - script: `scripts/analyze_reference_parity_mismatches.py`
+  - tests: `tests/test_analyze_reference_parity_mismatches.py`
+  - analysis artifacts:
+    - `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-20-analysis.{json,md}`
+    - `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-100-analysis.{json,md}`
+    - `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-smoke-analysis.{json,md}`
+- Results:
+  - 20-sample lane: token/text parity `0.55`
+  - 100-sample lane: token parity `0.64`, text parity `0.67`
+  - hardest languages on 100-sample lane: Arabic/French/Hindi
+    (token parity `0.40` each).
+
+### 28) External evaluation-feedback validation (coverage gaps)
+
+- External feedback was validated as directionally correct:
+  - we have strong parity infrastructure, but quality lanes still have blind spots.
+- Captured as a persistent doc so future follow-up is explicit:
+  - `docs/EVAL_GAPS.md`
+- Gaps recorded there include:
+  - 1.7B WER lane,
+  - `test-other` WER lane,
+  - non-English quality lane (not only parity),
+  - long-form quality lane (`>30s`, multi-minute),
+  - direct MLX-vs-PyTorch quality comparison lane,
+  - real-world audio lane.
