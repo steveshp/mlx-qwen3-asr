@@ -79,6 +79,14 @@ What strict profile turns on by default:
   - default fail thresholds:
     - `PERF_BENCH_FAIL_RTF_ABOVE=0.50`
     - `PERF_BENCH_FAIL_LATENCY_MEAN_ABOVE=2.00`
+- Streaming quality lane (`RUN_STREAMING_QUALITY_EVAL=1`) using
+  `scripts/eval_streaming_metrics.py`:
+  - default audio: `tests/fixtures/test_speech.wav`
+  - default endpointing modes: `fixed,energy`
+  - default fail thresholds:
+    - `STREAMING_QUALITY_FAIL_PARTIAL_STABILITY_BELOW=0.85`
+    - `STREAMING_QUALITY_FAIL_REWRITE_RATE_ABOVE=0.30`
+    - `STREAMING_QUALITY_FAIL_FINALIZATION_DELTA_CHARS_ABOVE=32`
 
 Relevant perf env overrides:
 - `PERF_BENCH_AUDIO`
@@ -90,6 +98,21 @@ Relevant perf env overrides:
 - `PERF_BENCH_FAIL_RTF_ABOVE`
 - `PERF_BENCH_FAIL_LATENCY_MEAN_ABOVE`
 - `PERF_BENCH_JSON_OUTPUT`
+
+Relevant streaming-quality env overrides:
+- `RUN_STREAMING_QUALITY_EVAL`
+- `STREAMING_QUALITY_AUDIO`
+- `STREAMING_QUALITY_MODEL`
+- `STREAMING_QUALITY_DTYPE`
+- `STREAMING_QUALITY_CHUNK_SIZE_SEC`
+- `STREAMING_QUALITY_MAX_CONTEXT_SEC`
+- `STREAMING_QUALITY_FINALIZATION_MODE`
+- `STREAMING_QUALITY_ENDPOINTING_MODES` (comma-separated; e.g. `fixed,energy`)
+- `STREAMING_QUALITY_UNFIXED_CHUNK_NUM`
+- `STREAMING_QUALITY_UNFIXED_TOKEN_NUM`
+- `STREAMING_QUALITY_FAIL_PARTIAL_STABILITY_BELOW`
+- `STREAMING_QUALITY_FAIL_REWRITE_RATE_ABOVE`
+- `STREAMING_QUALITY_FAIL_FINALIZATION_DELTA_CHARS_ABOVE`
 
 ### Nightly Regression Lane (scheduled/manual)
 

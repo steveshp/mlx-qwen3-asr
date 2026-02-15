@@ -41,6 +41,8 @@ make broad "production-grade across languages/conditions" quality claims.
   - Tooling:
     - `scripts/eval_streaming_metrics.py` (single-run diagnostics probe),
     - `scripts/benchmark_streaming.py` (`streaming_quality` summary payload).
+  - Strict release gate now includes a bounded streaming-quality check on
+    fixture audio for `fixed` and `energy` endpointing modes.
 - Release quality gate (all green):
   - ruff check, typed-core mypy, full pytest (363 tests), reference parity,
     LibriSpeech eval, manifest quality eval, benchmark ASR.
@@ -76,7 +78,8 @@ make broad "production-grade across languages/conditions" quality claims.
 
 3. `P2` Streaming quality dataset lane (committed artifacts)
    - Why: instrumentation is in place but no versioned benchmark dataset.
-   - Status: tooling ready; need fixed audio set + committed baselines.
+   - Status: strict release now gates fixture-level streaming quality; next step
+     is multi-file versioned dataset artifacts.
 
 4. `P2` Broader MLX-vs-PyTorch comparison
    - Why: head-to-head only covers multilingual-100; test-other and long-form missing.

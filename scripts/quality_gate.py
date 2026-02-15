@@ -174,6 +174,162 @@ def _run_perf_benchmark_gate(
     )
 
 
+def _run_streaming_quality_gate(
+    *,
+    repo: Path,
+    python_bin: str,
+    strict_release: bool,
+) -> StepResult:
+    audio_path = os.environ.get("STREAMING_QUALITY_AUDIO")
+    if not audio_path:
+        default_audio = repo / "tests" / "fixtures" / "test_speech.wav"
+        if default_audio.exists():
+            audio_path = str(default_audio)
+        else:
+            return StepResult(
+                name="streaming-quality",
+                cmd="scripts/eval_streaming_metrics.py",
+                passed=False,
+                duration_sec=0.0,
+                returncode=1,
+                note=(
+                    "STREAMING_QUALITY_AUDIO is required and no default fixture "
+                    "was found."
+                ),
+            )
+
+    mode_list = os.environ.get(
+        "STREAMING_QUALITY_ENDPOINTING_MODES",
+        "fixed,energy" if strict_release else "fixed",
+    )
+    endpointing_modes = [mode.strip() for mode in mode_list.split(",") if mode.strip()]
+    if not endpointing_modes:
+        return StepResult(
+            name="streaming-quality",
+            cmd="scripts/eval_streaming_metrics.py",
+            passed=False,
+            duration_sec=0.0,
+            returncode=1,
+            note="No endpointing modes configured for streaming quality gate.",
+        )
+
+    partial_stability_min = float(
+        os.environ.get(
+            "STREAMING_QUALITY_FAIL_PARTIAL_STABILITY_BELOW",
+            "0.85" if strict_release else "0.0",
+        )
+    )
+    rewrite_rate_max = float(
+        os.environ.get(
+            "STREAMING_QUALITY_FAIL_REWRITE_RATE_ABOVE",
+            "0.30" if strict_release else "1.0",
+        )
+    )
+    final_delta_max = int(
+        os.environ.get(
+            "STREAMING_QUALITY_FAIL_FINALIZATION_DELTA_CHARS_ABOVE",
+            "32" if strict_release else "1000000",
+        )
+    )
+
+    notes: list[str] = []
+    total_duration = 0.0
+    cmd_display = ""
+
+    for mode in endpointing_modes:
+        fd, temp_json = tempfile.mkstemp(
+            prefix=f"mlx_qwen3_asr_streaming_{mode}_",
+            suffix=".json",
+        )
+        os.close(fd)
+        json_output = temp_json
+        cmd = [
+            python_bin,
+            str(repo / "scripts" / "eval_streaming_metrics.py"),
+            audio_path,
+            "--model",
+            os.environ.get("STREAMING_QUALITY_MODEL", "Qwen/Qwen3-ASR-0.6B"),
+            "--dtype",
+            os.environ.get("STREAMING_QUALITY_DTYPE", "float16"),
+            "--chunk-size-sec",
+            os.environ.get("STREAMING_QUALITY_CHUNK_SIZE_SEC", "2.0"),
+            "--max-context-sec",
+            os.environ.get("STREAMING_QUALITY_MAX_CONTEXT_SEC", "30.0"),
+            "--endpointing-mode",
+            mode,
+            "--finalization-mode",
+            os.environ.get("STREAMING_QUALITY_FINALIZATION_MODE", "accuracy"),
+            "--unfixed-chunk-num",
+            os.environ.get("STREAMING_QUALITY_UNFIXED_CHUNK_NUM", "2"),
+            "--unfixed-token-num",
+            os.environ.get("STREAMING_QUALITY_UNFIXED_TOKEN_NUM", "5"),
+            "--json-output",
+            json_output,
+        ]
+        step = _run(cmd, repo)
+        total_duration += step.duration_sec
+        cmd_display = step.cmd
+        if not step.passed:
+            return StepResult(
+                name="streaming-quality",
+                cmd=step.cmd,
+                passed=False,
+                duration_sec=total_duration,
+                returncode=step.returncode,
+                note=f"{mode}: eval_streaming_metrics failed",
+            )
+
+        try:
+            payload = json.loads(Path(json_output).read_text(encoding="utf-8"))
+        except Exception as exc:  # noqa: BLE001
+            return StepResult(
+                name="streaming-quality",
+                cmd=step.cmd,
+                passed=False,
+                duration_sec=total_duration,
+                returncode=1,
+                note=f"{mode}: failed to parse streaming metrics JSON: {exc}",
+            )
+
+        final_metrics = payload.get("final_metrics", {})
+        partial_stability = float(final_metrics.get("partial_stability", 0.0))
+        rewrite_rate = float(final_metrics.get("rewrite_rate", 1.0))
+        final_delta = int(final_metrics.get("finalization_delta_chars", 0))
+
+        failures: list[str] = []
+        if partial_stability < partial_stability_min:
+            failures.append(
+                f"partial_stability={partial_stability:.4f} < {partial_stability_min:.4f}"
+            )
+        if rewrite_rate > rewrite_rate_max:
+            failures.append(f"rewrite_rate={rewrite_rate:.4f} > {rewrite_rate_max:.4f}")
+        if final_delta > final_delta_max:
+            failures.append(f"finalization_delta_chars={final_delta} > {final_delta_max}")
+        if failures:
+            return StepResult(
+                name="streaming-quality",
+                cmd=step.cmd,
+                passed=False,
+                duration_sec=total_duration,
+                returncode=1,
+                note=f"{mode}: " + "; ".join(failures),
+            )
+
+        notes.append(
+            f"{mode}: stability={partial_stability:.4f}, "
+            f"rewrite_rate={rewrite_rate:.4f}, final_delta={final_delta}"
+        )
+
+    return StepResult(
+        name="streaming-quality",
+        cmd=cmd_display,
+        passed=True,
+        duration_sec=total_duration,
+        returncode=0,
+        note=" | ".join(notes),
+    )
+
+
 def run_gate(mode: str, repo: Path, python_bin: str) -> tuple[list[StepResult], bool]:
     steps: list[StepResult] = []
     strict_release = mode == "release" and os.environ.get("RUN_STRICT_RELEASE", "0") == "1"
@@ -425,6 +581,17 @@ def run_gate(mode: str, repo: Path, python_bin: str) -> tuple[list[StepResult], 
         ) == "1":
             steps.append(
                 _run_perf_benchmark_gate(
+                    repo=repo,
+                    python_bin=python_bin,
+                    strict_release=strict_release,
+                )
+            )
+        if os.environ.get(
+            "RUN_STREAMING_QUALITY_EVAL",
+            "1" if strict_release else "0",
+        ) == "1":
+            steps.append(
+                _run_streaming_quality_gate(
                     repo=repo,
                     python_bin=python_bin,
                     strict_release=strict_release,
