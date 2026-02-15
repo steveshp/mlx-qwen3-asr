@@ -191,6 +191,9 @@ Real-world full-length head-to-head artifacts (2026-02-15):
 - `docs/benchmarks/2026-02-15-quality-head2head-mlx-vs-pytorch-earnings22-full-longform1.json`
 - `docs/benchmarks/2026-02-15-quality-head2head-mlx-vs-pytorch-earnings22-full-longform1.md`
 - `docs/benchmarks/2026-02-15-quality-head2head-mlx-vs-pytorch-earnings22-full-longform1-checkpoint.json`
+- `docs/benchmarks/2026-02-15-quality-head2head-mlx-vs-pytorch-earnings22-full-longform3.json`
+- `docs/benchmarks/2026-02-15-quality-head2head-mlx-vs-pytorch-earnings22-full-longform3.md`
+- `docs/benchmarks/2026-02-15-quality-head2head-mlx-vs-pytorch-earnings22-full-longform3-checkpoint.json`
 
 Post-canonicalization multilingual triage artifacts (2026-02-15):
 

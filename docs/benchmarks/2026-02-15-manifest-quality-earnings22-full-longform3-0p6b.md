@@ -16,9 +16,9 @@
 | Real-time factor (derived) | 0.228 |
 
 Companion head-to-head artifact:
-- Interim full-length single-recording comparison:
-  - `2026-02-15-quality-head2head-mlx-vs-pytorch-earnings22-full-longform1.md`
+- Full `n=3` comparison:
+  - `2026-02-15-quality-head2head-mlx-vs-pytorch-earnings22-full-longform3.md`
   - uses reference chunking (`reference_max_chunk_sec=20`) to keep
     qwen_asr runtime bounded on multi-minute audio.
-- Remaining follow-up:
-  - run and commit the same comparison on all `n=3` full recordings.
+- Additional single-recording evidence:
+  - `2026-02-15-quality-head2head-mlx-vs-pytorch-earnings22-full-longform1.md`

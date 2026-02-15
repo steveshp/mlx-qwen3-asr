@@ -42,9 +42,8 @@ make broad "production-grade across languages/conditions" quality claims.
     - MLX quality artifact committed,
     - strict release profile now includes dedicated long-form quality gate
       (`RUN_REALWORLD_LONGFORM_EVAL=1` by default under strict profile),
-    - interim MLX-vs-PyTorch full-length comparison committed for one recording
-      (`...earnings22-full-longform1...`),
-    - full `n=3` MLX-vs-PyTorch comparison remains pending.
+    - MLX-vs-PyTorch full `n=3` long-form comparison artifact committed
+      (`...earnings22-full-longform3...`, bounded reference chunking).
 - MLX-vs-PyTorch head-to-head:
   - Multilingual-100 direct comparison (MLX: 15.99% WER vs PyTorch: 16.69% WER).
   - LibriSpeech test-other direct comparison (MLX: 4.20% WER vs PyTorch: 4.41% WER).
@@ -88,18 +87,11 @@ make broad "production-grade across languages/conditions" quality claims.
 
 ## Remaining Gaps (prioritized)
 
-1. `P1` Real-world long-form MLX-vs-PyTorch head-to-head completion
-   - Why: long-form MLX quality is now gated; we still need direct backend
-     comparison evidence on the same full-recording lane.
-   - Status: partial progress with committed one-recording head-to-head artifact;
-     pending full `n=3` comparison artifact on the same manifest family.
-
-2. `P2` Streaming quality dataset lane (committed artifacts)
+1. `P1` Streaming quality dataset lane (committed artifacts)
    - Why: instrumentation is in place but no versioned benchmark dataset.
    - Status: strict release now gates fixture-level streaming quality; next step
      is multi-file versioned dataset artifacts.
 
 ## Follow-up Order
 
-1. Commit real-world long-form MLX-vs-PyTorch comparison artifacts.
-2. Commit streaming-quality versioned artifacts.
+1. Commit streaming-quality versioned artifacts.
