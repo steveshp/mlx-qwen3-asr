@@ -32,14 +32,16 @@ make broad "production-grade across languages/conditions" quality claims.
     - Unicode-safe WER/CER with language-aware primary metric
       (CER for zh/ja/ko; WER otherwise).
   - Real-world manifest-quality lane:
-    - 40 real-world English clips (AMI IHM meetings + Earnings22 chunked),
-    - deterministic speaker-balanced curation (20 clips/source, 10 speakers/source),
+    - 200 real-world English clips (AMI IHM meetings + Earnings22 chunked),
+    - deterministic speaker-balanced curation
+      (100 clips/source, 16 AMI speakers + 50 Earnings22 speakers),
     - committed WER/CER + latency artifact.
 - MLX-vs-PyTorch head-to-head:
   - Multilingual-100 direct comparison (MLX: 15.99% WER vs PyTorch: 16.69% WER).
   - LibriSpeech test-other direct comparison (MLX: 4.20% WER vs PyTorch: 4.41% WER).
   - Long-form manifest direct comparison (MLX: 16.71% WER vs PyTorch: 24.31% WER).
-  - Real-world manifest direct comparison (MLX: 14.17% WER vs PyTorch: 14.17% WER).
+  - Real-world manifest direct comparison
+    (MLX: 23.23% WER vs PyTorch: 23.04% WER, delta +0.19pp).
   - Versioned benchmark artifacts committed under `docs/benchmarks/`.
 - Streaming diagnostics lane:
   - Per-session quality metrics exposed from runtime state:
@@ -67,10 +69,9 @@ make broad "production-grade across languages/conditions" quality claims.
    long-form remains a stretch goal.
 
 3. **MLX-vs-PyTorch quality comparison** — CLOSED for current lanes.
-   Multilingual-100, test-other, long-form synthetic, and real-world-40
-   head-to-head artifacts are all committed. Real-world-40 shows exact WER
-   parity (14.17% vs 14.17%) with lower CER and substantially lower latency
-   on MLX.
+   Multilingual-100, test-other, long-form synthetic, and real-world-200
+   head-to-head artifacts are all committed. Real-world-200 remains near-parity
+   (+0.19pp WER delta) with substantial MLX latency advantage.
 
 4. **Streaming quality instrumentation** — CLOSED. Full instrumentation with
    `partial_stability`, `rewrite_rate`, `finalization_delta_chars`. KV-cache
@@ -78,21 +79,16 @@ make broad "production-grade across languages/conditions" quality claims.
 
 ## Remaining Gaps (prioritized)
 
-1. `P1` Scale real-world audio lane beyond baseline sample size
-   - Why: 40 samples is a meaningful start but still small for release claims.
-   - Status: baseline lane is now committed (AMI + Earnings22, n=40).
-
-2. `P1` Real-world long-form lane (multi-minute, non-synthetic)
+1. `P1` Real-world long-form lane (multi-minute, non-synthetic)
    - Why: synthetic concatenation doesn't capture real discourse patterns.
    - Status: synthetic lane exists; real-world recordings needed.
 
-3. `P2` Streaming quality dataset lane (committed artifacts)
+2. `P2` Streaming quality dataset lane (committed artifacts)
    - Why: instrumentation is in place but no versioned benchmark dataset.
    - Status: strict release now gates fixture-level streaming quality; next step
      is multi-file versioned dataset artifacts.
 
 ## Follow-up Order
 
-1. Expand the real-world lane to a larger fixed set (target >=200).
-2. Add real-world long-form recordings (meetings, podcasts, lectures).
-3. Commit streaming-quality versioned artifacts.
+1. Add real-world long-form recordings (meetings, podcasts, lectures).
+2. Commit streaming-quality versioned artifacts.

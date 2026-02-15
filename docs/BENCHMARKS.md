@@ -8,13 +8,13 @@ Comprehensive benchmark results for mlx-qwen3-asr on Apple Silicon. All numbers 
 |---|---|---|---|---|
 | LibriSpeech test-clean WER | 2.29% | 2.72% | 2.33% | 1.99% |
 | LibriSpeech test-other WER | 4.20% | — | — | 3.45% |
-| Real-world40 WER (AMI+Earnings) | 14.17% | — | — | — |
+| Real-world200 WER (AMI+Earnings) | 23.23% | — | — | — |
 | Multilingual primary | 9.37% | — | — | 6.70% |
 | Short clip latency (~2.5s) | 0.46s | 0.13s | 0.11s | — |
 | 10s clip latency | 0.83s | 0.18s | 0.27s | — |
 | Multilingual mean latency | 1.44s | — | — | 4.12s |
 | MLX vs PyTorch speed (long-form) | 4.19x faster | — | — | — |
-| MLX vs PyTorch speed (real-world40) | 4.31x faster | — | — | — |
+| MLX vs PyTorch speed (real-world200) | 3.27x faster | — | — | — |
 
 ---
 
@@ -167,33 +167,33 @@ Artifact: `2026-02-15-manifest-quality-longform10.md`
 
 ---
 
-## Real-World Quality (AMI + Earnings22 chunked, n=40)
+## Real-World Quality (AMI + Earnings22 chunked, n=200)
 
-Deterministic mixed-condition lane with 20 AMI IHM meeting chunks and 20
-Earnings22 chunked clips (10 speakers per source, 20 speakers total).
+Deterministic mixed-condition lane with 100 AMI IHM meeting chunks and 100
+Earnings22 chunked clips (16 speakers from AMI + 50 speakers from Earnings22).
 
 | Metric | MLX (0.6B fp16) |
 |---|---:|
-| Primary error (WER) | 14.17% |
-| WER | 14.17% |
-| CER | 9.27% |
-| Mean latency | 0.85s |
+| Primary error (WER) | 23.23% |
+| WER | 23.23% |
+| CER | 16.42% |
+| Mean latency | 1.34s |
 
 Artifacts:
-- `2026-02-15-realworld-manifest-40.jsonl`
-- `2026-02-15-manifest-quality-realworld40-0p6b.json`
-- `2026-02-15-manifest-quality-realworld40-0p6b.md`
+- `2026-02-15-realworld-manifest-200.jsonl`
+- `2026-02-15-manifest-quality-realworld200-0p6b.json`
+- `2026-02-15-manifest-quality-realworld200-0p6b.md`
 
-### MLX vs PyTorch Head-to-Head (Real-world manifest, n=40)
+### MLX vs PyTorch Head-to-Head (Real-world manifest, n=200)
 
 | Metric | MLX | PyTorch | Delta (MLX - Ref) |
 |---|---:|---:|---:|
-| Primary error | 14.17% | 14.17% | +0.00pp |
-| WER | 14.17% | 14.17% | +0.00pp |
-| CER | 9.27% | 9.38% | -0.11pp |
-| Mean latency | 0.85s | 3.67s | 4.31x faster |
+| Primary error | 23.23% | 23.04% | +0.19pp |
+| WER | 23.23% | 23.04% | +0.19pp |
+| CER | 16.42% | 16.31% | +0.10pp |
+| Mean latency | 1.34s | 4.39s | 3.27x faster |
 
-Artifact: `2026-02-15-quality-head2head-mlx-vs-pytorch-realworld40.md`
+Artifact: `2026-02-15-quality-head2head-mlx-vs-pytorch-realworld200.md`
 
 ---
 

@@ -150,6 +150,30 @@ python scripts/eval_manifest_head2head.py \
 Real-world manifest lane (AMI + Earnings22 chunked, deterministic speaker-balanced sample):
 
 ```bash
+# Expanded lane (recommended): n=200
+python scripts/build_realworld_manifest.py \
+  --sources ami_ihm_test,earnings22_chunked_test \
+  --samples-per-source 100 \
+  --seed 20260216 \
+  --candidate-multiplier 10 \
+  --min-unique-speakers 50 \
+  --max-shards 40 \
+  --output-manifest docs/benchmarks/2026-02-15-realworld-manifest-200.jsonl
+
+python scripts/eval_manifest_quality.py \
+  --manifest-jsonl docs/benchmarks/2026-02-15-realworld-manifest-200.jsonl \
+  --model Qwen/Qwen3-ASR-0.6B \
+  --dtype float16 \
+  --json-output docs/benchmarks/2026-02-15-manifest-quality-realworld200-0p6b.json
+
+python scripts/eval_manifest_head2head.py \
+  --mlx-json docs/benchmarks/2026-02-15-manifest-quality-realworld200-0p6b.json \
+  --model Qwen/Qwen3-ASR-0.6B \
+  --max-new-tokens 1024 \
+  --json-output docs/benchmarks/2026-02-15-quality-head2head-mlx-vs-pytorch-realworld200.json \
+  --md-output docs/benchmarks/2026-02-15-quality-head2head-mlx-vs-pytorch-realworld200.md
+
+# Baseline smoke lane (fast): n=40
 python scripts/build_realworld_manifest.py \
   --sources ami_ihm_test,earnings22_chunked_test \
   --samples-per-source 20 \
@@ -158,20 +182,14 @@ python scripts/build_realworld_manifest.py \
   --min-unique-speakers 10 \
   --max-shards 20 \
   --output-manifest docs/benchmarks/2026-02-15-realworld-manifest-40.jsonl
-
-python scripts/eval_manifest_quality.py \
-  --manifest-jsonl docs/benchmarks/2026-02-15-realworld-manifest-40.jsonl \
-  --model Qwen/Qwen3-ASR-0.6B \
-  --dtype float16 \
-  --json-output docs/benchmarks/2026-02-15-manifest-quality-realworld40-0p6b.json
-
-python scripts/eval_manifest_head2head.py \
-  --mlx-json docs/benchmarks/2026-02-15-manifest-quality-realworld40-0p6b.json \
-  --model Qwen/Qwen3-ASR-0.6B \
-  --max-new-tokens 1024 \
-  --json-output docs/benchmarks/2026-02-15-quality-head2head-mlx-vs-pytorch-realworld40.json \
-  --md-output docs/benchmarks/2026-02-15-quality-head2head-mlx-vs-pytorch-realworld40.md
 ```
+
+Latest expanded real-world artifacts:
+- `docs/benchmarks/2026-02-15-realworld-manifest-200.jsonl`
+- `docs/benchmarks/2026-02-15-manifest-quality-realworld200-0p6b.json`
+- `docs/benchmarks/2026-02-15-manifest-quality-realworld200-0p6b.md`
+- `docs/benchmarks/2026-02-15-quality-head2head-mlx-vs-pytorch-realworld200.json`
+- `docs/benchmarks/2026-02-15-quality-head2head-mlx-vs-pytorch-realworld200.md`
 
 Latest multilingual smoke artifacts:
 - `docs/benchmarks/2026-02-14-fleurs-multilingual-smoke-manifest.jsonl`

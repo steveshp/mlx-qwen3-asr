@@ -198,6 +198,11 @@ Artifacts: `docs/benchmarks/2026-02-15-manifest-quality-multilingual100-0p6b-ref
 
 On long-form audio (75-90s clips), **MLX is 4.19x faster** than PyTorch on the same machine.
 
+On an expanded real-world mixed lane (AMI IHM meetings + Earnings22 chunked,
+`n=200`), MLX remains near parity with PyTorch (**23.23%** vs **23.04%** WER,
+`+0.19pp` delta) while staying **3.27x faster** on the same machine
+(`1.34s` vs `4.39s` mean latency).
+
 ### Optimizations applied
 
 - **Preallocated KV cache** with in-place slice writes and rollback-safe trimming
