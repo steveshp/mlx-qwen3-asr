@@ -46,6 +46,12 @@ Install from PyPI:
 pip install mlx-qwen3-asr
 ```
 
+For video and most non-WAV audio formats, install `ffmpeg` on your system:
+
+```bash
+brew install ffmpeg
+```
+
 Install with optional timestamp alignment extras (for Japanese/Korean tokenization parity):
 
 ```bash
@@ -176,6 +182,12 @@ Language discovery:
 
 ```bash
 mlx-qwen3-asr --list-languages
+```
+
+Environment diagnostics (ffmpeg, optional diarization deps, token status):
+
+```bash
+mlx-qwen3-asr --doctor
 ```
 
 Run `mlx-qwen3-asr --help` for the full list of options.

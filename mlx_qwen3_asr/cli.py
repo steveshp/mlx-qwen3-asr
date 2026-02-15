@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import os
+import shutil
 import sys
 import time
 from datetime import datetime
@@ -13,6 +14,23 @@ from typing import Optional
 
 from ._version import __version__
 from .config import DEFAULT_MODEL_ID
+
+_FFMPEG_REQUIRED_SUFFIXES = {
+    ".aac",
+    ".aiff",
+    ".avi",
+    ".flac",
+    ".m4a",
+    ".m4v",
+    ".mkv",
+    ".mov",
+    ".mp3",
+    ".mp4",
+    ".ogg",
+    ".opus",
+    ".webm",
+    ".wma",
+}
 
 
 def _format_duration(seconds: Optional[float]) -> str:
@@ -75,14 +93,110 @@ def _print_languages() -> None:
         print(f"- {language}: {', '.join(values)}")
 
 
-def _preflight_diarization_runtime() -> None:
-    def _has_spec(name: str) -> bool:
-        try:
-            return importlib.util.find_spec(name) is not None
-        except ModuleNotFoundError:
-            return False
+def _ffmpeg_install_hint() -> str:
+    if sys.platform == "darwin":
+        return "brew install ffmpeg"
+    if sys.platform.startswith("linux"):
+        return "sudo apt-get update && sudo apt-get install -y ffmpeg"
+    if sys.platform.startswith("win"):
+        return "winget install Gyan.FFmpeg"
+    return "Install ffmpeg and ensure it is available on PATH."
 
-    if not _has_spec("pyannote.audio"):
+
+def _has_ffmpeg_binary() -> bool:
+    return shutil.which("ffmpeg") is not None
+
+
+def _has_module_spec(name: str) -> bool:
+    try:
+        return importlib.util.find_spec(name) is not None
+    except ModuleNotFoundError:
+        return False
+
+
+def _input_likely_requires_ffmpeg(path: str) -> bool:
+    suffix = Path(path).suffix.strip().lower()
+    return suffix in _FFMPEG_REQUIRED_SUFFIXES
+
+
+def _preflight_ffmpeg_for_inputs(audio_paths: list[str]) -> None:
+    """Fail early for known ffmpeg-dependent media when ffmpeg is unavailable."""
+    if _has_ffmpeg_binary():
+        return
+    ffmpeg_inputs = [p for p in audio_paths if _input_likely_requires_ffmpeg(p)]
+    if not ffmpeg_inputs:
+        return
+    first = ffmpeg_inputs[0]
+    print(
+        (
+            "Error: input media appears to require ffmpeg decoding "
+            f"(example: {first})."
+        ),
+        file=sys.stderr,
+    )
+    print(
+        f"Install ffmpeg and retry. Suggested command: {_ffmpeg_install_hint()}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+
+
+def _run_doctor() -> int:
+    """Print environment diagnostics and return a shell-style exit code."""
+    failures = 0
+    warnings = 0
+
+    print(f"mlx-qwen3-asr doctor (version {__version__})")
+    print(f"python: {sys.version.split()[0]}")
+    print(f"platform: {sys.platform}")
+
+    ffmpeg_path = shutil.which("ffmpeg")
+    if ffmpeg_path:
+        print(f"[OK] ffmpeg: {ffmpeg_path}")
+    else:
+        failures += 1
+        print("[FAIL] ffmpeg: not found on PATH")
+        print(f"       fix: {_ffmpeg_install_hint()}")
+
+    mlx_ok = _has_module_spec("mlx")
+    if mlx_ok:
+        print("[OK] mlx: installed")
+    else:
+        failures += 1
+        print("[FAIL] mlx: not installed")
+        print("       fix: pip install mlx")
+
+    pyannote_ok = _has_module_spec("pyannote.audio")
+    torch_ok = _has_module_spec("torch")
+    if pyannote_ok and torch_ok:
+        print("[OK] diarize extras: pyannote.audio + torch installed")
+    else:
+        warnings += 1
+        print("[WARN] diarize extras: missing (optional)")
+        print('       fix: pip install "mlx-qwen3-asr[diarize]"')
+
+    token = (
+        os.environ.get("PYANNOTE_AUTH_TOKEN")
+        or os.environ.get("HF_TOKEN")
+        or os.environ.get("HUGGINGFACE_TOKEN")
+        or ""
+    )
+    if token:
+        print("[OK] diarize auth token: set")
+    else:
+        warnings += 1
+        print("[WARN] diarize auth token: not set (optional unless using gated pyannote models)")
+        print("       fix: export PYANNOTE_AUTH_TOKEN=hf_...")
+
+    if failures:
+        print(f"doctor result: FAIL ({failures} failure(s), {warnings} warning(s))")
+        return 1
+    print(f"doctor result: OK ({warnings} warning(s))")
+    return 0
+
+
+def _preflight_diarization_runtime() -> None:
+    if not _has_module_spec("pyannote.audio"):
         print(
             "Error: --diarize requires optional dependency 'pyannote.audio'.",
             file=sys.stderr,
@@ -92,7 +206,7 @@ def _preflight_diarization_runtime() -> None:
             file=sys.stderr,
         )
         raise SystemExit(1)
-    if not _has_spec("torch"):
+    if not _has_module_spec("torch"):
         print(
             "Error: --diarize requires PyTorch via pyannote dependencies.",
             file=sys.stderr,
@@ -307,6 +421,11 @@ def main():
         action="store_true",
         help="Print known language aliases/codes and exit",
     )
+    parser.add_argument(
+        "--doctor",
+        action="store_true",
+        help="Run environment diagnostics (ffmpeg/deps/tokens) and exit.",
+    )
     output_group = parser.add_mutually_exclusive_group()
     output_group.add_argument(
         "--quiet",
@@ -332,6 +451,12 @@ def main():
 
     args = parser.parse_args()
 
+    if args.doctor:
+        code = _run_doctor()
+        if code != 0:
+            raise SystemExit(code)
+        return
+
     if args.list_languages:
         _print_languages()
         return
@@ -340,7 +465,10 @@ def main():
         print("Error: --mic cannot be used with audio file arguments.", file=sys.stderr)
         raise SystemExit(1)
     if not args.mic and not args.audio:
-        parser.error("audio is required unless --mic or --list-languages is used")
+        parser.error("audio is required unless --mic, --list-languages, or --doctor is used")
+
+    if args.audio and not args.mic:
+        _preflight_ffmpeg_for_inputs(args.audio)
 
     if args.streaming and args.timestamps:
         print(

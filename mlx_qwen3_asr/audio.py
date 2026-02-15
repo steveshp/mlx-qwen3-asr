@@ -15,6 +15,7 @@ Key parameters:
 from __future__ import annotations
 
 import subprocess
+import sys
 from functools import lru_cache
 from pathlib import Path
 from typing import Tuple, Union
@@ -30,6 +31,18 @@ WHISPER_MAX_FRAMES = 3000  # 30s at 10ms hop
 
 
 AudioSource = Union[str, Path, np.ndarray, Tuple[np.ndarray, int]]
+
+
+def _ffmpeg_missing_message() -> str:
+    if sys.platform == "darwin":
+        install = "brew install ffmpeg"
+    elif sys.platform.startswith("linux"):
+        install = "sudo apt-get update && sudo apt-get install -y ffmpeg"
+    elif sys.platform.startswith("win"):
+        install = "winget install Gyan.FFmpeg"
+    else:
+        install = "Install ffmpeg and ensure it is available on PATH."
+    return f"ffmpeg not found on PATH. Install and retry: {install}"
 
 
 def load_audio_np(
@@ -153,9 +166,7 @@ def _load_audio_file(path: str, sr: int) -> np.ndarray:
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Failed to load audio: {e.stderr.decode()}") from e
     except FileNotFoundError:
-        raise RuntimeError(
-            "ffmpeg not found. Install with: brew install ffmpeg"
-        )
+        raise RuntimeError(_ffmpeg_missing_message())
 
     return np.frombuffer(result.stdout, np.int16).astype(np.float32) / 32768.0
 
@@ -317,9 +328,7 @@ def _resample_via_ffmpeg(
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Failed to resample audio: {e.stderr.decode()}") from e
     except FileNotFoundError:
-        raise RuntimeError(
-            "ffmpeg not found. Install with: brew install ffmpeg"
-        )
+        raise RuntimeError(_ffmpeg_missing_message())
 
     return np.frombuffer(result.stdout, np.int16).astype(np.float32) / 32768.0
 

@@ -282,6 +282,100 @@ def test_cli_list_languages_exits_without_audio(monkeypatch, capsys):
     assert "Supported language aliases" in captured.out
 
 
+def test_cli_doctor_runs_without_audio(monkeypatch):
+    cli = __import__("mlx_qwen3_asr.cli", fromlist=["main"])
+    called = {"value": False}
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "mlx-qwen3-asr",
+            "--doctor",
+        ],
+    )
+    monkeypatch.setattr(
+        cli,
+        "_run_doctor",
+        lambda: called.__setitem__("value", True) or 0,
+    )
+
+    cli.main()
+    assert called["value"] is True
+
+
+def test_cli_doctor_nonzero_exits(monkeypatch):
+    cli = __import__("mlx_qwen3_asr.cli", fromlist=["main"])
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "mlx-qwen3-asr",
+            "--doctor",
+        ],
+    )
+    monkeypatch.setattr(cli, "_run_doctor", lambda: 1)
+
+    with pytest.raises(SystemExit) as exc:
+        cli.main()
+    assert exc.value.code == 1
+
+
+def test_cli_ffmpeg_preflight_rejects_video_when_missing_binary(monkeypatch, capsys, tmp_path):
+    cli = __import__("mlx_qwen3_asr.cli", fromlist=["main"])
+    video_path = tmp_path / "video.mp4"
+    video_path.write_bytes(b"not-real-media")
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "mlx-qwen3-asr",
+            str(video_path),
+        ],
+    )
+    monkeypatch.setattr(cli.shutil, "which", lambda cmd: None)
+
+    with pytest.raises(SystemExit) as exc:
+        cli.main()
+
+    assert exc.value.code == 1
+    err = capsys.readouterr().err
+    assert "require ffmpeg decoding" in err
+    assert "Install ffmpeg and retry" in err
+
+
+def test_cli_ffmpeg_preflight_allows_wav_when_missing_binary(monkeypatch, capsys, tmp_path):
+    cli = __import__("mlx_qwen3_asr.cli", fromlist=["main"])
+    transcribe_mod = importlib.import_module("mlx_qwen3_asr.transcribe")
+    writers_mod = importlib.import_module("mlx_qwen3_asr.writers")
+
+    audio_path = tmp_path / "audio.wav"
+    audio_path.write_bytes(b"RIFF")
+
+    class _DummyResult:
+        text = "ok"
+        language = "English"
+        segments = None
+        chunks = [{"start": 0.0, "end": 0.5}]
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "mlx-qwen3-asr",
+            str(audio_path),
+        ],
+    )
+    monkeypatch.setattr(cli.shutil, "which", lambda cmd: None)
+    monkeypatch.setattr(transcribe_mod, "transcribe", lambda **kwargs: _DummyResult())
+    monkeypatch.setattr(writers_mod, "get_writer", lambda fmt: (lambda result, out_path: None))
+
+    cli.main()
+    assert "ok" in capsys.readouterr().out
+
+
 def test_cli_diarize_preflight_requires_pyannote(monkeypatch, capsys):
     cli = __import__("mlx_qwen3_asr.cli", fromlist=["main"])
 
