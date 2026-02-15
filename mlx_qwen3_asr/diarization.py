@@ -68,7 +68,20 @@ def infer_speaker_turns(
         diarization = pipeline(_pyannote_input(audio_np, sr), **kwargs)
     except TypeError:
         # Some pyannote versions expect no speaker-count kwargs.
-        diarization = pipeline(_pyannote_input(audio_np, sr))
+        try:
+            diarization = pipeline(_pyannote_input(audio_np, sr))
+        except Exception as exc:
+            raise RuntimeError(
+                "pyannote diarization inference failed. "
+                "Verify the installed '[diarize]' extra and any required "
+                "Hugging Face token/terms for your diarization model."
+            ) from exc
+    except Exception as exc:
+        raise RuntimeError(
+            "pyannote diarization inference failed. "
+            "Verify the installed '[diarize]' extra and any required "
+            "Hugging Face token/terms for your diarization model."
+        ) from exc
 
     turns = _annotation_to_turns(diarization, duration=float(audio_np.shape[0] / sr))
     if not turns:
@@ -243,7 +256,15 @@ def _load_pyannote_pipeline() -> object:
     kwargs: dict[str, Any] = {}
     if token:
         kwargs["use_auth_token"] = token
-    pipeline = Pipeline.from_pretrained(model_id, **kwargs)
+    try:
+        pipeline = Pipeline.from_pretrained(model_id, **kwargs)
+    except Exception as exc:
+        raise RuntimeError(
+            f"Failed to initialize pyannote pipeline '{model_id}'. "
+            "If this model is gated, accept its Hugging Face terms and set "
+            "PYANNOTE_AUTH_TOKEN (or HF_TOKEN). You can also override "
+            "PYANNOTE_MODEL_ID."
+        ) from exc
     _PYANNOTE_PIPELINE_CACHE[key] = pipeline
     return pipeline
 

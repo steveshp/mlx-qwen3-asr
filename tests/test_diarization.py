@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import importlib
+import sys
+import types
 
 import numpy as np
 import pytest
@@ -162,6 +164,57 @@ def test_infer_speaker_turns_raises_helpful_error_when_dependency_missing(monkey
 
     with pytest.raises(ImportError, match="missing pyannote"):
         infer_speaker_turns(np.zeros((8000,), dtype=np.float32), sr=8000, config=cfg)
+
+
+def test_infer_speaker_turns_wraps_pipeline_runtime_errors(monkeypatch):
+    dmod = importlib.import_module("mlx_qwen3_asr.diarization")
+    monkeypatch.setattr(
+        dmod,
+        "_pyannote_input",
+        lambda audio, sr: {"waveform": audio[None, :], "sample_rate": sr},
+    )
+
+    class _FailingPipeline:
+        def __call__(self, payload, **kwargs):  # noqa: ANN001
+            _ = payload, kwargs
+            raise RuntimeError("backend exploded")
+
+    cfg = validate_diarization_config(
+        num_speakers=1,
+        min_speakers=1,
+        max_speakers=2,
+    )
+
+    with pytest.raises(RuntimeError, match="pyannote diarization inference failed"):
+        infer_speaker_turns(
+            np.zeros((8000,), dtype=np.float32),
+            sr=8000,
+            config=cfg,
+            _pipeline=_FailingPipeline(),
+        )
+
+
+def test_load_pyannote_pipeline_wraps_from_pretrained_errors(monkeypatch):
+    dmod = importlib.import_module("mlx_qwen3_asr.diarization")
+
+    class _FakePipeline:
+        @classmethod
+        def from_pretrained(cls, model_id, **kwargs):  # noqa: ANN001
+            _ = model_id, kwargs
+            raise RuntimeError("401 unauthorized")
+
+    fake_audio_module = types.ModuleType("pyannote.audio")
+    fake_audio_module.Pipeline = _FakePipeline
+    fake_pkg = types.ModuleType("pyannote")
+    fake_pkg.audio = fake_audio_module
+
+    monkeypatch.setitem(sys.modules, "pyannote", fake_pkg)
+    monkeypatch.setitem(sys.modules, "pyannote.audio", fake_audio_module)
+    monkeypatch.setenv("PYANNOTE_MODEL_ID", "pyannote/speaker-diarization-3.1")
+    dmod._PYANNOTE_PIPELINE_CACHE.clear()  # noqa: SLF001
+
+    with pytest.raises(RuntimeError, match="Failed to initialize pyannote pipeline"):
+        dmod._load_pyannote_pipeline()  # noqa: SLF001
 
 
 def test_diarize_word_segments_adds_speaker_labels():

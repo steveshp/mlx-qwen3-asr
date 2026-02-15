@@ -369,6 +369,10 @@ Current status:
 - Some pyannote models require Hugging Face token/terms acceptance. Configure
   `PYANNOTE_AUTH_TOKEN` (or `HF_TOKEN`) when needed.
 - `--diarize` auto-enables timestamps and is not supported in `--streaming`/`--mic` mode.
+- Migration note (2026-02-15): legacy diarization `window/hop` controls were
+  removed (`diarization_window_sec`, `diarization_hop_sec`,
+  `--diarization-window-sec`, `--diarization-hop-sec`). Speaker-count controls
+  remain (`--num-speakers`, `--min-speakers`, `--max-speakers`).
 
 ## Quantization
 
