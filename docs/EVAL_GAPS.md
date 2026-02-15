@@ -20,7 +20,7 @@ make broad "production-grade across languages/conditions" quality claims.
   - LibriSpeech test-clean, 100 samples, speaker-balanced, 0.6B model
     (`fp16`, `4-bit`, `8-bit`).
   - LibriSpeech test-other, 100 samples, speaker-balanced, 0.6B model
-    (`fp16`).
+    (`fp16`, `4-bit`, `8-bit`).
   - LibriSpeech test-clean + test-other, 100 samples each, 1.7B model
     (`fp16`).
   - FLEURS multilingual manifest-quality lane:
@@ -66,10 +66,9 @@ make broad "production-grade across languages/conditions" quality claims.
 
 ## Follow-up Order
 
-1. Expand test-other to quantized profiles (`4-bit`, `8-bit`) for robustness-speed tradeoff tracking.
-2. Add larger and/or real-world long-form ground-truth lane (multi-minute, non-synthetic).
-3. Expand multilingual quality beyond 10-language x 10-sample manifest.
-4. Expand backend quality comparison lanes (MLX vs PyTorch) beyond multilingual-100.
-5. Add real-world curated lane with fixed artifact set and versioned manifests.
-6. Add streaming-quality dataset lane and commit versioned artifacts for
+1. Add larger and/or real-world long-form ground-truth lane (multi-minute, non-synthetic).
+2. Expand multilingual quality beyond 10-language x 10-sample manifest.
+3. Expand backend quality comparison lanes (MLX vs PyTorch) beyond multilingual-100.
+4. Add real-world curated lane with fixed artifact set and versioned manifests.
+5. Add streaming-quality dataset lane and commit versioned artifacts for
    `partial_stability`, `rewrite_rate`, and `finalization_delta_chars`.

@@ -49,6 +49,24 @@ Artifact: `2026-02-14-quant-matrix-speaker100.md`
 
 ---
 
+## Quantization Quality (0.6B, LibriSpeech test-other)
+
+100 speaker-balanced samples, round-robin sampling across speakers.
+
+| Configuration | WER | CER | Mean Latency | Real-Time Factor | vs fp16 Speed |
+|---|---:|---:|---:|---:|---:|
+| fp16 (baseline) | 4.20% | 2.09% | 0.71s | 0.099 | — |
+| 8-bit (g64) | 4.14% | 2.08% | 0.19s | 0.027 | **3.66x** |
+| 4-bit (g64) | 5.58% | 2.74% | 0.16s | 0.023 | **4.37x** |
+
+Interpretation:
+- 8-bit remains near-fp16 on the harder subset (WER delta `-0.05pp`).
+- 4-bit keeps the largest speedup but with a larger quality tradeoff (`+1.38pp` WER).
+
+Artifact: `2026-02-15-quant-matrix-test-other-speaker100.md`
+
+---
+
 ## Latency (0.6B)
 
 | Configuration | Short (~2.5s) | 10s clip | Real-Time Factor |

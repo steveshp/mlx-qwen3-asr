@@ -278,6 +278,24 @@ Latest refreshed matrix highlights (`2026-02-14-quant-matrix-speaker100.md`):
   - `docs/benchmarks/2026-02-14-librispeech-8bit-g64-100-speaker-round-robin.json`
   - `docs/benchmarks/2026-02-14-librispeech-4bit-g64-100-speaker-round-robin.json`
 
+Harder-English quantization refresh (`test-other`, `n=100`, speaker-balanced):
+
+```bash
+python scripts/benchmark_quantization_matrix.py \
+  --model Qwen/Qwen3-ASR-0.6B \
+  --configs fp16,4:64,8:64 \
+  --eval-subset test-other \
+  --eval-samples 100 \
+  --eval-sampling speaker_round_robin \
+  --benchmark-runs 5 \
+  --json-output docs/benchmarks/2026-02-15-quant-matrix-test-other-speaker100.json \
+  --md-output docs/benchmarks/2026-02-15-quant-matrix-test-other-speaker100.md
+```
+
+Artifacts:
+- `docs/benchmarks/2026-02-15-quant-matrix-test-other-speaker100.json`
+- `docs/benchmarks/2026-02-15-quant-matrix-test-other-speaker100.md`
+
 ## KV Cache Write-Path Follow-up (2026-02-14)
 
 `KVCache.update()` preallocated writes were compared:
