@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evaluate custom log-mel parity against HF WhisperFeatureExtractor."""
+"""Evaluate native log-mel parity against HF WhisperFeatureExtractor (optional)."""
 # ruff: noqa: E402
 
 from __future__ import annotations
@@ -36,7 +36,6 @@ import numpy as np
 
 from mlx_qwen3_asr.audio import (
     SAMPLE_RATE,
-    _compute_features_hf,
     compute_features,
     load_audio,
     log_mel_spectrogram,
@@ -52,22 +51,55 @@ def _make_random_cases(seed: int, seconds: list[float]) -> list[np.ndarray]:
     return out
 
 
+def _hf_reference_features(audio_np: np.ndarray) -> tuple[np.ndarray, int]:
+    """Compute reference features via HF WhisperFeatureExtractor.
+
+    This is an optional research/evaluation lane; runtime inference no longer
+    depends on `transformers`.
+    """
+    try:
+        from transformers import WhisperFeatureExtractor
+    except ImportError as exc:
+        raise RuntimeError(
+            "HF mel parity script requires optional dependency `transformers`. "
+            "Install with: pip install transformers"
+        ) from exc
+
+    extractor = WhisperFeatureExtractor(
+        feature_size=128,
+        sampling_rate=SAMPLE_RATE,
+        chunk_length=30,
+        n_fft=400,
+        hop_length=160,
+    )
+    result = extractor(
+        audio_np.astype(np.float32),
+        sampling_rate=SAMPLE_RATE,
+        return_tensors="np",
+        padding="do_not_pad",
+        truncation=False,
+        return_attention_mask=False,
+    )
+    mel = result["input_features"][0]  # (128, n_frames)
+    return mel, int(mel.shape[-1])
+
+
 def _compare_one(audio_np: np.ndarray) -> dict:
     # Current production path (custom for do_not_pad)
     mel_cur, lens_cur = compute_features(audio_np, padding="do_not_pad")
 
-    # Explicit HF path
-    mel_hf, lens_hf = _compute_features_hf(audio_np.astype(np.float32), SAMPLE_RATE, "do_not_pad")
+    # Explicit HF reference path (optional dependency, evaluation only).
+    mel_hf, lens_hf = _hf_reference_features(audio_np)
 
     # Direct custom function (sanity, should match compute_features do_not_pad)
     mel_direct = np.array(log_mel_spectrogram(mx.array(audio_np)))
 
     cur = np.array(mel_cur[0])
-    ref = np.array(mel_hf[0])
+    ref = np.array(mel_hf)
 
     return {
         "frames_cur": int(lens_cur.item()),
-        "frames_hf": int(lens_hf.item()),
+        "frames_hf": int(lens_hf),
         "shape_cur": list(cur.shape),
         "shape_hf": list(ref.shape),
         "direct_shape": list(mel_direct.shape),
@@ -77,7 +109,12 @@ def _compare_one(audio_np: np.ndarray) -> dict:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Evaluate custom mel parity against HF.")
+    parser = argparse.ArgumentParser(
+        description=(
+            "Evaluate native mel parity against HF WhisperFeatureExtractor "
+            "(requires optional `transformers`)."
+        )
+    )
     parser.add_argument(
         "--seconds",
         default="1,2,5,10,31",

@@ -29,6 +29,12 @@ make broad "production-grade across languages/conditions" quality claims.
     - 10 synthetic concatenated clips (~75-90s each, 10 languages),
     - Unicode-safe WER/CER with language-aware primary metric
       (CER for zh/ja/ko; WER otherwise).
+- Streaming diagnostics lane:
+  - Per-session quality metrics exposed from runtime state:
+    `partial_stability`, `rewrite_rate`, `finalization_delta_chars`.
+  - Tooling:
+    - `scripts/eval_streaming_metrics.py` (single-run diagnostics probe),
+    - `scripts/benchmark_streaming.py` (`streaming_quality` summary payload).
 
 ## Valid Gaps (prioritized)
 
@@ -61,6 +67,10 @@ make broad "production-grade across languages/conditions" quality claims.
 - Why: LibriSpeech-only is too clean for deployment confidence.
 - Status: not yet part of committed evaluation matrix.
 
+7. `P1` Streaming quality dataset lane (stability/rollback on real conversational audio)
+- Why: offline WER/CER does not fully capture live incremental UX quality.
+- Status: instrumentation landed; benchmarked dataset coverage is not yet committed.
+
 ## Follow-up Order
 
 1. Add 1.7B WER/CER on LibriSpeech test-clean + test-other.
@@ -69,3 +79,5 @@ make broad "production-grade across languages/conditions" quality claims.
 4. Expand multilingual quality beyond 10-language x 10-sample manifest.
 5. Expand backend quality comparison lanes (MLX vs PyTorch) beyond multilingual-100.
 6. Add real-world curated lane with fixed artifact set and versioned manifests.
+7. Add streaming-quality dataset lane and commit versioned artifacts for
+   `partial_stability`, `rewrite_rate`, and `finalization_delta_chars`.

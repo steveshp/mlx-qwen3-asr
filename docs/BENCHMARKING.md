@@ -45,11 +45,23 @@ python scripts/benchmark_streaming.py tests/fixtures/test_speech.wav \
   --max-context-sec 30.0 \
   --finalization-mode latency \
   --runs 3
+
+# Streaming quality diagnostics (stability + rewrite + finalization delta)
+python scripts/eval_streaming_metrics.py tests/fixtures/test_speech.wav \
+  --model Qwen/Qwen3-ASR-0.6B \
+  --chunk-size-sec 2.0 \
+  --max-context-sec 30.0 \
+  --json-output docs/benchmarks/latest-streaming-quality.json
 ```
 
 Latest streaming baseline artifact:
 - `docs/benchmarks/2026-02-14-streaming-rolling-baseline.json`
 - `docs/benchmarks/2026-02-14-streaming-rolling-baseline.md`
+
+Streaming benchmark payload now includes `streaming_quality`:
+- `partial_stability_mean`
+- `rewrite_rate_mean`
+- `finalization_delta_chars_mean` / `finalization_delta_chars_max`
 
 Reference parity suite benchmark:
 
@@ -68,6 +80,24 @@ python scripts/eval_reference_parity_suite.py \
 The suite reports:
 - `token_match_rate` (strict token-for-token parity),
 - `text_match_rate` (Unicode-safe normalized text parity).
+
+English quality benchmark lanes:
+
+```bash
+python scripts/eval_librispeech.py \
+  --model Qwen/Qwen3-ASR-0.6B \
+  --subset test-clean \
+  --samples 100 \
+  --sampling speaker_round_robin \
+  --json-output docs/benchmarks/2026-02-15-librispeech-test-clean-100.json
+
+python scripts/eval_librispeech.py \
+  --model Qwen/Qwen3-ASR-0.6B \
+  --subset test-other \
+  --samples 100 \
+  --sampling speaker_round_robin \
+  --json-output docs/benchmarks/2026-02-15-librispeech-test-other-100.json
+```
 
 Multilingual manifest parity benchmark:
 
@@ -106,6 +136,14 @@ Latest multilingual expanded artifacts:
 - `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-100-analysis.json`
 - `docs/benchmarks/2026-02-14-reference-parity-suite-multilingual-100-analysis.md`
 
+Latest quality-matrix refresh artifacts:
+- `docs/benchmarks/2026-02-15-librispeech-test-clean-100.json`
+- `docs/benchmarks/2026-02-15-librispeech-test-other-100.json`
+- `docs/benchmarks/2026-02-15-manifest-quality-multilingual100-0p6b-refresh.json`
+- `docs/benchmarks/2026-02-15-manifest-quality-multilingual100-1p7b-refresh.json`
+- `docs/benchmarks/2026-02-15-quality-matrix-refresh.json`
+- `docs/benchmarks/2026-02-15-quality-matrix-refresh.md`
+
 Latest smoke artifacts:
 - `docs/benchmarks/2026-02-14-reference-parity-suite-smoke.json`
 - `docs/benchmarks/2026-02-14-reference-parity-suite-smoke.md`
@@ -117,6 +155,8 @@ Latest smoke artifacts:
 Mel parity evaluation:
 
 ```bash
+# Optional dependency for HF reference lane:
+# pip install transformers
 python scripts/eval_mel_parity.py \
   --json-output docs/benchmarks/latest-mel-parity.json
 ```
@@ -282,10 +322,10 @@ To avoid rediscovering low-signal paths, these were tested and not kept:
 - One-step-ahead async decode scheduling (mlx-lm style adaptation):
   - Regressed in end-to-end A/B on this repo's benchmark scenarios.
   - Final decision: reverted.
-- `compute_features()` attention-mask skip for `padding="do_not_pad"` (status update):
-  - Early microbench was mixed/noisy, so it was initially reverted.
-  - Current implementation now keeps this optimization with test coverage:
-    no-pad path skips mask creation; padded modes still use mask-derived true length.
+- `compute_features()` HF extractor fallback path:
+  - Removed from runtime inference path.
+  - Current implementation is native-only (`do_not_pad`, `max_length`, `longest`)
+    with explicit validation and resample handling.
 - Speculative decoding prototype (`1.7B` target + `0.6B` draft):
   - Kept parity (`text_match=true`) but regressed latency on tested short and 10s clips.
   - Status: experimental only; not enabled by default.

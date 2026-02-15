@@ -382,13 +382,19 @@ Status: greedy parity verified, but 0.53-0.55x on short/10s clips. Not enabled b
 Rolling decode implementation for near-real-time transcription:
 
 ```python
-from mlx_qwen3_asr.streaming import init_streaming, feed_audio, finish_streaming
+from mlx_qwen3_asr.streaming import (
+    init_streaming,
+    feed_audio,
+    finish_streaming,
+    streaming_metrics,
+)
 
 state = init_streaming(chunk_size_sec=2.0, max_context_sec=30.0)
 for chunk in audio_chunks:
     state = feed_audio(chunk, state)
     print(state.text)
 state = finish_streaming(state)
+print(streaming_metrics(state))
 ```
 
 CLI:
@@ -415,6 +421,13 @@ Transcribe audio to text. Accepts a file path, numpy array, `mx.array`, or `(arr
 Explicit transcription session. Owns model and tokenizer state with no hidden globals.
 - Offline: `session.transcribe(audio, ...)` with the same parameters as top-level `transcribe`.
 - Streaming: `session.init_streaming(...)`, `session.feed_audio(pcm, state)`, `session.finish_streaming(state)`.
+
+### `streaming_metrics(state)`
+
+Return streaming diagnostics for a session state:
+- `partial_stability`
+- `rewrite_rate`
+- `finalization_delta_chars`
 
 ### `load_model(name_or_path, *, dtype)`
 

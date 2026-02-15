@@ -13,6 +13,7 @@
 - `scripts/eval/metrics.py` — shared normalization + WER/CER helpers.
 - `scripts/eval/analyze_reference_parity_mismatches.py` — parity mismatch categorization.
 - `scripts/eval/benchmark_quantization_matrix.py` — quantization sweep + eval/latency matrix.
+- `scripts/eval_streaming_metrics.py` — streaming stability/rollback/finalization diagnostics.
 - Root-level `eval_*.py`, `benchmark_*.py`, and `analyze_*.py` scripts are dev tooling.
 
 The long-term direction is to keep user-facing scripts at root and migrate

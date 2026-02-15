@@ -37,7 +37,12 @@ import mlx.core as mx
 import numpy as np
 
 from mlx_qwen3_asr import load_audio, load_model
-from mlx_qwen3_asr.streaming import feed_audio, finish_streaming, init_streaming
+from mlx_qwen3_asr.streaming import (
+    feed_audio,
+    finish_streaming,
+    init_streaming,
+    streaming_metrics,
+)
 
 
 def _dtype_from_name(name: str) -> mx.Dtype:
@@ -97,7 +102,7 @@ def main() -> int:
     chunk_size_samples = max(1, int(args.chunk_size_sec * 16000))
     chunks = _chunk_audio(audio_np, chunk_size_samples)
 
-    def run_once() -> tuple[float, list[float], float]:
+    def run_once() -> tuple[float, list[float], float, dict[str, float | int]]:
         finalization_mode = "latency" if args.disable_tail_refine else args.finalization_mode
         state = init_streaming(
             model=args.model,
@@ -120,7 +125,7 @@ def main() -> int:
         finish_streaming(state, model=model)
         finish_latency = time.perf_counter() - t1
         total = time.perf_counter() - started
-        return total, chunk_latencies, finish_latency
+        return total, chunk_latencies, finish_latency, streaming_metrics(state)
 
     for _ in range(max(0, args.warmup_runs)):
         run_once()
@@ -129,15 +134,21 @@ def main() -> int:
     per_chunk_means: list[float] = []
     per_chunk_p95: list[float] = []
     finish_latencies: list[float] = []
+    partial_stabilities: list[float] = []
+    rewrite_rates: list[float] = []
+    finalization_deltas: list[int] = []
 
     for _ in range(max(1, args.runs)):
-        total, chunk_latencies, finish_latency = run_once()
+        total, chunk_latencies, finish_latency, quality = run_once()
         total_latencies.append(total)
         finish_latencies.append(finish_latency)
         per_chunk_means.append(statistics.mean(chunk_latencies) if chunk_latencies else 0.0)
         per_chunk_p95.append(
             float(np.percentile(chunk_latencies, 95)) if chunk_latencies else 0.0
         )
+        partial_stabilities.append(float(quality["partial_stability"]))
+        rewrite_rates.append(float(quality["rewrite_rate"]))
+        finalization_deltas.append(int(quality["finalization_delta_chars"]))
 
     mean_total = statistics.mean(total_latencies)
     payload = {
@@ -163,6 +174,12 @@ def main() -> int:
             "chunk_mean_mean": statistics.mean(per_chunk_means),
             "chunk_p95_mean": statistics.mean(per_chunk_p95),
             "finish_mean": statistics.mean(finish_latencies),
+        },
+        "streaming_quality": {
+            "partial_stability_mean": statistics.mean(partial_stabilities),
+            "rewrite_rate_mean": statistics.mean(rewrite_rates),
+            "finalization_delta_chars_mean": statistics.mean(finalization_deltas),
+            "finalization_delta_chars_max": max(finalization_deltas) if finalization_deltas else 0,
         },
         "rtf": mean_total / duration_sec if duration_sec > 0 else 0.0,
     }

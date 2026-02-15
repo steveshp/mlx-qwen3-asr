@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import warnings
 from types import SimpleNamespace
 
 import mlx.core as mx
@@ -329,3 +330,34 @@ def test_transcribe_warns_on_unknown_forced_language(monkeypatch):
         result = transcribe(np.zeros(3200, dtype=np.float32), language="xx_unsupported")
 
     assert result.language == "xx_unsupported"
+
+
+def test_transcribe_does_not_warn_when_language_supported_by_model_config(monkeypatch):
+    tmod = importlib.import_module("mlx_qwen3_asr.transcribe")
+
+    class _ModelWithSupport(_DummyModel):
+        config = SimpleNamespace(
+            text_config=SimpleNamespace(vocab_size=151936),
+            support_languages=["xx-custom"],
+        )
+
+    monkeypatch.setattr(tmod, "_TokenizerHolder", _DummyTokenizerHolder)
+    monkeypatch.setattr(tmod._ModelHolder, "get", lambda *a, **k: (_ModelWithSupport(), None))
+    monkeypatch.setattr(
+        tmod._ModelHolder,
+        "get_resolved_path",
+        lambda path, dtype=mx.float16: path,
+    )
+    monkeypatch.setattr(
+        tmod,
+        "compute_features",
+        lambda audio: (mx.zeros((1, 128, 100), dtype=mx.float32), mx.array([100], dtype=mx.int32)),
+    )
+    monkeypatch.setattr(tmod, "generate", lambda **kwargs: [10, 11, 12])
+
+    with warnings.catch_warnings(record=True) as records:
+        warnings.simplefilter("always")
+        result = transcribe(np.zeros(3200, dtype=np.float32), language="xx_custom")
+
+    assert result.language == "xx_custom"
+    assert not [w for w in records if issubclass(w.category, UserWarning)]

@@ -28,7 +28,7 @@ Key technical decisions made for mlx-qwen3-asr, with rationale.
 - Qwen3-ASR deserves dedicated focus -- it's SOTA and complex enough to warrant its own package
 - Standalone allows us to optimize specifically for this model without compromise
 
-## Decision 3: Dual Timestamp Backends with Native-First Default
+## Decision 3: Dual Timestamp Backends with Native-First Default (Superseded by Decision 20)
 
 **Choice:** Use native MLX backend (`mlx`) as default timestamp path while
 keeping `qwen_asr` as explicit official-reference option and `auto` fallback mode
@@ -51,7 +51,7 @@ keeping `qwen_asr` as explicit official-reference option and `auto` fallback mod
   multilingual coverage + performance envelope) until `qwen_asr` is no longer
   needed in standard workflows.
 
-## Decision 4: HuggingFace Tokenizer
+## Decision 4: HuggingFace Tokenizer (Superseded by Decision 18)
 
 **Choice:** Use `transformers.AutoTokenizer` (Qwen2TokenizerFast)
 **Alternative:** Reimplement BPE tokenizer from scratch
@@ -120,7 +120,7 @@ Korean dict (KO), and fail clearly when missing.
 - Clear runtime errors are preferable to silent low-quality alignment in multilingual use.
 - Vendoring the official Korean dictionary asset keeps behavior reproducible across machines.
 
-## Decision 10: Prefer Direct `Qwen2Tokenizer` Loader over `AutoTokenizer`
+## Decision 10: Prefer Direct `Qwen2Tokenizer` Loader over `AutoTokenizer` (Superseded by Decision 18)
 
 **Choice:** In tokenizer loading, import and instantiate `Qwen2Tokenizer` directly when
 available, with `AutoTokenizer` as fallback.
@@ -217,3 +217,40 @@ keep baseline greedy decode as default.
   (extra draft compute outweighs target savings).
 - Keeping it opt-in preserves a clean default path while enabling continued
   experimentation on acceptance-rate and long-form workloads.
+
+## Decision 18: Replace HF Tokenizer Runtime with Native In-Repo BPE
+
+**Choice:** Implement and ship native byte-level BPE tokenizer (`vocab.json` + `merges.txt` +
+`tokenizer_config.json`) in-repo for runtime encode/decode.
+**Alternative:** Keep `transformers` tokenizer as runtime dependency.
+
+**Rationale:**
+- Removes heavy runtime dependency surface (`transformers`) from core ASR path.
+- Reduces install and compatibility risk from upstream tokenizer API changes.
+- Keeps tokenizer behavior deterministic and owned inside this repository.
+- Maintains compatibility by preserving existing `Tokenizer` public interface and
+  enforcing parity via unit/integration tests.
+
+## Decision 19: Remove HF Feature-Extractor Fallback from Runtime `compute_features()`
+
+**Choice:** Make `compute_features()` native-only for runtime inference and support
+`do_not_pad`, `max_length`, and `longest` natively.
+**Alternative:** Retain HF `WhisperFeatureExtractor` fallback for uncommon padding/sample-rate paths.
+
+**Rationale:**
+- Fully removes `transformers` from runtime transcription path.
+- Simplifies feature extraction behavior and error handling.
+- Keeps predictable performance characteristics and avoids hidden dependency drift.
+- Optional research scripts can still evaluate parity vs HF reference implementation.
+
+## Decision 20: Runtime Forced Aligner Backend is Native-Only
+
+**Choice:** Keep runtime `ForcedAligner` backend fixed to native `mlx`;
+use `qwen-asr` only in optional parity scripts.
+**Alternative:** Continue dual runtime backends (`mlx` + `qwen_asr` + `auto`).
+
+**Rationale:**
+- Eliminates runtime PyTorch bridge complexity and cache churn.
+- Simplifies CLI/API behavior and dependency expectations for end users.
+- Preserves scientific comparability by keeping explicit reference-lane scripts.
+- Aligns with project north-star of fully native MLX runtime paths.

@@ -76,6 +76,10 @@ class StreamingState:
     _tokenizer: Optional[Tokenizer] = None
     _dtype: mx.Dtype = mx.float16
     _resolved_model_path: Optional[str] = None
+    _text_updates: int = 0
+    _rewrite_events: int = 0
+    _pre_finalize_text: str = ""
+    _finalization_delta_chars: int = 0
 
 
 def init_streaming(
@@ -169,7 +173,13 @@ def feed_audio(
         if new_language and new_language != "unknown" and state.language == "unknown":
             state.language = new_language
         lang_for_join = state.language if state.language != "unknown" else new_language
-        state.text = _append_chunk_text(state.text, new_text, lang_for_join)
+        prev_text = state.text
+        merged_text = _append_chunk_text(prev_text, new_text, lang_for_join)
+        if merged_text != prev_text:
+            state._text_updates += 1
+        if prev_text and merged_text and not merged_text.startswith(prev_text):
+            state._rewrite_events += 1
+        state.text = merged_text
 
         if state.chunk_id < state.unfixed_chunk_num:
             stable = state.stable_text
@@ -193,11 +203,16 @@ def finish_streaming(
 ) -> StreamingState:
     """Finalize streaming session, processing any remaining tail audio."""
     if len(state.audio_accum) == 0:
+        state._pre_finalize_text = state.text
+        state._finalization_delta_chars = 0
         return state
     if len(state.buffer) == 0:
+        state._pre_finalize_text = state.text
+        state._finalization_delta_chars = 0
         state.stable_text = state.text
         return state
 
+    state._pre_finalize_text = state.text
     tail_text, tail_language = _decode_chunk_incremental(state.buffer, state, model=model)
     prev_text = state.text
     if tail_language and tail_language != "unknown" and state.language == "unknown":
@@ -236,7 +251,26 @@ def finish_streaming(
 
     state.buffer = np.array([], dtype=np.float32)
     state.stable_text = state.text
+    state._finalization_delta_chars = len(state.text) - len(state._pre_finalize_text)
     return state
+
+
+def streaming_metrics(state: StreamingState) -> dict[str, float | int]:
+    """Return lightweight streaming quality diagnostics for a session state."""
+    text_chars = int(len(state.text))
+    stable_chars = int(len(state.stable_text))
+    text_updates = int(state._text_updates)
+    rewrite_events = int(state._rewrite_events)
+    return {
+        "chunks_processed": int(state.chunk_id),
+        "text_chars": text_chars,
+        "stable_chars": stable_chars,
+        "partial_stability": float(stable_chars / text_chars) if text_chars > 0 else 1.0,
+        "text_updates": text_updates,
+        "rewrite_events": rewrite_events,
+        "rewrite_rate": float(rewrite_events / text_updates) if text_updates > 0 else 0.0,
+        "finalization_delta_chars": int(state._finalization_delta_chars),
+    }
 
 
 def _infer_model_dtype(model: Qwen3ASRModel) -> mx.Dtype:

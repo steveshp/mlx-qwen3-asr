@@ -394,21 +394,13 @@ class TestComputeFeatures:
         assert int(feature_lens.item()) == 200
 
     def test_do_not_pad_path_skips_attention_mask(self, monkeypatch):
-        def fail_extractor(_sr):  # noqa: ANN001
-            raise AssertionError("HF extractor should not be used for do_not_pad")
-
-        monkeypatch.setattr(audio_mod, "_get_feature_extractor", fail_extractor)
-
+        _ = monkeypatch
         mel, feature_lens = compute_features(np.zeros(3200, dtype=np.float32))
         assert mel.shape == (1, 128, 20)
         assert int(feature_lens.item()) == 20
 
     def test_max_length_native_path_skips_hf_extractor(self, monkeypatch):
-        def fail_extractor(_sr):  # noqa: ANN001
-            raise AssertionError("HF extractor should not be used for max_length")
-
-        monkeypatch.setattr(audio_mod, "_get_feature_extractor", fail_extractor)
-
+        _ = monkeypatch
         mel, feature_lens = compute_features(
             np.zeros(1600, dtype=np.float32),
             padding="max_length",
@@ -416,42 +408,30 @@ class TestComputeFeatures:
         assert mel.shape == (1, 128, 3000)
         assert int(feature_lens.item()) == 10
 
-    def test_hf_fallback_path_uses_attention_mask_for_true_length(self, monkeypatch):
-        seen = {}
-
-        def fake_extractor(audio_np, **kwargs):  # noqa: ANN001
-            seen.update(kwargs)
-            attn = np.zeros((1, 3000), dtype=np.int64)
-            attn[0, :200] = 1
-            return {
-                "input_features": np.zeros((1, 128, 3000), dtype=np.float32),
-                "attention_mask": attn,
-            }
-
-        monkeypatch.setattr(audio_mod, "_get_feature_extractor", lambda _sr: fake_extractor)
-
-        mel, feature_lens = compute_features(
-            np.zeros(1600, dtype=np.float32),
-            padding="longest",
-        )
-        assert seen["return_attention_mask"] is True
-        assert mel.shape == (1, 128, 3000)
-        assert int(feature_lens.item()) == 200
-
-    def test_custom_mel_parity_with_hf_reference(self):
+    def test_longest_padding_keeps_true_length(self):
         rng = np.random.default_rng(0)
         audio = rng.standard_normal(2 * SAMPLE_RATE).astype(np.float32)
-        mel_custom, lens_custom = compute_features(audio, padding="do_not_pad")
-        mel_hf, lens_hf = audio_mod._compute_features_hf(  # noqa: SLF001
-            audio,
-            SAMPLE_RATE,
-            "do_not_pad",
-        )
+        mel_longest, lens_longest = compute_features(audio, padding="longest")
+        mel_no_pad, lens_no_pad = compute_features(audio, padding="do_not_pad")
 
-        assert int(lens_custom.item()) == int(lens_hf.item())
-        np.testing.assert_allclose(
-            np.array(mel_custom),
-            np.array(mel_hf),
-            atol=2e-5,
-            rtol=1e-5,
-        )
+        assert int(lens_longest.item()) == int(lens_no_pad.item())
+        np.testing.assert_allclose(np.array(mel_longest), np.array(mel_no_pad), atol=0, rtol=0)
+
+    def test_unsupported_padding_raises(self):
+        with pytest.raises(ValueError, match="Unsupported padding mode"):
+            compute_features(np.zeros(1600, dtype=np.float32), padding="dynamic")
+
+    def test_non_16k_resamples_before_feature_compute(self, monkeypatch):
+        calls = {}
+
+        def fake_resample(audio, orig_sr, target_sr):  # noqa: ANN001
+            calls["orig_sr"] = orig_sr
+            calls["target_sr"] = target_sr
+            return np.zeros(1600, dtype=np.float32)
+
+        monkeypatch.setattr(audio_mod, "_resample_via_ffmpeg", fake_resample)
+        mel, feature_lens = compute_features(np.zeros(3200, dtype=np.float32), sr=8000)
+
+        assert calls == {"orig_sr": 8000, "target_sr": SAMPLE_RATE}
+        assert mel.shape == (1, 128, 10)
+        assert int(feature_lens.item()) == 10

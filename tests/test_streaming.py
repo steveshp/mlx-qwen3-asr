@@ -15,6 +15,7 @@ from mlx_qwen3_asr.streaming import (
     feed_audio,
     finish_streaming,
     init_streaming,
+    streaming_metrics,
 )
 
 
@@ -456,6 +457,61 @@ class TestFinishStreaming:
         assert out is state
         assert state.text == "same text"
         assert len(state.buffer) == 0
+
+
+class TestStreamingMetrics:
+    def test_streaming_metrics_defaults(self):
+        metrics = streaming_metrics(init_streaming())
+        assert metrics["chunks_processed"] == 0
+        assert metrics["text_chars"] == 0
+        assert metrics["stable_chars"] == 0
+        assert metrics["partial_stability"] == 1.0
+        assert metrics["text_updates"] == 0
+        assert metrics["rewrite_events"] == 0
+        assert metrics["rewrite_rate"] == 0.0
+        assert metrics["finalization_delta_chars"] == 0
+
+    def test_feed_audio_tracks_rewrite_events(self, monkeypatch):
+        outputs = iter(
+            [
+                ("one two three four five six", "English"),
+                ("one two three seven eight nine", "English"),
+            ]
+        )
+        monkeypatch.setattr(
+            smod,
+            "_decode_chunk_incremental",
+            lambda *_a, **_k: next(outputs),
+        )
+
+        state = init_streaming(chunk_size_sec=1.0, sample_rate=10, unfixed_chunk_num=0)
+        feed_audio(np.ones(10, dtype=np.float32), state)
+        feed_audio(np.ones(10, dtype=np.float32), state)
+        metrics = streaming_metrics(state)
+
+        assert metrics["chunks_processed"] == 2
+        assert metrics["text_updates"] == 2
+        assert metrics["rewrite_events"] == 1
+        assert metrics["rewrite_rate"] == 0.5
+
+    def test_finish_streaming_tracks_finalization_delta_chars(self, monkeypatch):
+        monkeypatch.setattr(
+            smod,
+            "_decode_chunk_incremental",
+            lambda *_a, **_k: ("world", "English"),
+        )
+
+        state = init_streaming(chunk_size_sec=1.0, sample_rate=10)
+        state.text = "hello"
+        state.language = "English"
+        state.buffer = np.ones(3, dtype=np.float32)
+        state.audio_accum = np.ones(13, dtype=np.float32)
+
+        finish_streaming(state)
+        metrics = streaming_metrics(state)
+
+        assert state.text == "hello world"
+        assert metrics["finalization_delta_chars"] == 6
 
 
 class TestIncrementalDecode:

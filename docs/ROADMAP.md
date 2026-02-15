@@ -59,12 +59,10 @@ Performance progress:
   - native fast-path WAV loader for PCM/float `.wav` inputs, with ffmpeg
     fallback for unsupported formats, reducing short-clip overhead.
 - Done (cold-start tokenizer optimization):
-  - tokenizer loader now prefers direct `Qwen2Tokenizer` path over
-    `AutoTokenizer` dynamic loading.
-  - tokenizer now also receives resolved local snapshot path (not repo ID),
-    avoiding extra Hub checks in short-lived processes.
-  - benchmarked process-level first-transcribe latency on fixture audio:
-    mean `4.008s` -> `2.296s` (`~1.75x` faster overall vs legacy path).
+  - runtime tokenizer path is now native in-repo byte-level BPE
+    (no `transformers` dependency in core transcription flow).
+  - tokenizer receives resolved local snapshot path for deterministic local
+    vocab/merges loading.
 - Done (long-context encoder optimization):
   - added hybrid execution strategy for audio-encoder windowed attention:
     dense block-mask for small window counts, segmented per-window execution for
@@ -79,13 +77,13 @@ Performance progress:
 4. Forced aligner timestamps
 - In progress.
 - Timestamps now default to native MLX backend.
-- Optional `qwen-asr` backend remains available as an official-reference lane.
+- Runtime aligner is now native-only (`mlx`).
+- `qwen-asr` remains in optional parity/evaluation scripts as a reference lane.
 - Native aligner groundwork now landed:
   - ported official text-unit preprocessing and LIS-based timestamp correction
     utilities into `mlx_qwen3_asr/forced_aligner.py`,
   - added regression coverage in `tests/test_forced_aligner.py`.
-- Native MLX backend path is wired (`--aligner-backend mlx` or `auto`) and is
-  now the default timestamp backend.
+- Native MLX backend path is the runtime timestamp backend.
 - Initial smoke benchmark on fixture audio shows strong latency upside
   (~`4.73x` mean vs `qwen_asr`) with matching sample word spans.
 - Deterministic parity lane is now in place (`scripts/eval_aligner_parity.py`)
@@ -110,7 +108,7 @@ Performance progress:
 Near-term work should remain correctness-gated and benchmark-driven:
 
 1. Native MLX forced aligner (timestamps) quality hardening
-- Goal: remove optional PyTorch runtime dependency for timestamp alignment.
+- Goal: continue quality hardening now that runtime PyTorch dependency is removed.
 - Gate: word-level timing quality must be competitive with current `qwen-asr` backend.
 
 2. Quantized model publication lane

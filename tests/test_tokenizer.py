@@ -1,9 +1,9 @@
 """Tests for mlx_qwen3_asr/tokenizer.py.
 
-Only tests parse_asr_output() -- the Tokenizer class requires HF download.
+Tokenizer tests use a tiny local vocab/merges fixture.
 """
 
-import sys
+import json
 
 import mlx_qwen3_asr.tokenizer as tokmod
 from mlx_qwen3_asr.tokenizer import (
@@ -164,97 +164,96 @@ def test_canonicalize_language_handles_codes_and_names():
     assert canonicalize_language("xx") == "xx"
 
 
-def test_load_hf_tokenizer_uses_fix_mistral_regex(monkeypatch):
-    calls = []
-
-    class _DummyAutoTokenizer:
-        @staticmethod
-        def from_pretrained(model_path, **kwargs):  # noqa: ANN001
-            calls.append((model_path, kwargs))
-            return object()
-
-    class _DummyTransformersModule:
-        AutoTokenizer = _DummyAutoTokenizer
-
-    # Ensure this test exercises the AutoTokenizer fallback path even if
-    # prior tests imported Qwen2 tokenizer modules.
-    monkeypatch.delitem(sys.modules, "transformers.models", raising=False)
-    monkeypatch.delitem(sys.modules, "transformers.models.qwen2", raising=False)
-    monkeypatch.delitem(
-        sys.modules,
-        "transformers.models.qwen2.tokenization_qwen2",
-        raising=False,
+def _write_min_tokenizer_files(tmp_path):
+    vocab = {
+        "h": 0,
+        "e": 1,
+        "l": 2,
+        "o": 3,
+        "w": 4,
+        "r": 5,
+        "d": 6,
+        "!": 7,
+        "Ġ": 8,
+        "Ċ": 9,
+        "he": 10,
+        "hel": 11,
+        "hell": 12,
+        "hello": 13,
+        "wo": 14,
+        "wor": 15,
+        "worl": 16,
+        "world": 17,
+        "Ġh": 18,
+        "Ġhe": 19,
+        "Ġhel": 20,
+        "Ġhell": 21,
+        "Ġhello": 22,
+        "Ġw": 23,
+        "Ġwo": 24,
+        "Ġwor": 25,
+        "Ġworl": 26,
+        "Ġworld": 27,
+    }
+    merges = "\n".join(
+        [
+            "#version: 0.2",
+            "h e",
+            "he l",
+            "hel l",
+            "hell o",
+            "w o",
+            "wo r",
+            "wor l",
+            "worl d",
+            "Ġ h",
+            "Ġh e",
+            "Ġhe l",
+            "Ġhel l",
+            "Ġhell o",
+            "Ġ w",
+            "Ġw o",
+            "Ġwo r",
+            "Ġwor l",
+            "Ġworl d",
+        ]
     )
-    monkeypatch.setitem(sys.modules, "transformers", _DummyTransformersModule)
-
-    tok = tokmod._load_hf_tokenizer("repo/a")
-    assert tok is not None
-    assert len(calls) == 1
-    assert calls[0][0] == "repo/a"
-    assert calls[0][1]["trust_remote_code"] is True
-    assert calls[0][1]["fix_mistral_regex"] is True
-
-
-def test_load_hf_tokenizer_prefers_direct_qwen2_loader(monkeypatch):
-    qwen_calls = []
-
-    class _DummyQwen2Tokenizer:
-        @staticmethod
-        def from_pretrained(model_path, **kwargs):  # noqa: ANN001
-            qwen_calls.append((model_path, kwargs))
-            return object()
-
-    class _DummyAutoTokenizer:
-        @staticmethod
-        def from_pretrained(*args, **kwargs):  # noqa: ANN001
-            raise AssertionError(
-                "AutoTokenizer should not be called when Qwen2Tokenizer is available"
-            )
-
-    qwen_mod = type(sys)("transformers.models.qwen2.tokenization_qwen2")
-    qwen_mod.Qwen2Tokenizer = _DummyQwen2Tokenizer
-
-    auto_mod = type(sys)("transformers")
-    auto_mod.AutoTokenizer = _DummyAutoTokenizer
-
-    monkeypatch.setitem(sys.modules, "transformers", auto_mod)
-    monkeypatch.setitem(sys.modules, "transformers.models.qwen2.tokenization_qwen2", qwen_mod)
-
-    tok = tokmod._load_hf_tokenizer("repo/qwen")
-    assert tok is not None
-    assert len(qwen_calls) == 1
-    assert qwen_calls[0][0] == "repo/qwen"
-    assert qwen_calls[0][1]["trust_remote_code"] is True
-    assert qwen_calls[0][1]["fix_mistral_regex"] is True
+    tok_cfg = {
+        "errors": "replace",
+        "eos_token": "<|im_end|>",
+        "pad_token": "<|endoftext|>",
+        "unk_token": "<|endoftext|>",
+        "added_tokens_decoder": {
+            "151643": {"content": "<|endoftext|>", "special": True},
+            "151644": {"content": "<|im_start|>", "special": True},
+            "151645": {"content": "<|im_end|>", "special": True},
+            "151669": {"content": "<|audio_start|>", "special": True},
+            "151670": {"content": "<|audio_end|>", "special": True},
+            "151676": {"content": "<|audio_pad|>", "special": True},
+            "151704": {"content": "<asr_text>", "special": False},
+        },
+    }
+    (tmp_path / "vocab.json").write_text(json.dumps(vocab), encoding="utf-8")
+    (tmp_path / "merges.txt").write_text(merges, encoding="utf-8")
+    (tmp_path / "tokenizer_config.json").write_text(json.dumps(tok_cfg), encoding="utf-8")
+    return str(tmp_path)
 
 
-def test_load_hf_tokenizer_falls_back_when_fix_flag_unsupported(monkeypatch):
-    calls = []
+def test_native_tokenizer_encode_decode_added_tokens(tmp_path):
+    model_dir = _write_min_tokenizer_files(tmp_path)
+    tok = tokmod.Tokenizer(model_dir)
 
-    class _DummyAutoTokenizer:
-        @staticmethod
-        def from_pretrained(model_path, **kwargs):  # noqa: ANN001
-            calls.append((model_path, kwargs))
-            if kwargs.get("fix_mistral_regex"):
-                raise TypeError("unexpected keyword argument 'fix_mistral_regex'")
-            return object()
+    text = "<|audio_start|><|audio_pad|><|audio_end|> hello world<asr_text>"
+    ids = tok.encode(text)
 
-    class _DummyTransformersModule:
-        AutoTokenizer = _DummyAutoTokenizer
+    assert ids[:3] == [151669, 151676, 151670]
+    assert ids[-1] == 151704
+    assert tok.decode(ids) == text
 
-    # Ensure this test exercises the AutoTokenizer fallback path even if
-    # prior tests imported Qwen2 tokenizer modules.
-    monkeypatch.delitem(sys.modules, "transformers.models", raising=False)
-    monkeypatch.delitem(sys.modules, "transformers.models.qwen2", raising=False)
-    monkeypatch.delitem(
-        sys.modules,
-        "transformers.models.qwen2.tokenization_qwen2",
-        raising=False,
-    )
-    monkeypatch.setitem(sys.modules, "transformers", _DummyTransformersModule)
 
-    tok = tokmod._load_hf_tokenizer("repo/b")
-    assert tok is not None
-    assert len(calls) == 2
-    assert calls[0][1]["fix_mistral_regex"] is True
-    assert "fix_mistral_regex" not in calls[1][1]
+def test_native_tokenizer_skip_special_tokens(tmp_path):
+    model_dir = _write_min_tokenizer_files(tmp_path)
+    tok = tokmod.Tokenizer(model_dir)
+
+    ids = [151669, 151676, 151670, 151704]
+    assert tok.decode(ids, skip_special_tokens=True) == "<asr_text>"

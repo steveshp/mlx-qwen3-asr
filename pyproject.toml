@@ -24,8 +24,8 @@ classifiers = [
 dependencies = [
     "mlx>=0.18.0",
     "numpy",
+    "regex",
     "huggingface-hub>=0.20.0",
-    "transformers>=4.40.0",
 ]
 
 [project.optional-dependencies]

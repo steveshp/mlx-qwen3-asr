@@ -2,6 +2,9 @@
 
 Verified notes for this repo, based on official artifacts as of **2026-02-14**.
 
+Latest academic best-practice cross-check:
+- `docs/ACADEMIC_BEST_PRACTICES_2026-02-15.md`
+
 ## Primary Sources
 
 - Qwen3-ASR paper: https://arxiv.org/abs/2601.21337

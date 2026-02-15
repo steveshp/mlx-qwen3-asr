@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Optional
+
+import regex as re
 
 _LANGUAGE_CANONICAL: dict[str, str] = {
     # English
@@ -70,6 +73,11 @@ _LANGUAGE_CANONICAL: dict[str, str] = {
 
 _KNOWN_LANGUAGE_NAMES = tuple(sorted(set(_LANGUAGE_CANONICAL.values())))
 
+PRETOKENIZE_REGEX = (
+    r"(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}|"
+    r" ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+"
+)
+
 
 def canonicalize_language(language: Optional[str]) -> Optional[str]:
     """Normalize common language aliases/codes to canonical prompt names."""
@@ -98,44 +106,229 @@ def known_language_names() -> tuple[str, ...]:
     return _KNOWN_LANGUAGE_NAMES
 
 
-def _from_pretrained_with_fix_flag(loader_cls, model_path: str):  # noqa: ANN001
-    """Load a tokenizer class with optional mistral-regex compatibility flag."""
-    common_kwargs = {"trust_remote_code": True}
-    try:
-        return loader_cls.from_pretrained(
-            model_path,
-            fix_mistral_regex=True,
-            **common_kwargs,
+def _bytes_to_unicode() -> dict[int, str]:
+    """Build GPT2/Qwen byte-to-unicode reversible map."""
+    bs = (
+        list(range(ord("!"), ord("~") + 1))
+        + list(range(ord("¡"), ord("¬") + 1))
+        + list(range(ord("®"), ord("ÿ") + 1))
+    )
+    cs = bs[:]
+    n = 0
+    for b in range(2 ** 8):
+        if b not in bs:
+            bs.append(b)
+            cs.append(2 ** 8 + n)
+            n += 1
+    return dict(zip(bs, (chr(c) for c in cs), strict=True))
+
+
+def _get_pairs(word: tuple[str, ...]) -> set[tuple[str, str]]:
+    pairs: set[tuple[str, str]] = set()
+    prev = word[0]
+    for ch in word[1:]:
+        pairs.add((prev, ch))
+        prev = ch
+    return pairs
+
+
+def _resolve_tokenizer_dir(model_path: str) -> Path:
+    path = Path(model_path)
+    if path.exists() and (path / "vocab.json").exists() and (path / "merges.txt").exists():
+        return path
+    # Reuse model resolver so repo IDs map to local snapshot directories.
+    from .load_models import _resolve_path
+
+    return _resolve_path(model_path)
+
+
+class _NativeQwenBPETokenizer:
+    """Native byte-level BPE tokenizer compatible with Qwen2 tokenizer files."""
+
+    def __init__(self, model_path: str):
+        model_dir = _resolve_tokenizer_dir(model_path)
+        self._encoder: dict[str, int] = json.loads((model_dir / "vocab.json").read_text("utf-8"))
+        self._decoder: dict[int, str] = {v: k for k, v in self._encoder.items()}
+        self._byte_encoder = _bytes_to_unicode()
+        self._byte_decoder = {v: k for k, v in self._byte_encoder.items()}
+        self._errors = "replace"
+        self._pat = re.compile(PRETOKENIZE_REGEX)
+
+        merges = (model_dir / "merges.txt").read_text("utf-8").splitlines()
+        self._bpe_ranks: dict[tuple[str, str], int] = {}
+        for i, line in enumerate(merges):
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = line.split()
+            if len(parts) != 2:
+                continue
+            self._bpe_ranks[(parts[0], parts[1])] = i
+        self._bpe_cache: dict[str, str] = {}
+
+        tok_cfg_path = model_dir / "tokenizer_config.json"
+        tok_cfg = {}
+        if tok_cfg_path.exists():
+            tok_cfg = json.loads(tok_cfg_path.read_text("utf-8"))
+        self._errors = str(tok_cfg.get("errors", "replace"))
+
+        added = tok_cfg.get("added_tokens_decoder", {}) or {}
+        self._added_tokens_encoder: dict[str, int] = {}
+        self._added_tokens_decoder: dict[int, str] = {}
+        self._special_added_token_ids: set[int] = set()
+        for id_str, meta in added.items():
+            try:
+                tid = int(id_str)
+            except (TypeError, ValueError):
+                continue
+            if not isinstance(meta, dict):
+                continue
+            content = str(meta.get("content", ""))
+            if not content:
+                continue
+            self._added_tokens_encoder[content] = tid
+            self._added_tokens_decoder[tid] = content
+            if bool(meta.get("special", False)):
+                self._special_added_token_ids.add(tid)
+
+        eos_tok = tok_cfg.get("eos_token", "<|endoftext|>")
+        unk_tok = tok_cfg.get("unk_token", eos_tok) or eos_tok
+        self._unk_token_id = self._added_tokens_encoder.get(
+            str(unk_tok),
+            self._encoder.get(str(unk_tok), 151643),
         )
-    except TypeError as e:
-        if "fix_mistral_regex" not in str(e):
-            raise
-        return loader_cls.from_pretrained(model_path, **common_kwargs)
 
+        # Longest-first added-token matching to keep special/added markers atomic.
+        self._added_tokens = sorted(self._added_tokens_encoder, key=len, reverse=True)
+        if self._added_tokens:
+            escaped = "|".join(re.escape(t) for t in self._added_tokens)
+            self._added_pat = re.compile(escaped)
+        else:
+            self._added_pat = None
 
-def _load_hf_tokenizer(model_path: str):
-    """Load HF tokenizer with best-effort compatibility fixes.
+    def _bpe(self, token: str) -> str:
+        cached = self._bpe_cache.get(token)
+        if cached is not None:
+            return cached
 
-    Some model/tokenizer bundles trigger a warning about Mistral regex behavior.
-    Newer `transformers` versions support `fix_mistral_regex`; older versions
-    may reject it, so we fall back cleanly.
-    """
-    # Prefer direct Qwen2 tokenizer import when available. This avoids the
-    # heavier AutoTokenizer dynamic import path and improves cold-start latency.
-    try:
-        from transformers.models.qwen2.tokenization_qwen2 import Qwen2Tokenizer
-    except ImportError:
-        Qwen2Tokenizer = None
+        word = tuple(token)
+        if not word:
+            return ""
+        pairs = _get_pairs(word)
+        if not pairs:
+            return token
 
-    if Qwen2Tokenizer is not None:
-        return _from_pretrained_with_fix_flag(Qwen2Tokenizer, model_path)
+        while True:
+            bigram = min(pairs, key=lambda p: self._bpe_ranks.get(p, float("inf")))
+            if bigram not in self._bpe_ranks:
+                break
+            first, second = bigram
+            new_word: list[str] = []
+            i = 0
+            while i < len(word):
+                try:
+                    j = word.index(first, i)
+                    new_word.extend(word[i:j])
+                    i = j
+                except ValueError:
+                    new_word.extend(word[i:])
+                    break
+                if i < len(word) - 1 and word[i] == first and word[i + 1] == second:
+                    new_word.append(first + second)
+                    i += 2
+                else:
+                    new_word.append(word[i])
+                    i += 1
+            word = tuple(new_word)
+            if len(word) == 1:
+                break
+            pairs = _get_pairs(word)
 
-    from transformers import AutoTokenizer
-    return _from_pretrained_with_fix_flag(AutoTokenizer, model_path)
+        out = " ".join(word)
+        self._bpe_cache[token] = out
+        return out
+
+    def _split_with_added_tokens(self, text: str) -> list[tuple[bool, str]]:
+        if not text:
+            return []
+        if self._added_pat is None:
+            return [(False, text)]
+        parts: list[tuple[bool, str]] = []
+        last = 0
+        for m in self._added_pat.finditer(text):
+            s, e = m.span()
+            if s > last:
+                parts.append((False, text[last:s]))
+            parts.append((True, text[s:e]))
+            last = e
+        if last < len(text):
+            parts.append((False, text[last:]))
+        return parts
+
+    def encode(self, text: str, add_special_tokens: bool = False) -> list[int]:
+        if text is None:
+            return []
+        s = str(text)
+        ids: list[int] = []
+
+        for is_added, segment in self._split_with_added_tokens(s):
+            if not segment:
+                continue
+            if is_added:
+                tid = self._added_tokens_encoder.get(segment)
+                if tid is not None:
+                    ids.append(tid)
+                continue
+            for token in re.findall(self._pat, segment):
+                encoded = "".join(self._byte_encoder[b] for b in token.encode("utf-8"))
+                for bpe_tok in self._bpe(encoded).split(" "):
+                    ids.append(self._encoder.get(bpe_tok, self._unk_token_id))
+
+        # Qwen2 tokenizer config for ASR does not auto-wrap BOS/EOS, keep this
+        # behavior even when add_special_tokens=True for compatibility.
+        _ = add_special_tokens
+        return ids
+
+    def decode(self, ids: list[int], skip_special_tokens: bool = False) -> str:
+        if ids is None:
+            return ""
+
+        pieces: list[str] = []
+        byte_tokens: list[str] = []
+
+        def flush_bytes() -> None:
+            if not byte_tokens:
+                return
+            text = "".join(byte_tokens)
+            data = bytearray(self._byte_decoder[c] for c in text)
+            pieces.append(data.decode("utf-8", errors=self._errors))
+            byte_tokens.clear()
+
+        for tid in ids:
+            idx = int(tid)
+            added = self._added_tokens_decoder.get(idx)
+            if added is not None:
+                if skip_special_tokens and idx in self._special_added_token_ids:
+                    continue
+                flush_bytes()
+                pieces.append(added)
+                continue
+            tok = self._decoder.get(idx)
+            if tok is None:
+                continue
+            byte_tokens.append(tok)
+
+        flush_bytes()
+        return "".join(pieces)
+
+    def get_vocab(self) -> dict[str, int]:
+        out = dict(self._encoder)
+        out.update(self._added_tokens_encoder)
+        return out
 
 
 class Tokenizer:
-    """Thin wrapper around HuggingFace Qwen2TokenizerFast.
+    """Thin wrapper around native Qwen-compatible byte-level BPE tokenizer.
 
     Handles prompt template construction with audio placeholder tokens.
     """
@@ -146,7 +339,7 @@ class Tokenizer:
     EOS_TOKEN_IDS = [151643, 151645]
 
     def __init__(self, model_path: str):
-        self._tokenizer = _load_hf_tokenizer(model_path)
+        self._tokenizer = _NativeQwenBPETokenizer(model_path)
 
         # Look up audio token IDs from the actual tokenizer vocab
         vocab = self._tokenizer.get_vocab()

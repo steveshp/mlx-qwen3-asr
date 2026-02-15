@@ -2,8 +2,7 @@
 
 Handles audio I/O via ffmpeg subprocess and computes Whisper-compatible
 log-mel spectrograms. The default feature path is a native custom mel
-implementation; HuggingFace WhisperFeatureExtractor is retained for padded
-modes and parity/debug comparisons.
+implementation.
 
 Key parameters:
     - Sample rate: 16000 Hz
@@ -374,17 +373,13 @@ def compute_features(
 ) -> tuple[mx.array, mx.array]:
     """Compute mel spectrogram features.
 
-    Native custom mel path is used for:
-    - `padding="do_not_pad"` (default)
-    - `padding="max_length"` (pads short clips to 3000 frames)
-
-    Other padding modes route through HF WhisperFeatureExtractor as a
-    compatibility fallback.
+    Native custom mel path is always used.
 
     Args:
         audio_np: Raw waveform as numpy array, shape (n_samples,).
         sr: Sample rate. Default 16000.
-        padding: Feature padding mode. `"do_not_pad"` avoids extra compute.
+        padding: Feature padding mode.
+            `"do_not_pad"` and `"longest"` keep the natural frame length.
             `"max_length"` pads short clips to 3000 frames while preserving
             true `feature_lens`.
 
@@ -395,62 +390,24 @@ def compute_features(
     """
     audio_np = np.asarray(audio_np, dtype=np.float32)
 
-    # Fast native path for normal inference and max_length compatibility.
-    # For non-16k sample rates or uncommon padding modes, use HF fallback.
-    if sr == SAMPLE_RATE and padding in {"do_not_pad", "max_length"}:
-        mel = np.array(log_mel_spectrogram(mx.array(audio_np)))
-        actual_frames = int(mel.shape[-1])
-        if padding == "max_length" and actual_frames < WHISPER_MAX_FRAMES:
-            pad = WHISPER_MAX_FRAMES - actual_frames
-            mel = np.pad(mel, ((0, 0), (0, pad)), mode="constant")
-        mel_mx = mx.array(mel[None, :, :].astype(np.float32))
-        feature_lens = mx.array([actual_frames])
-        return mel_mx, feature_lens
+    if sr != SAMPLE_RATE:
+        audio_np = _resample_via_ffmpeg(audio_np, sr, SAMPLE_RATE)
 
-    # Compatibility fallback for unsupported padding modes.
-    return _compute_features_hf(audio_np, sr, padding)
+    mode = str(padding).strip().lower()
+    if mode not in {"do_not_pad", "max_length", "longest"}:
+        raise ValueError(
+            f"Unsupported padding mode '{padding}'. "
+            "Expected one of: do_not_pad, max_length, longest."
+        )
 
-
-def _compute_features_hf(
-    audio_np: np.ndarray,
-    sr: int,
-    padding: str,
-) -> tuple[mx.array, mx.array]:
-    """Compute mel features via HF WhisperFeatureExtractor."""
-    extractor = _get_feature_extractor(sr)
-    result = extractor(
-        audio_np,
-        sampling_rate=sr,
-        return_tensors="np",
-        padding=padding,
-        truncation=False,
-        return_attention_mask=padding != "do_not_pad",
-    )
-    mel = result["input_features"][0]  # (128, n_frames)
-    if padding == "do_not_pad":
-        actual_frames = int(mel.shape[-1])
-    else:
-        attn_mask = result["attention_mask"][0]  # (n_frames,)
-        actual_frames = int(attn_mask.sum())
-
-    mel_mx = mx.array(mel[None, :, :].astype(np.float32))  # (1, 128, n_frames)
+    mel = np.array(log_mel_spectrogram(mx.array(audio_np)))
+    actual_frames = int(mel.shape[-1])
+    if mode == "max_length" and actual_frames < WHISPER_MAX_FRAMES:
+        pad = WHISPER_MAX_FRAMES - actual_frames
+        mel = np.pad(mel, ((0, 0), (0, pad)), mode="constant")
+    mel_mx = mx.array(mel[None, :, :].astype(np.float32))
     feature_lens = mx.array([actual_frames])
-
     return mel_mx, feature_lens
-
-
-@lru_cache(maxsize=4)
-def _get_feature_extractor(sr: int):
-    """Get a cached HF WhisperFeatureExtractor instance for a sample rate."""
-    from transformers import WhisperFeatureExtractor
-
-    return WhisperFeatureExtractor(
-        feature_size=NUM_MEL_BINS,
-        sampling_rate=sr,
-        chunk_length=30,
-        n_fft=N_FFT,
-        hop_length=HOP_LENGTH,
-    )
 
 
 def _reflect_pad(x: mx.array, pad_len: int) -> mx.array:
