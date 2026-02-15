@@ -633,3 +633,49 @@ Artifacts:
 Impact:
 - this upgrades non-English quality validation from parity-only to direct
   reference-based metrics on a broader multilingual sample.
+
+### 35) Strict release profile promoted to executable gate policy
+
+- Added strict release profile support in `scripts/quality_gate.py`:
+  - `RUN_STRICT_RELEASE=1` enables truth-quality + parity + perf lanes by
+    default in `--mode release`.
+  - release parity test now executes with `RUN_REFERENCE_PARITY=1` and fails
+    when `torch`/`qwen_asr` deps are missing (unless explicitly overridden).
+  - strict defaults:
+    - manifest quality lane on,
+    - multilingual parity suite on with practical floor thresholds,
+    - perf benchmark lane on with RTF/latency thresholds.
+- Updated `docs/QUALITY_GATE.md` with exact strict-profile command and env
+  controls.
+- Validation:
+  - fast gate: PASS,
+  - strict release smoke: PASS (all lanes exercised).
+
+Why this matters:
+- moves the highest-bar intent from prose into repeatable pass/fail checks,
+- reduces risk of accidental release with missing multilingual/perf evidence.
+
+### 36) Multilingual language-alias hardening for forced-language path
+
+- Added language canonicalization in `mlx_qwen3_asr/tokenizer.py`:
+  - new helper: `canonicalize_language(...)`
+  - normalizes common codes/aliases (e.g. `de_de`, `fr`, `zh-cn`) to canonical
+    names used in prompt forcing (e.g. `German`, `French`, `Chinese`).
+- Updated prompt construction:
+  - `Tokenizer.build_prompt_tokens(...)` now uses canonicalized language labels
+    before emitting `language {X}<asr_text>`.
+- Hardened forced-language parse behavior:
+  - `parse_asr_output(..., user_language=...)` now strips an unexpected
+    `language ...<asr_text>` prefix if the model emits it, rather than treating
+    the entire string as plain transcript.
+  - forced language output is canonicalized consistently.
+- Updated transcription pipeline:
+  - `mlx_qwen3_asr/transcribe.py` canonicalizes `language` once and reuses it
+    for prompt forcing, parser input, and aligner calls.
+- Added regression tests:
+  - `tests/test_tokenizer.py` (forced-language canonicalization + prefix strip),
+  - `tests/test_transcribe.py` (forced language code normalized before prompt).
+
+Validation:
+- targeted tests: PASS (`tests/test_tokenizer.py`, `tests/test_transcribe.py`),
+- full fast gate: PASS (`349 passed, 1 skipped`).
