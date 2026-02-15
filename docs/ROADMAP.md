@@ -142,6 +142,22 @@ Near-term work should remain correctness-gated and benchmark-driven:
 - Keep streaming explicitly experimental and avoid major roadmap allocation
   until the core offline quality/speed/timestamp track is fully production-grade.
 
+8. Native speaker diarization (optional extra)
+- Status: experimental offline baseline shipped (2026-02-15) in API/CLI runtime.
+- Goal: mature "who said what" quality from baseline to quality-gated stable.
+- Runtime path: native windowed acoustic embeddings + clustering pipeline.
+- Packaging: ship as optional extra (`mlx-qwen3-asr[diarize]`) so core installs
+  remain lean.
+- Guardrail: native-only implementation path; do not wrap external PyTorch
+  diarization stacks in runtime.
+- Gate: establish diarization quality policy (DER/JER + latency envelope) before
+  declaring stable.
+- Notes:
+  - summary brief: `docs/DIARIZATION_BRIEF_2026-02-15.md`
+  - strategy/review: `docs/DIARIZATION_NATIVE_PLAN_2026-02-15.md`
+  - source research: `docs/DIARIZATION_RESEARCH_2026-02-15.md`
+  - implementation spec: `docs/DIARIZATION_IMPLEMENTATION_SPEC_2026-02-15.md`
+
 ## Acceptance Gates
 
 - Token parity: deterministic greedy parity test passes on reference fixtures.

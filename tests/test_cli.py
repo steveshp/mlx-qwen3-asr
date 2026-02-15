@@ -109,6 +109,28 @@ def test_cli_streaming_rejects_timestamps(monkeypatch, capsys, tmp_path):
     assert "--streaming does not support --timestamps" in capsys.readouterr().err
 
 
+def test_cli_streaming_rejects_diarize(monkeypatch, capsys, tmp_path):
+    cli = __import__("mlx_qwen3_asr.cli", fromlist=["main"])
+    audio_path = tmp_path / "audio.wav"
+    audio_path.write_bytes(b"RIFF")
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "mlx-qwen3-asr",
+            "--streaming",
+            "--diarize",
+            str(audio_path),
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        cli.main()
+    assert exc.value.code == 1
+    assert "--streaming does not support --diarize" in capsys.readouterr().err
+
+
 def test_cli_streaming_mode_uses_streaming_pipeline(monkeypatch, capsys, tmp_path):
     cli = __import__("mlx_qwen3_asr.cli", fromlist=["main"])
     audio_mod = importlib.import_module("mlx_qwen3_asr.audio")
@@ -173,3 +195,195 @@ def test_cli_streaming_mode_uses_streaming_pipeline(monkeypatch, capsys, tmp_pat
     assert "final streaming text" in out.out
     assert calls["feed"] == 1
     assert calls["finish"] == 1
+
+
+def test_cli_stdout_only_does_not_write_files(monkeypatch, capsys, tmp_path):
+    cli = __import__("mlx_qwen3_asr.cli", fromlist=["main"])
+    transcribe_mod = importlib.import_module("mlx_qwen3_asr.transcribe")
+    writers_mod = importlib.import_module("mlx_qwen3_asr.writers")
+
+    audio_path = tmp_path / "audio.wav"
+    audio_path.write_bytes(b"RIFF")
+    write_calls = {"count": 0}
+
+    class _DummyResult:
+        text = "stdout text"
+        language = "English"
+        segments = None
+        chunks = [{"start": 0.0, "end": 1.0}]
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "mlx-qwen3-asr",
+            "--stdout-only",
+            "-o",
+            str(tmp_path / "out"),
+            str(audio_path),
+        ],
+    )
+    monkeypatch.setattr(transcribe_mod, "transcribe", lambda **kwargs: _DummyResult())
+
+    def _fake_writer(result, out_path):  # noqa: ANN001, ARG001
+        write_calls["count"] += 1
+
+    monkeypatch.setattr(writers_mod, "get_writer", lambda fmt: _fake_writer)
+
+    cli.main()
+    captured = capsys.readouterr()
+    assert "stdout text" in captured.out
+    assert write_calls["count"] == 0
+
+
+def test_cli_quiet_suppresses_stdout(monkeypatch, capsys, tmp_path):
+    cli = __import__("mlx_qwen3_asr.cli", fromlist=["main"])
+    transcribe_mod = importlib.import_module("mlx_qwen3_asr.transcribe")
+    writers_mod = importlib.import_module("mlx_qwen3_asr.writers")
+
+    audio_path = tmp_path / "audio.wav"
+    audio_path.write_bytes(b"RIFF")
+
+    class _DummyResult:
+        text = "quiet text"
+        language = "English"
+        segments = None
+        chunks = [{"start": 0.0, "end": 1.0}]
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "mlx-qwen3-asr",
+            "--quiet",
+            str(audio_path),
+        ],
+    )
+    monkeypatch.setattr(transcribe_mod, "transcribe", lambda **kwargs: _DummyResult())
+    monkeypatch.setattr(writers_mod, "get_writer", lambda fmt: (lambda result, out_path: None))
+
+    cli.main()
+    captured = capsys.readouterr()
+    assert "quiet text" not in captured.out
+
+
+def test_cli_list_languages_exits_without_audio(monkeypatch, capsys):
+    cli = __import__("mlx_qwen3_asr.cli", fromlist=["main"])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "mlx-qwen3-asr",
+            "--list-languages",
+        ],
+    )
+    cli.main()
+    captured = capsys.readouterr()
+    assert "Supported language aliases" in captured.out
+
+
+def test_cli_auto_enables_timestamps_for_subtitles(monkeypatch, tmp_path):
+    cli = __import__("mlx_qwen3_asr.cli", fromlist=["main"])
+    transcribe_mod = importlib.import_module("mlx_qwen3_asr.transcribe")
+    writers_mod = importlib.import_module("mlx_qwen3_asr.writers")
+
+    audio_path = tmp_path / "audio.wav"
+    audio_path.write_bytes(b"RIFF")
+    calls = {}
+
+    class _DummyResult:
+        text = "hello"
+        language = "English"
+        segments = [{"text": "hello", "start": 0.0, "end": 0.5}]
+        chunks = [{"start": 0.0, "end": 0.5}]
+
+    def _fake_transcribe(**kwargs):  # noqa: ANN003
+        calls["return_timestamps"] = kwargs["return_timestamps"]
+        return _DummyResult()
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "mlx-qwen3-asr",
+            "-f",
+            "srt",
+            str(audio_path),
+        ],
+    )
+    monkeypatch.setattr(transcribe_mod, "transcribe", _fake_transcribe)
+    monkeypatch.setattr(writers_mod, "get_writer", lambda fmt: (lambda result, out_path: None))
+
+    cli.main()
+    assert calls["return_timestamps"] is True
+
+
+def test_cli_diarize_auto_enables_timestamps_and_forwards_args(monkeypatch, tmp_path):
+    cli = __import__("mlx_qwen3_asr.cli", fromlist=["main"])
+    transcribe_mod = importlib.import_module("mlx_qwen3_asr.transcribe")
+    writers_mod = importlib.import_module("mlx_qwen3_asr.writers")
+
+    audio_path = tmp_path / "audio.wav"
+    audio_path.write_bytes(b"RIFF")
+    calls = {}
+
+    class _DummyResult:
+        text = "hello"
+        language = "English"
+        segments = [{"text": "hello", "start": 0.0, "end": 0.5, "speaker": "SPEAKER_00"}]
+        speaker_segments = [
+            {"speaker": "SPEAKER_00", "start": 0.0, "end": 0.5, "text": "hello"}
+        ]
+        chunks = [{"start": 0.0, "end": 0.5}]
+
+    def _fake_transcribe(**kwargs):  # noqa: ANN003
+        calls.update(kwargs)
+        return _DummyResult()
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "mlx-qwen3-asr",
+            "--diarize",
+            "--num-speakers",
+            "2",
+            "--min-speakers",
+            "1",
+            "--max-speakers",
+            "4",
+            str(audio_path),
+        ],
+    )
+    monkeypatch.setattr(transcribe_mod, "transcribe", _fake_transcribe)
+    monkeypatch.setattr(writers_mod, "get_writer", lambda fmt: (lambda result, out_path: None))
+
+    cli.main()
+    assert calls["return_timestamps"] is True
+    assert calls["diarize"] is True
+    assert calls["diarization_num_speakers"] == 2
+    assert calls["diarization_min_speakers"] == 1
+    assert calls["diarization_max_speakers"] == 4
+
+
+def test_cli_streaming_rejects_subtitle_formats(monkeypatch, capsys, tmp_path):
+    cli = __import__("mlx_qwen3_asr.cli", fromlist=["main"])
+    audio_path = tmp_path / "audio.wav"
+    audio_path.write_bytes(b"RIFF")
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "mlx-qwen3-asr",
+            "--streaming",
+            "-f",
+            "srt",
+            str(audio_path),
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        cli.main()
+    assert exc.value.code == 1
+    assert "require offline transcription" in capsys.readouterr().err

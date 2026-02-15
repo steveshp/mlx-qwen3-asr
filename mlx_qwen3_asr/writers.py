@@ -3,9 +3,25 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Callable
 
 from .transcribe import TranscriptionResult
+
+_CJK_LANG_ALIASES = {
+    "chinese",
+    "zh",
+    "zh-cn",
+    "zh-tw",
+    "cantonese",
+    "yue",
+    "japanese",
+    "ja",
+    "jp",
+    "korean",
+    "ko",
+    "kr",
+}
 
 
 def write_txt(result: TranscriptionResult, output_path: str) -> None:
@@ -23,6 +39,8 @@ def write_json(result: TranscriptionResult, output_path: str) -> None:
     }
     if result.segments:
         data["segments"] = result.segments
+    if result.speaker_segments:
+        data["speaker_segments"] = result.speaker_segments
 
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
@@ -32,16 +50,11 @@ def write_json(result: TranscriptionResult, output_path: str) -> None:
 def write_srt(result: TranscriptionResult, output_path: str) -> None:
     """Write SRT subtitle format. Requires segments with timestamps."""
     if not result.segments:
-        # Fall back to single segment
-        with open(output_path, "w", encoding="utf-8") as f:
-            f.write("1\n")
-            f.write("00:00:00,000 --> 99:59:59,999\n")
-            f.write(result.text)
-            f.write("\n\n")
-        return
+        raise ValueError("SRT output requires timestamp segments. Re-run with --timestamps.")
+    subtitle_segments = group_subtitle_segments(result.segments, language=result.language)
 
     with open(output_path, "w", encoding="utf-8") as f:
-        for i, seg in enumerate(result.segments, 1):
+        for i, seg in enumerate(subtitle_segments, 1):
             start = _format_timestamp_srt(seg["start"])
             end = _format_timestamp_srt(seg["end"])
             f.write(f"{i}\n")
@@ -51,16 +64,14 @@ def write_srt(result: TranscriptionResult, output_path: str) -> None:
 
 def write_vtt(result: TranscriptionResult, output_path: str) -> None:
     """Write WebVTT subtitle format. Requires segments with timestamps."""
+    if not result.segments:
+        raise ValueError("VTT output requires timestamp segments. Re-run with --timestamps.")
+    subtitle_segments = group_subtitle_segments(result.segments, language=result.language)
+
     with open(output_path, "w", encoding="utf-8") as f:
         f.write("WEBVTT\n\n")
 
-        if not result.segments:
-            f.write("00:00:00.000 --> 99:59:59.999\n")
-            f.write(result.text)
-            f.write("\n\n")
-            return
-
-        for seg in result.segments:
+        for seg in subtitle_segments:
             start = _format_timestamp_vtt(seg["start"])
             end = _format_timestamp_vtt(seg["end"])
             f.write(f"{start} --> {end}\n")
@@ -101,6 +112,95 @@ def get_writer(fmt: str) -> Callable:
     if fmt not in writers:
         raise ValueError(f"Unknown format '{fmt}'. Supported: {', '.join(writers.keys())}")
     return writers[fmt]
+
+
+def group_subtitle_segments(
+    segments: list[dict],
+    *,
+    language: str = "",
+    max_words: int = 10,
+    max_chars: int = 42,
+    max_duration_sec: float = 6.0,
+    max_gap_sec: float = 0.8,
+) -> list[dict]:
+    """Group word-level segments into subtitle-friendly phrases."""
+    if not segments:
+        return []
+
+    grouped: list[dict] = []
+    current: list[dict] = []
+
+    for seg in segments:
+        text = str(seg.get("text", "")).strip()
+        if not text:
+            continue
+        start = float(seg.get("start", 0.0))
+        end = float(seg.get("end", start))
+        if end < start:
+            end = start
+
+        item = {"text": text, "start": start, "end": end}
+        if not current:
+            current.append(item)
+            continue
+
+        current_text = _join_subtitle_tokens(current, language=language)
+        next_candidate = _join_subtitle_tokens([*current, item], language=language)
+        gap = start - float(current[-1]["end"])
+        duration = end - float(current[0]["start"])
+        should_break = False
+        if gap >= max_gap_sec:
+            should_break = True
+        if duration > max_duration_sec:
+            should_break = True
+        if len(current) >= max_words:
+            should_break = True
+        if len(next_candidate) > max_chars and len(current_text) > 0:
+            should_break = True
+        if _ends_sentence(str(current[-1]["text"])):
+            should_break = True
+
+        if should_break:
+            grouped.append(
+                {
+                    "text": current_text,
+                    "start": float(current[0]["start"]),
+                    "end": float(current[-1]["end"]),
+                }
+            )
+            current = [item]
+        else:
+            current.append(item)
+
+    if current:
+        grouped.append(
+            {
+                "text": _join_subtitle_tokens(current, language=language),
+                "start": float(current[0]["start"]),
+                "end": float(current[-1]["end"]),
+            }
+        )
+    return grouped
+
+
+def _ends_sentence(text: str) -> bool:
+    return bool(re.search(r"[.!?。！？…]$", str(text or "").strip()))
+
+
+def _join_subtitle_tokens(tokens: list[dict], *, language: str) -> str:
+    parts = [
+        str(item.get("text", "")).strip()
+        for item in tokens
+        if str(item.get("text", "")).strip()
+    ]
+    lang = str(language or "").strip().lower()
+    if lang in _CJK_LANG_ALIASES:
+        return "".join(parts)
+
+    joined = " ".join(parts).strip()
+    joined = re.sub(r"\s+([,.;:!?])", r"\1", joined)
+    joined = re.sub(r"([(\[{])\s+", r"\1", joined)
+    return joined
 
 
 def _format_timestamp_srt(seconds: float) -> str:

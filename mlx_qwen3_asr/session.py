@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Optional, Union
+import asyncio
+from typing import Any, Optional, Union
 
 import mlx.core as mx
 import numpy as np
@@ -15,8 +16,10 @@ from .model import Qwen3ASRModel
 from .tokenizer import Tokenizer
 from .transcribe import (
     AudioInput,
+    ProgressCallback,
     TranscriptionResult,
     _resolve_aligner,
+    _resolve_diarization_config,
     _resolve_draft_model,
     _to_audio_np,
     _transcribe_loaded_components,
@@ -66,13 +69,32 @@ class Session:
         draft_model: Optional[Union[str, Qwen3ASRModel]] = None,
         language: Optional[str] = None,
         return_timestamps: bool = False,
+        diarize: bool = False,
+        diarization_num_speakers: Optional[int] = None,
+        diarization_min_speakers: int = 1,
+        diarization_max_speakers: int = 8,
+        diarization_window_sec: float = 1.5,
+        diarization_hop_sec: float = 0.75,
+        return_chunks: bool = False,
         forced_aligner: Optional[Union[str, ForcedAligner]] = None,
         max_new_tokens: int = 1024,
         num_draft_tokens: int = 4,
         verbose: bool = False,
+        on_progress: Optional[ProgressCallback] = None,
     ) -> TranscriptionResult:
         """Transcribe audio using this session's loaded model/tokenizer."""
-        aligner = _resolve_aligner(return_timestamps, forced_aligner)
+        diarization_config = _resolve_diarization_config(
+            diarize=diarize,
+            diarization_num_speakers=diarization_num_speakers,
+            diarization_min_speakers=diarization_min_speakers,
+            diarization_max_speakers=diarization_max_speakers,
+            diarization_window_sec=diarization_window_sec,
+            diarization_hop_sec=diarization_hop_sec,
+        )
+        effective_return_timestamps = bool(
+            return_timestamps or diarization_config is not None
+        )
+        aligner = _resolve_aligner(effective_return_timestamps, forced_aligner)
         draft_model_obj = _resolve_draft_model(
             draft_model=draft_model,
             dtype=self.dtype,
@@ -88,14 +110,59 @@ class Session:
             language=language,
             aligner=aligner,
             return_timestamps=return_timestamps,
+            diarization_config=diarization_config,
+            return_chunks=return_chunks,
             max_new_tokens=max_new_tokens,
             num_draft_tokens=num_draft_tokens,
             verbose=verbose,
+            on_progress=on_progress,
+        )
+
+    async def transcribe_async(
+        self,
+        audio: AudioInput,
+        *,
+        draft_model: Optional[Union[str, Qwen3ASRModel]] = None,
+        language: Optional[str] = None,
+        return_timestamps: bool = False,
+        diarize: bool = False,
+        diarization_num_speakers: Optional[int] = None,
+        diarization_min_speakers: int = 1,
+        diarization_max_speakers: int = 8,
+        diarization_window_sec: float = 1.5,
+        diarization_hop_sec: float = 0.75,
+        return_chunks: bool = False,
+        forced_aligner: Optional[Union[str, ForcedAligner]] = None,
+        max_new_tokens: int = 1024,
+        num_draft_tokens: int = 4,
+        verbose: bool = False,
+        on_progress: Optional[ProgressCallback] = None,
+    ) -> TranscriptionResult:
+        """Async wrapper for ``transcribe`` using ``asyncio.to_thread``."""
+        return await asyncio.to_thread(
+            self.transcribe,
+            audio,
+            draft_model=draft_model,
+            language=language,
+            return_timestamps=return_timestamps,
+            diarize=diarize,
+            diarization_num_speakers=diarization_num_speakers,
+            diarization_min_speakers=diarization_min_speakers,
+            diarization_max_speakers=diarization_max_speakers,
+            diarization_window_sec=diarization_window_sec,
+            diarization_hop_sec=diarization_hop_sec,
+            return_chunks=return_chunks,
+            forced_aligner=forced_aligner,
+            max_new_tokens=max_new_tokens,
+            num_draft_tokens=num_draft_tokens,
+            verbose=verbose,
+            on_progress=on_progress,
         )
 
     def init_streaming(
         self,
         *,
+        language: Optional[str] = None,
         unfixed_chunk_num: int = 2,
         unfixed_token_num: int = 5,
         chunk_size_sec: float = 2.0,
@@ -112,6 +179,7 @@ class Session:
         """Create streaming state bound to this session's model settings."""
         return streaming_mod.init_streaming(
             model=self.model_id,
+            language=language,
             unfixed_chunk_num=unfixed_chunk_num,
             unfixed_token_num=unfixed_token_num,
             chunk_size_sec=chunk_size_sec,
@@ -141,3 +209,16 @@ class Session:
     ) -> streaming_mod.StreamingState:
         """Finalize streaming decode using this session's loaded model."""
         return streaming_mod.finish_streaming(state=state, model=self.model)
+
+    @property
+    def model_info(self) -> dict[str, Any]:
+        """Return lightweight runtime metadata for this session."""
+        cfg = getattr(self.model, "config", None)
+        text_cfg = getattr(cfg, "text_config", None)
+        return {
+            "model_id": self.model_id,
+            "resolved_model_path": getattr(self.model, "_resolved_model_path", None),
+            "dtype": str(self.dtype),
+            "vocab_size": getattr(text_cfg, "vocab_size", None),
+            "support_languages": list(getattr(cfg, "support_languages", []) or []),
+        }

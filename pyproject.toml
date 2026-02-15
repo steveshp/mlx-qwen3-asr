@@ -30,8 +30,10 @@ dependencies = [
 
 [project.optional-dependencies]
 aligner = ["nagisa", "soynlp"]
+diarize = []
+mic = ["sounddevice>=0.4.6"]
 dev = ["pytest", "ruff", "mypy"]
-eval = ["soundfile>=0.12.1"]
+eval = ["soundfile>=0.12.1", "pyarrow>=18.0.0"]
 
 [project.scripts]
 mlx-qwen3-asr = "mlx_qwen3_asr.cli:main"

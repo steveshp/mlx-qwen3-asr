@@ -21,13 +21,14 @@ This project rewrites every layer for MLX so the same model runs natively on M1/
 - **Both model sizes** — 0.6B (fast, default) and 1.7B (higher accuracy)
 - **Long audio support** — energy-based chunking up to 20 minutes per chunk, no 30-second feature truncation
 - **Word-level timestamps** — native MLX forced aligner (default, 2.6x faster than PyTorch alternative) with O(n log n) LIS-based timestamp correction
+- **Speaker diarization baseline (experimental)** — offline speaker-labeled outputs via native pipeline integration (`--diarize`)
 - **4-bit and 8-bit quantization** — up to 4.7x speedup with measured quality reporting on 100 speaker-balanced samples
 - **Multiple output formats** — txt, json, srt, vtt, tsv
 - **Session API** — explicit model/tokenizer ownership with no hidden global state
 - **Speculative decoding** — experimental opt-in path (0.6B drafts for 1.7B target), parity-verified
 - **Streaming** — KV-cache streaming with linear complexity, context trimming, and tail refinement
 - **Native WAV fast-path** — custom binary WAV parser bypasses ffmpeg for PCM/float WAV files
-- **393 tests** — every optimization is benchmark-gated with committed JSON artifacts
+- **439 tests** — every optimization is benchmark-gated with committed JSON artifacts
 - **Minimal dependencies** — mlx, numpy, regex, huggingface-hub
 
 ## Requirements
@@ -49,6 +50,18 @@ Install with optional timestamp alignment extras (for Japanese/Korean tokenizati
 
 ```bash
 pip install "mlx-qwen3-asr[aligner]"
+```
+
+Install with optional microphone capture support:
+
+```bash
+pip install "mlx-qwen3-asr[mic]"
+```
+
+Install with diarization extras:
+
+```bash
+pip install "mlx-qwen3-asr[diarize]"
 ```
 
 For development:
@@ -80,9 +93,12 @@ result = transcribe(
     "meeting.mp3",
     model="Qwen/Qwen3-ASR-1.7B",
     language="English",
+    return_chunks=True,
+    on_progress=lambda e: print(e["event"], e.get("progress", 0.0)),
     verbose=True,
 )
 print(result.text)
+print(result.chunks)
 ```
 
 ### Session API (recommended for repeated calls)
@@ -128,10 +144,29 @@ Word-level timestamps:
 mlx-qwen3-asr audio.wav --timestamps
 ```
 
+Speaker-labeled output (experimental, offline):
+
+```bash
+mlx-qwen3-asr meeting.wav --diarize --num-speakers 2 -f json
+```
+
 Multiple files with all output formats:
 
 ```bash
 mlx-qwen3-asr *.wav -f all -o transcripts/ --verbose
+```
+
+Stdout/file behavior:
+
+```bash
+mlx-qwen3-asr audio.wav --stdout-only        # print only (no output file)
+mlx-qwen3-asr audio.wav --quiet -o out/      # write files only (no stdout text)
+```
+
+Language discovery:
+
+```bash
+mlx-qwen3-asr --list-languages
 ```
 
 Run `mlx-qwen3-asr --help` for the full list of options.
@@ -298,6 +333,9 @@ for segment in result.segments:
     print(f"{segment['start']:.2f}s - {segment['end']:.2f}s: {segment['text']}")
 ```
 
+SRT/VTT outputs are grouped into subtitle-friendly phrase segments (not one word per cue).
+When `-f srt` or `-f vtt` is requested in offline mode, timestamps are auto-enabled.
+
 **Measured parity** (LibriSpeech test-clean, `n=50`):
 | Metric | Value |
 |---|---|
@@ -310,6 +348,25 @@ for segment in result.segments:
 The aligner uses O(n log n) LIS-based timestamp correction (Fenwick tree) for monotonicity repair, validated against the legacy O(n^2) implementation via randomized parity tests.
 
 For Japanese/Korean timestamp alignment, install the `[aligner]` extra so `nagisa`/`soynlp` tokenization matches the official path.
+
+## Speaker diarization (experimental)
+
+Speaker attribution is available as an offline experimental path:
+
+```python
+result = transcribe("meeting.wav", diarize=True)
+print(result.speaker_segments)
+```
+
+```bash
+mlx-qwen3-asr meeting.wav --diarize -f json
+```
+
+Current status:
+- The public API/CLI and output schema are stable.
+- The runtime path uses a native baseline (windowed acoustic embeddings +
+  cosine clustering) and should be treated as experimental quality.
+- `--diarize` auto-enables timestamps and is not supported in `--streaming`/`--mic` mode.
 
 ## Quantization
 
@@ -348,6 +405,7 @@ mlx-qwen3-asr *.wav -f all -o out/       # all formats at once
 ```
 
 Supported: `txt`, `json`, `srt`, `vtt`, `tsv`.
+Subtitle formats (`srt`/`vtt`) require timestamp segments and are only supported in offline mode.
 
 ## Supported languages
 
@@ -365,6 +423,12 @@ Qwen3-ASR officially lists 30 core languages:
 | Turkish | Vietnamese | | |
 
 Plus 22 Chinese dialects (Sichuan, Shanghai, Cantonese, and others), for 52 total language/dialect variants.
+
+Print CLI-accepted aliases/codes:
+
+```bash
+mlx-qwen3-asr --list-languages
+```
 
 ## Experimental features
 
@@ -417,6 +481,15 @@ mlx-qwen3-asr --streaming --stream-finalization-mode accuracy audio.wav
 mlx-qwen3-asr --streaming --stream-endpointing-mode energy audio.wav
 ```
 
+Live microphone transcription:
+
+```bash
+mlx-qwen3-asr --mic
+mlx-qwen3-asr --mic --language Japanese
+```
+
+Optional microphone flags: `--mic-device`, `--mic-duration-sec`, `--mic-sample-rate`.
+
 - Ingests small PCM chunks (default 2s)
 - Incremental decoder KV-cache reuse across chunk turns (avoids O(n²) re-transcription)
 - Bounded context window (default 30s) for stable memory/runtime
@@ -432,15 +505,21 @@ mlx-qwen3-asr --streaming --stream-endpointing-mode energy audio.wav
 
 ## API reference
 
-### `transcribe(audio, *, model, draft_model, language, return_timestamps, forced_aligner, dtype, max_new_tokens, num_draft_tokens, verbose)`
+### `transcribe(audio, *, model, draft_model, language, return_timestamps, diarize, diarization_num_speakers, diarization_min_speakers, diarization_max_speakers, diarization_window_sec, diarization_hop_sec, return_chunks, forced_aligner, dtype, max_new_tokens, num_draft_tokens, verbose, on_progress)`
 
 Transcribe audio to text. Accepts a file path, numpy array, `mx.array`, or `(array, sample_rate)` tuple. Returns a `TranscriptionResult`.
+
+Additional Python entry points:
+- `transcribe_batch(audios, ...)` and `transcribe_batch_async(audios, ...)`
+- `transcribe_async(audio, ...)`
 
 ### `Session(model, *, dtype, tokenizer_model)`
 
 Explicit transcription session. Owns model and tokenizer state with no hidden globals.
 - Offline: `session.transcribe(audio, ...)` with the same parameters as top-level `transcribe`.
+- Async: `await session.transcribe_async(audio, ...)`.
 - Streaming: `session.init_streaming(...)`, `session.feed_audio(pcm, state)`, `session.finish_streaming(state)`.
+- Introspection: `session.model_info` (model id/path, dtype, vocab size, model-declared language codes).
 
 ### `streaming_metrics(state)`
 
@@ -465,15 +544,17 @@ Word-level forced aligner. Native backend: `mlx` (default).
 
 Frozen dataclass:
 - `text` (str) — transcribed text
-- `language` (str) — detected or forced language
+- `language` (str) — detected or forced language (canonicalized names, e.g. `English`)
 - `segments` (list[dict] | None) — word-level timestamps when requested: `[{"text": "hello", "start": 0.5, "end": 0.8}, ...]`
+- `chunks` (list[dict] | None) — chunk-level transcript metadata when `return_chunks=True`
+- `speaker_segments` (list[dict] | None) — speaker-attributed spans when `diarize=True`: `[{"speaker": "SPEAKER_00", "start": 0.0, "end": 2.0, "text": "..."}, ...]`
 
 ## Quality gates
 
 This project enforces parity with the official PyTorch implementation. No optimization lands without passing quality gates and committing benchmark artifacts.
 
 ```bash
-# Unit tests (393 tests)
+# Unit tests (439 tests)
 pytest -q
 
 # Fast quality gate
@@ -495,6 +576,7 @@ Additional quality lanes available:
 - **Aligner parity**: `RUN_ALIGNER_PARITY=1` — validates MLX aligner against official backend
 - **Expanded parity suite**: `RUN_REFERENCE_PARITY_SUITE=1` — test-clean, test-other, long mixes, noise variants with Unicode-safe text comparison
 - **Multilingual parity**: manifest-driven workflow via `scripts/build_multilingual_manifest.py` for cross-language validation
+- **Diarization quality**: `RUN_DIARIZATION_QUALITY_EVAL=1` with `DIARIZATION_QUALITY_EVAL_JSONL=...` — DER/JER lane via `scripts/eval_diarization.py`
 
 See `docs/QUALITY_GATE.md` for full documentation.
 Evaluation coverage status and prioritized gaps are tracked in `docs/EVAL_GAPS.md`.
@@ -529,30 +611,33 @@ Key architectural details:
 ## Project structure
 
 ```
-mlx_qwen3_asr/           # 5,735 lines of source
-├── audio.py              # Mel spectrogram + audio I/O (562 lines)
-├── forced_aligner.py     # Forced alignment + LIS correction (511 lines)
-├── encoder.py            # Audio encoder (504 lines)
+mlx_qwen3_asr/           # 7,556 lines of source
+├── transcribe.py         # High-level pipeline + batch/async + diarization (739 lines)
+├── cli.py                # CLI entry point and UX guardrails (664 lines)
+├── streaming.py          # KV-cache streaming + context trimming (624 lines)
+├── tokenizer.py          # Native BPE tokenizer + output parsing (607 lines)
+├── diarization.py        # Native baseline diarization (769 lines)
+├── audio.py              # Mel spectrogram + audio I/O (526 lines)
+├── encoder.py            # Audio encoder (512 lines)
 ├── decoder.py            # Text decoder + KV cache (464 lines)
+├── forced_aligner.py     # Forced alignment + LIS correction (439 lines)
+├── model.py              # Top-level model + audio-text fusion (372 lines)
 ├── generate.py           # Autoregressive + speculative decode (350 lines)
-├── tokenizer.py          # Native BPE tokenizer + output parsing (347 lines)
-├── model.py              # Top-level model + audio-text fusion (336 lines)
-├── transcribe.py         # High-level pipeline (306 lines)
-├── streaming.py          # KV-cache streaming + context trimming (288 lines)
-├── load_models.py        # Model loading + caching (253 lines)
+├── load_models.py        # Model loading + caching (256 lines)
 ├── config.py             # Dataclass configs (228 lines)
-├── cli.py                # CLI entry point (201 lines)
+├── session.py            # Session API (224 lines)
+├── writers.py            # Output format writers (221 lines)
 ├── mrope.py              # Interleaved MRoPE (167 lines)
-├── writers.py            # Output format writers (121 lines)
 ├── chunking.py           # Long audio splitting (104 lines)
-├── session.py            # Session API (92 lines)
 ├── attention.py          # Attention utilities (67 lines)
-└── convert.py            # Weight remapping (67 lines)
+├── convert.py            # Weight remapping (67 lines)
+├── eval_metrics.py       # WER/CER/BERTScore helpers (65 lines)
+└── cache_utils.py        # KV cache utilities (57 lines)
 
-tests/                    # 5,578 lines, 393 tests
+tests/                    # 6,780 lines, 439 tests
 scripts/                  # Benchmarks, evaluation, conversion, publishing
 docs/                     # Architecture, decisions, benchmarks, roadmap
-docs/benchmarks/          # 90+ committed JSON artifacts for reproducibility
+docs/benchmarks/          # 160+ committed artifacts for reproducibility
 ```
 
 ## Development
@@ -561,7 +646,7 @@ docs/benchmarks/          # 90+ committed JSON artifacts for reproducibility
 git clone https://github.com/moona3k/mlx-qwen3-asr.git
 cd mlx-qwen3-asr
 pip install -e ".[dev]"
-pytest -q                 # 393 tests
+pytest -q                 # 439 tests
 ```
 
 ## Acknowledgments

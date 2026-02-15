@@ -9,6 +9,7 @@ import mlx_qwen3_asr.tokenizer as tokmod
 from mlx_qwen3_asr.tokenizer import (
     _TokenizerHolder,
     canonicalize_language,
+    known_language_aliases,
     parse_asr_output,
 )
 
@@ -185,6 +186,20 @@ def test_canonicalize_language_handles_codes_and_names():
     assert canonicalize_language("fr_fr") == "French"
     assert canonicalize_language("English") == "English"
     assert canonicalize_language("xx") == "xx"
+
+
+def test_known_language_aliases_contains_canonical_and_code_forms():
+    aliases = known_language_aliases()
+    assert "English" in aliases
+    assert "en" in aliases["English"]
+    assert "english" in aliases["English"]
+
+
+def test_parse_asr_output_canonicalizes_detected_language():
+    text = "language english<asr_text>hello world"
+    lang, transcript = parse_asr_output(text)
+    assert lang == "English"
+    assert transcript == "hello world"
 
 
 def _write_min_tokenizer_files(tmp_path):

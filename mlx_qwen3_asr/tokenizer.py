@@ -108,6 +108,17 @@ def known_language_names() -> tuple[str, ...]:
     return _KNOWN_LANGUAGE_NAMES
 
 
+def known_language_aliases() -> dict[str, tuple[str, ...]]:
+    """Return canonical language names mapped to known aliases/codes."""
+    aliases: dict[str, list[str]] = {}
+    for alias, canonical in _LANGUAGE_CANONICAL.items():
+        aliases.setdefault(canonical, []).append(alias)
+    return {
+        canonical: tuple(sorted(values))
+        for canonical, values in sorted(aliases.items(), key=lambda item: item[0])
+    }
+
+
 def _bytes_to_unicode() -> dict[int, str]:
     """Build GPT2/Qwen byte-to-unicode reversible map."""
     bs = (
@@ -590,7 +601,7 @@ def parse_asr_output(
         if "language none" in lang_part.lower() and not transcript:
             return "", ""
 
-        return lang, transcript
+        return canonicalize_language(lang) or lang, transcript
 
     # Fallback: no asr_text marker
     return "unknown", _strip_trailing_special_tokens(s)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import importlib
 import warnings
 from types import SimpleNamespace
@@ -12,7 +13,7 @@ import pytest
 
 from mlx_qwen3_asr.config import DEFAULT_MODEL_ID
 from mlx_qwen3_asr.forced_aligner import AlignedWord
-from mlx_qwen3_asr.transcribe import _to_audio_np, transcribe
+from mlx_qwen3_asr.transcribe import _to_audio_np, transcribe, transcribe_async, transcribe_batch
 
 
 class _DummyModel:
@@ -74,6 +75,7 @@ def test_transcribe_basic(monkeypatch):
     assert result.language == "English"
     assert result.text == "hello world"
     assert result.segments is None
+    assert result.speaker_segments is None
 
 
 def test_transcribe_with_timestamps(monkeypatch):
@@ -113,6 +115,131 @@ def test_transcribe_with_timestamps(monkeypatch):
         {"text": "hello", "start": 0.1, "end": 0.4},
         {"text": "hello", "start": 1.6, "end": 1.9},
     ]
+    assert result.speaker_segments is None
+
+
+def test_transcribe_diarize_returns_speaker_segments(monkeypatch):
+    tmod = importlib.import_module("mlx_qwen3_asr.transcribe")
+
+    monkeypatch.setattr(tmod, "_TokenizerHolder", _DummyTokenizerHolder)
+    monkeypatch.setattr(tmod._ModelHolder, "get", lambda *a, **k: (_DummyModel(), None))
+    monkeypatch.setattr(
+        tmod._ModelHolder,
+        "get_resolved_path",
+        lambda path, dtype=mx.float16: path,
+    )
+    monkeypatch.setattr(
+        tmod,
+        "compute_features",
+        lambda audio: (mx.zeros((1, 128, 100), dtype=mx.float32), mx.array([100], dtype=mx.int32)),
+    )
+    monkeypatch.setattr(tmod, "generate", lambda **kwargs: [10, 11, 12])
+    monkeypatch.setattr(
+        tmod,
+        "parse_asr_output",
+        lambda raw, user_language=None: ("English", "hello world"),
+    )
+
+    result = transcribe(
+        np.zeros(32000, dtype=np.float32),
+        diarize=True,
+        forced_aligner=_DummyAligner(),
+    )
+
+    assert result.language == "English"
+    assert result.text == "hello world"
+    assert result.segments is None
+    assert result.speaker_segments is not None
+    assert len(result.speaker_segments) >= 1
+    assert result.speaker_segments[0]["speaker"] == "SPEAKER_00"
+
+
+def test_transcribe_diarize_labels_word_segments_when_return_timestamps(monkeypatch):
+    tmod = importlib.import_module("mlx_qwen3_asr.transcribe")
+
+    monkeypatch.setattr(tmod, "_TokenizerHolder", _DummyTokenizerHolder)
+    monkeypatch.setattr(tmod._ModelHolder, "get", lambda *a, **k: (_DummyModel(), None))
+    monkeypatch.setattr(
+        tmod._ModelHolder,
+        "get_resolved_path",
+        lambda path, dtype=mx.float16: path,
+    )
+    monkeypatch.setattr(
+        tmod,
+        "compute_features",
+        lambda audio: (mx.zeros((1, 128, 100), dtype=mx.float32), mx.array([100], dtype=mx.int32)),
+    )
+    monkeypatch.setattr(tmod, "generate", lambda **kwargs: [10, 11, 12])
+    monkeypatch.setattr(
+        tmod,
+        "parse_asr_output",
+        lambda raw, user_language=None: ("English", "hello world"),
+    )
+
+    result = transcribe(
+        np.zeros(16000, dtype=np.float32),
+        return_timestamps=True,
+        diarize=True,
+        forced_aligner=_DummyAligner(),
+    )
+
+    assert result.segments is not None
+    assert result.segments[0]["speaker"] == "SPEAKER_00"
+    assert result.speaker_segments is not None
+
+
+def test_transcribe_diarize_speaker_segments_cover_turns_when_words_sparse(monkeypatch):
+    tmod = importlib.import_module("mlx_qwen3_asr.transcribe")
+
+    monkeypatch.setattr(tmod, "_TokenizerHolder", _DummyTokenizerHolder)
+    monkeypatch.setattr(tmod._ModelHolder, "get", lambda *a, **k: (_DummyModel(), None))
+    monkeypatch.setattr(
+        tmod._ModelHolder,
+        "get_resolved_path",
+        lambda path, dtype=mx.float16: path,
+    )
+    monkeypatch.setattr(
+        tmod,
+        "compute_features",
+        lambda audio: (mx.zeros((1, 128, 100), dtype=mx.float32), mx.array([100], dtype=mx.int32)),
+    )
+    monkeypatch.setattr(tmod, "generate", lambda **kwargs: [10, 11, 12])
+    monkeypatch.setattr(
+        tmod,
+        "parse_asr_output",
+        lambda raw, user_language=None: ("English", "hello world"),
+    )
+    monkeypatch.setattr(
+        tmod,
+        "infer_speaker_turns",
+        lambda audio, sr, config: [
+            {"speaker": "SPEAKER_00", "start": 0.0, "end": 0.5},
+            {"speaker": "SPEAKER_01", "start": 0.5, "end": 1.0},
+        ],
+    )
+
+    result = transcribe(
+        np.zeros(16000, dtype=np.float32),
+        diarize=True,
+        forced_aligner=_DummyAligner(),
+    )
+
+    assert result.speaker_segments is not None
+    assert len(result.speaker_segments) == 2
+    assert result.speaker_segments[0]["speaker"] == "SPEAKER_00"
+    assert result.speaker_segments[0]["text"] == "hello"
+    assert result.speaker_segments[1]["speaker"] == "SPEAKER_01"
+    assert result.speaker_segments[1]["text"] == ""
+
+
+def test_transcribe_rejects_invalid_diarization_bounds():
+    with pytest.raises(ValueError, match="diarization_max_speakers"):
+        transcribe(
+            np.zeros(3200, dtype=np.float32),
+            diarize=True,
+            diarization_min_speakers=3,
+            diarization_max_speakers=2,
+        )
 
 
 def test_transcribe_joins_cjk_chunks_without_spaces(monkeypatch):
@@ -361,3 +488,165 @@ def test_transcribe_does_not_warn_when_language_supported_by_model_config(monkey
 
     assert result.language == "xx_custom"
     assert not [w for w in records if issubclass(w.category, UserWarning)]
+
+
+def test_transcribe_can_return_chunk_metadata(monkeypatch):
+    tmod = importlib.import_module("mlx_qwen3_asr.transcribe")
+
+    monkeypatch.setattr(tmod, "_TokenizerHolder", _DummyTokenizerHolder)
+    monkeypatch.setattr(tmod._ModelHolder, "get", lambda *a, **k: (_DummyModel(), None))
+    monkeypatch.setattr(
+        tmod._ModelHolder,
+        "get_resolved_path",
+        lambda path, dtype=mx.float16: path,
+    )
+    monkeypatch.setattr(
+        tmod,
+        "compute_features",
+        lambda audio: (mx.zeros((1, 128, 100), dtype=mx.float32), mx.array([100], dtype=mx.int32)),
+    )
+    monkeypatch.setattr(tmod, "generate", lambda **kwargs: [10, 11, 12])
+    monkeypatch.setattr(
+        tmod,
+        "split_audio_into_chunks",
+        lambda audio, sr: [
+            (np.zeros(16000, dtype=np.float32), 0.0),
+            (np.zeros(8000, dtype=np.float32), 1.0),
+        ],
+    )
+
+    texts = iter([("english", "hello"), ("english", "world")])
+    monkeypatch.setattr(tmod, "parse_asr_output", lambda raw, user_language=None: next(texts))
+
+    result = transcribe(np.zeros(24000, dtype=np.float32), return_chunks=True)
+
+    assert result.language == "English"
+    assert result.text == "hello world"
+    assert result.chunks is not None
+    assert len(result.chunks) == 2
+    assert result.chunks[0]["start"] == 0.0
+    assert result.chunks[0]["end"] == 1.0
+    assert result.chunks[1]["end"] == 1.5
+
+
+def test_transcribe_progress_callback_emits_events(monkeypatch):
+    tmod = importlib.import_module("mlx_qwen3_asr.transcribe")
+
+    monkeypatch.setattr(tmod, "_TokenizerHolder", _DummyTokenizerHolder)
+    monkeypatch.setattr(tmod._ModelHolder, "get", lambda *a, **k: (_DummyModel(), None))
+    monkeypatch.setattr(
+        tmod._ModelHolder,
+        "get_resolved_path",
+        lambda path, dtype=mx.float16: path,
+    )
+    monkeypatch.setattr(
+        tmod,
+        "compute_features",
+        lambda audio: (mx.zeros((1, 128, 100), dtype=mx.float32), mx.array([100], dtype=mx.int32)),
+    )
+    monkeypatch.setattr(tmod, "generate", lambda **kwargs: [10, 11, 12])
+    monkeypatch.setattr(
+        tmod,
+        "split_audio_into_chunks",
+        lambda audio, sr: [
+            (np.zeros(16000, dtype=np.float32), 0.0),
+            (np.zeros(16000, dtype=np.float32), 1.0),
+        ],
+    )
+
+    events: list[dict] = []
+    result = transcribe(
+        np.zeros(32000, dtype=np.float32),
+        on_progress=events.append,
+    )
+
+    assert result.text == "hello world hello world"
+    kinds = [event["event"] for event in events]
+    assert "chunks_prepared" in kinds
+    assert "chunk_started" in kinds
+    assert "chunk_completed" in kinds
+    assert kinds[-1] == "completed"
+    assert events[-1]["progress"] == 1.0
+
+
+def test_transcribe_diarize_progress_emits_diarization_event(monkeypatch):
+    tmod = importlib.import_module("mlx_qwen3_asr.transcribe")
+
+    monkeypatch.setattr(tmod, "_TokenizerHolder", _DummyTokenizerHolder)
+    monkeypatch.setattr(tmod._ModelHolder, "get", lambda *a, **k: (_DummyModel(), None))
+    monkeypatch.setattr(
+        tmod._ModelHolder,
+        "get_resolved_path",
+        lambda path, dtype=mx.float16: path,
+    )
+    monkeypatch.setattr(
+        tmod,
+        "compute_features",
+        lambda audio: (mx.zeros((1, 128, 100), dtype=mx.float32), mx.array([100], dtype=mx.int32)),
+    )
+    monkeypatch.setattr(tmod, "generate", lambda **kwargs: [10, 11, 12])
+
+    events: list[dict] = []
+    _ = transcribe(
+        np.zeros(3200, dtype=np.float32),
+        diarize=True,
+        forced_aligner=_DummyAligner(),
+        on_progress=events.append,
+    )
+
+    kinds = [event["event"] for event in events]
+    assert "diarization_completed" in kinds
+
+
+def test_transcribe_batch_reuses_loaded_components(monkeypatch):
+    tmod = importlib.import_module("mlx_qwen3_asr.transcribe")
+    get_calls = []
+
+    def _fake_get(path, **kwargs):  # noqa: ANN001
+        get_calls.append(path)
+        return _DummyModel(), None
+
+    monkeypatch.setattr(tmod, "_TokenizerHolder", _DummyTokenizerHolder)
+    monkeypatch.setattr(tmod._ModelHolder, "get", _fake_get)
+    monkeypatch.setattr(
+        tmod._ModelHolder,
+        "get_resolved_path",
+        lambda path, dtype=mx.float16: path,
+    )
+    monkeypatch.setattr(
+        tmod,
+        "compute_features",
+        lambda audio: (mx.zeros((1, 128, 100), dtype=mx.float32), mx.array([100], dtype=mx.int32)),
+    )
+    monkeypatch.setattr(tmod, "generate", lambda **kwargs: [10, 11, 12])
+
+    outs = transcribe_batch(
+        [np.zeros(3200, dtype=np.float32), np.zeros(3200, dtype=np.float32)],
+        model="Qwen/Qwen3-ASR-0.6B",
+    )
+
+    assert len(outs) == 2
+    assert outs[0].text == "hello world"
+    assert outs[1].text == "hello world"
+    assert get_calls == ["Qwen/Qwen3-ASR-0.6B"]
+
+
+def test_transcribe_async_wrapper(monkeypatch):
+    tmod = importlib.import_module("mlx_qwen3_asr.transcribe")
+
+    monkeypatch.setattr(tmod, "_TokenizerHolder", _DummyTokenizerHolder)
+    monkeypatch.setattr(tmod._ModelHolder, "get", lambda *a, **k: (_DummyModel(), None))
+    monkeypatch.setattr(
+        tmod._ModelHolder,
+        "get_resolved_path",
+        lambda path, dtype=mx.float16: path,
+    )
+    monkeypatch.setattr(
+        tmod,
+        "compute_features",
+        lambda audio: (mx.zeros((1, 128, 100), dtype=mx.float32), mx.array([100], dtype=mx.int32)),
+    )
+    monkeypatch.setattr(tmod, "generate", lambda **kwargs: [10, 11, 12])
+
+    result = asyncio.run(transcribe_async(np.zeros(3200, dtype=np.float32)))
+    assert result.text == "hello world"

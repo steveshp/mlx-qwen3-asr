@@ -477,6 +477,68 @@ def run_gate(mode: str, repo: Path, python_bin: str) -> tuple[list[StepResult], 
                     manifest_quality_cmd.extend(["--json-output", quality_json])
                 steps.append(_run(manifest_quality_cmd, repo))
 
+        if os.environ.get("RUN_DIARIZATION_QUALITY_EVAL", "0") == "1":
+            diar_manifest_jsonl = os.environ.get("DIARIZATION_QUALITY_EVAL_JSONL")
+            if not diar_manifest_jsonl:
+                steps.append(
+                    StepResult(
+                        name="diarization-quality-eval",
+                        cmd="scripts/eval_diarization.py --manifest-jsonl <path>",
+                        passed=False,
+                        duration_sec=0.0,
+                        returncode=1,
+                        note=(
+                            "RUN_DIARIZATION_QUALITY_EVAL=1 requires "
+                            "DIARIZATION_QUALITY_EVAL_JSONL"
+                        ),
+                    )
+                )
+            else:
+                diar_quality_cmd = [
+                    python_bin,
+                    str(repo / "scripts" / "eval_diarization.py"),
+                    "--manifest-jsonl",
+                    diar_manifest_jsonl,
+                    "--model",
+                    os.environ.get("DIARIZATION_QUALITY_EVAL_MODEL", "Qwen/Qwen3-ASR-0.6B"),
+                    "--dtype",
+                    os.environ.get("DIARIZATION_QUALITY_EVAL_DTYPE", "float16"),
+                    "--max-new-tokens",
+                    os.environ.get("DIARIZATION_QUALITY_EVAL_MAX_NEW_TOKENS", "1024"),
+                    "--min-speakers",
+                    os.environ.get("DIARIZATION_QUALITY_EVAL_MIN_SPEAKERS", "1"),
+                    "--max-speakers",
+                    os.environ.get("DIARIZATION_QUALITY_EVAL_MAX_SPEAKERS", "8"),
+                    "--frame-step-sec",
+                    os.environ.get("DIARIZATION_QUALITY_EVAL_FRAME_STEP_SEC", "0.02"),
+                    "--collar-sec",
+                    os.environ.get("DIARIZATION_QUALITY_EVAL_COLLAR_SEC", "0.25"),
+                ]
+                num_speakers = os.environ.get("DIARIZATION_QUALITY_EVAL_NUM_SPEAKERS")
+                if num_speakers:
+                    diar_quality_cmd.extend(["--num-speakers", num_speakers])
+                window_sec = os.environ.get("DIARIZATION_QUALITY_EVAL_WINDOW_SEC")
+                if window_sec:
+                    diar_quality_cmd.extend(["--diarization-window-sec", window_sec])
+                hop_sec = os.environ.get("DIARIZATION_QUALITY_EVAL_HOP_SEC")
+                if hop_sec:
+                    diar_quality_cmd.extend(["--diarization-hop-sec", hop_sec])
+                limit = os.environ.get("DIARIZATION_QUALITY_EVAL_LIMIT")
+                if limit:
+                    diar_quality_cmd.extend(["--limit", limit])
+                fail_der = os.environ.get("DIARIZATION_QUALITY_EVAL_FAIL_DER_ABOVE")
+                if fail_der:
+                    diar_quality_cmd.extend(["--fail-der-above", fail_der])
+                fail_jer = os.environ.get("DIARIZATION_QUALITY_EVAL_FAIL_JER_ABOVE")
+                if fail_jer:
+                    diar_quality_cmd.extend(["--fail-jer-above", fail_jer])
+                if os.environ.get("DIARIZATION_QUALITY_EVAL_IGNORE_OVERLAP", "1") == "1":
+                    diar_quality_cmd.append("--ignore-overlap")
+                quality_json = os.environ.get("DIARIZATION_QUALITY_EVAL_JSON_OUTPUT")
+                if quality_json:
+                    diar_quality_cmd.extend(["--json-output", quality_json])
+                steps.append(_run(diar_quality_cmd, repo))
+
         if os.environ.get("RUN_ALIGNER_PARITY") == "1":
             samples = os.environ.get("ALIGNER_PARITY_SAMPLES", "10")
             steps.append(

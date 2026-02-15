@@ -214,6 +214,56 @@ Optional envs:
 - `MANIFEST_QUALITY_EVAL_LIMIT` (evaluate first N rows)
 - `MANIFEST_QUALITY_EVAL_JSON_OUTPUT`
 
+### Optional Diarization Quality Gate (DER/JER)
+
+Use this when you have a JSONL manifest with `audio_path` +
+`reference_speaker_segments` and want speaker-attribution quality metrics:
+
+```bash
+RUN_DIARIZATION_QUALITY_EVAL=1 \
+DIARIZATION_QUALITY_EVAL_JSONL=/abs/path/diarization-manifest.jsonl \
+python scripts/quality_gate.py --mode release
+```
+
+Set `DIARIZATION_QUALITY_EVAL_FAIL_DER_ABOVE` and/or
+`DIARIZATION_QUALITY_EVAL_FAIL_JER_ABOVE` when you want hard failure thresholds.
+
+Behavior:
+- runs `scripts/eval_diarization.py`,
+- executes runtime diarization (`transcribe(..., diarize=True)`),
+- computes frame-based DER and speaker-level JER with one-to-one label mapping.
+
+Manifest row fields:
+- `audio_path` (required)
+- `reference_speaker_segments` (required list of `{speaker,start,end}`)
+- `sample_id` (optional)
+- `language` (optional)
+
+You can bootstrap a manifest from single-speaker clips with:
+
+```bash
+python scripts/build_diarization_manifest.py \
+  --input-manifest docs/benchmarks/2026-02-15-realworld-manifest-40.jsonl \
+  --output-manifest docs/benchmarks/2026-02-15-diarization-manifest-20.jsonl
+```
+
+Optional envs:
+- `DIARIZATION_QUALITY_EVAL_MODEL` (default `Qwen/Qwen3-ASR-0.6B`)
+- `DIARIZATION_QUALITY_EVAL_DTYPE` (default `float16`)
+- `DIARIZATION_QUALITY_EVAL_MAX_NEW_TOKENS` (default `1024`)
+- `DIARIZATION_QUALITY_EVAL_NUM_SPEAKERS`
+- `DIARIZATION_QUALITY_EVAL_MIN_SPEAKERS` (default `1`)
+- `DIARIZATION_QUALITY_EVAL_MAX_SPEAKERS` (default `8`)
+- `DIARIZATION_QUALITY_EVAL_WINDOW_SEC`
+- `DIARIZATION_QUALITY_EVAL_HOP_SEC`
+- `DIARIZATION_QUALITY_EVAL_FRAME_STEP_SEC` (default `0.02`)
+- `DIARIZATION_QUALITY_EVAL_COLLAR_SEC` (default `0.25`)
+- `DIARIZATION_QUALITY_EVAL_IGNORE_OVERLAP` (default `1`)
+- `DIARIZATION_QUALITY_EVAL_LIMIT`
+- `DIARIZATION_QUALITY_EVAL_JSON_OUTPUT`
+- `DIARIZATION_QUALITY_EVAL_FAIL_DER_ABOVE`
+- `DIARIZATION_QUALITY_EVAL_FAIL_JER_ABOVE`
+
 ## Pass Criteria
 
 - `fast` gate must pass on every pull request.

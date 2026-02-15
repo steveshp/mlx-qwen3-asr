@@ -1,0 +1,896 @@
+{
+  "suite": "diarization-quality-v1",
+  "manifest_jsonl": "/Users/dmoon/code/mlx-qwen3-asr/docs/benchmarks/2026-02-15-diarization-manifest-20.jsonl",
+  "model": "Qwen/Qwen3-ASR-0.6B",
+  "dtype": "float16",
+  "max_new_tokens": 1024,
+  "frame_step_sec": 0.02,
+  "collar_sec": 0.25,
+  "ignore_overlap": true,
+  "samples": 20,
+  "der": 0.6762182423990005,
+  "jer": 0.6065457017179579,
+  "der_numerator_sec": 162.36,
+  "der_denominator_sec": 240.1,
+  "jer_error_sum": 24.261828068718316,
+  "jer_denominator": 40,
+  "latency_sec_mean": 2.7287961730500685,
+  "elapsed_sec": 55.88023416599026,
+  "rows": [
+    {
+      "index": 1,
+      "sample_id": "diarization-mix-0000",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/diarization-audio/diarization-mix-0000.wav",
+      "language": "English",
+      "duration_sec": 5.49,
+      "reference_speaker_segments": [
+        {
+          "speaker": "FIO089",
+          "start": 0.0,
+          "end": 3.79
+        },
+        {
+          "speaker": "MEE014",
+          "start": 3.99,
+          "end": 5.49
+        }
+      ],
+      "hypothesis_speaker_segments": [
+        {
+          "speaker": "SPEAKER_00",
+          "start": 0.0,
+          "end": 2.8
+        },
+        {
+          "speaker": "SPEAKER_00",
+          "start": 4.0,
+          "end": 4.64
+        }
+      ],
+      "num_ref_speakers": 2,
+      "num_hyp_speakers": 1,
+      "hyp_to_ref_map": {
+        "SPEAKER_00": "FIO089"
+      },
+      "der": 0.5934579439252337,
+      "jer": 0.6846846846846846,
+      "miss_sec": 1.74,
+      "false_alarm_sec": 0.4,
+      "confusion_sec": 0.4,
+      "latency_sec": 2.1825274169968907
+    },
+    {
+      "index": 2,
+      "sample_id": "diarization-mix-0001",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/diarization-audio/diarization-mix-0001.wav",
+      "language": "English",
+      "duration_sec": 7.17,
+      "reference_speaker_segments": [
+        {
+          "speaker": "MEE071",
+          "start": 0.0,
+          "end": 5.6
+        },
+        {
+          "speaker": "MEE073",
+          "start": 5.8,
+          "end": 7.17
+        }
+      ],
+      "hypothesis_speaker_segments": [
+        {
+          "speaker": "SPEAKER_00",
+          "start": 2.56,
+          "end": 4.8
+        },
+        {
+          "speaker": "SPEAKER_00",
+          "start": 5.76,
+          "end": 6.24
+        }
+      ],
+      "num_ref_speakers": 2,
+      "num_hyp_speakers": 1,
+      "hyp_to_ref_map": {
+        "SPEAKER_00": "MEE071"
+      },
+      "der": 0.6835016835016835,
+      "jer": 0.8157894736842105,
+      "miss_sec": 3.7,
+      "false_alarm_sec": 0.18,
+      "confusion_sec": 0.18,
+      "latency_sec": 1.1664862920006271
+    },
+    {
+      "index": 3,
+      "sample_id": "diarization-mix-0002",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/diarization-audio/diarization-mix-0002.wav",
+      "language": "English",
+      "duration_sec": 16.6300625,
+      "reference_speaker_segments": [
+        {
+          "speaker": "MEO015",
+          "start": 0.0,
+          "end": 6.11
+        },
+        {
+          "speaker": "4420696",
+          "start": 6.31,
+          "end": 16.630063
+        }
+      ],
+      "hypothesis_speaker_segments": [
+        {
+          "speaker": "SPEAKER_00",
+          "start": 0.08,
+          "end": 5.52
+        },
+        {
+          "speaker": "SPEAKER_00",
+          "start": 6.32,
+          "end": 16.48
+        }
+      ],
+      "num_ref_speakers": 2,
+      "num_hyp_speakers": 1,
+      "hyp_to_ref_map": {
+        "SPEAKER_00": "4420696"
+      },
+      "der": 1.045395590142672,
+      "jer": 0.6780735107731305,
+      "miss_sec": 5.6000000000000005,
+      "false_alarm_sec": 5.26,
+      "confusion_sec": 5.26,
+      "latency_sec": 2.7868981669889763
+    },
+    {
+      "index": 4,
+      "sample_id": "diarization-mix-0003",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/diarization-audio/diarization-mix-0003.wav",
+      "language": "English",
+      "duration_sec": 12.6605,
+      "reference_speaker_segments": [
+        {
+          "speaker": "4443920",
+          "start": 0.0,
+          "end": 4.420312
+        },
+        {
+          "speaker": "4461799",
+          "start": 4.620312,
+          "end": 12.6605
+        }
+      ],
+      "hypothesis_speaker_segments": [
+        {
+          "speaker": "SPEAKER_00",
+          "start": 0.08,
+          "end": 5.52
+        },
+        {
+          "speaker": "SPEAKER_01",
+          "start": 5.6,
+          "end": 11.92
+        }
+      ],
+      "num_ref_speakers": 2,
+      "num_hyp_speakers": 2,
+      "hyp_to_ref_map": {
+        "SPEAKER_00": "4443920",
+        "SPEAKER_01": "4461799"
+      },
+      "der": 0.2171628721541156,
+      "jer": 0.21301291041824005,
+      "miss_sec": 1.2,
+      "false_alarm_sec": 0.64,
+      "confusion_sec": 0.64,
+      "latency_sec": 2.0515002080064733
+    },
+    {
+      "index": 5,
+      "sample_id": "diarization-mix-0004",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/diarization-audio/diarization-mix-0004.wav",
+      "language": "English",
+      "duration_sec": 19.3205,
+      "reference_speaker_segments": [
+        {
+          "speaker": "4468654",
+          "start": 0.0,
+          "end": 4.220125
+        },
+        {
+          "speaker": "4468678",
+          "start": 4.420125,
+          "end": 19.3205
+        }
+      ],
+      "hypothesis_speaker_segments": [
+        {
+          "speaker": "SPEAKER_00",
+          "start": 0.0,
+          "end": 3.44
+        },
+        {
+          "speaker": "SPEAKER_00",
+          "start": 4.4,
+          "end": 19.28
+        }
+      ],
+      "num_ref_speakers": 2,
+      "num_hyp_speakers": 1,
+      "hyp_to_ref_map": {
+        "SPEAKER_00": "4468678"
+      },
+      "der": 0.5564159292035398,
+      "jer": 0.5957562568008705,
+      "miss_sec": 3.7,
+      "false_alarm_sec": 3.18,
+      "confusion_sec": 3.18,
+      "latency_sec": 3.1273480840027332
+    },
+    {
+      "index": 6,
+      "sample_id": "diarization-mix-0005",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/diarization-audio/diarization-mix-0005.wav",
+      "language": "English",
+      "duration_sec": 16.160125,
+      "reference_speaker_segments": [
+        {
+          "speaker": "4482249",
+          "start": 0.0,
+          "end": 7.980062
+        },
+        {
+          "speaker": "4482311",
+          "start": 8.180063,
+          "end": 16.160125
+        }
+      ],
+      "hypothesis_speaker_segments": [
+        {
+          "speaker": "SPEAKER_00",
+          "start": 0.16,
+          "end": 7.2
+        },
+        {
+          "speaker": "SPEAKER_00",
+          "start": 8.24,
+          "end": 15.04
+        }
+      ],
+      "num_ref_speakers": 2,
+      "num_hyp_speakers": 1,
+      "hyp_to_ref_map": {
+        "SPEAKER_00": "4482249"
+      },
+      "der": 1.4195710455764075,
+      "jer": 0.7621621621621621,
+      "miss_sec": 7.98,
+      "false_alarm_sec": 6.6000000000000005,
+      "confusion_sec": 6.6000000000000005,
+      "latency_sec": 3.37825341700227
+    },
+    {
+      "index": 7,
+      "sample_id": "diarization-mix-0006",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/diarization-audio/diarization-mix-0006.wav",
+      "language": "English",
+      "duration_sec": 15.8405625,
+      "reference_speaker_segments": [
+        {
+          "speaker": "4483297",
+          "start": 0.0,
+          "end": 8.560187
+        },
+        {
+          "speaker": "4483589",
+          "start": 8.760187,
+          "end": 15.840562
+        }
+      ],
+      "hypothesis_speaker_segments": [
+        {
+          "speaker": "SPEAKER_00",
+          "start": 0.0,
+          "end": 8.0
+        },
+        {
+          "speaker": "SPEAKER_00",
+          "start": 8.8,
+          "end": 9.2
+        },
+        {
+          "speaker": "SPEAKER_00",
+          "start": 12.08,
+          "end": 15.76
+        }
+      ],
+      "num_ref_speakers": 2,
+      "num_hyp_speakers": 1,
+      "hyp_to_ref_map": {
+        "SPEAKER_00": "4483297"
+      },
+      "der": 0.9739726027397261,
+      "jer": 0.684044233807267,
+      "miss_sec": 6.86,
+      "false_alarm_sec": 3.68,
+      "confusion_sec": 3.68,
+      "latency_sec": 3.0281056670064572
+    },
+    {
+      "index": 8,
+      "sample_id": "diarization-mix-0007",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/diarization-audio/diarization-mix-0007.wav",
+      "language": "English",
+      "duration_sec": 18.7200625,
+      "reference_speaker_segments": [
+        {
+          "speaker": "4485192",
+          "start": 0.0,
+          "end": 14.660063
+        },
+        {
+          "speaker": "FEE013",
+          "start": 14.860062,
+          "end": 18.720063
+        }
+      ],
+      "hypothesis_speaker_segments": [
+        {
+          "speaker": "SPEAKER_00",
+          "start": 0.0,
+          "end": 18.64
+        }
+      ],
+      "num_ref_speakers": 2,
+      "num_hyp_speakers": 1,
+      "hyp_to_ref_map": {
+        "SPEAKER_00": "4485192"
+      },
+      "der": 0.5732265446224256,
+      "jer": 0.6062231759656653,
+      "miss_sec": 3.34,
+      "false_alarm_sec": 3.34,
+      "confusion_sec": 3.34,
+      "latency_sec": 3.350267291010823
+    },
+    {
+      "index": 9,
+      "sample_id": "diarization-mix-0008",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/diarization-audio/diarization-mix-0008.wav",
+      "language": "English",
+      "duration_sec": 9.48,
+      "reference_speaker_segments": [
+        {
+          "speaker": "FEE016",
+          "start": 0.0,
+          "end": 2.3
+        },
+        {
+          "speaker": "FEO070",
+          "start": 2.5,
+          "end": 9.48
+        }
+      ],
+      "hypothesis_speaker_segments": [
+        {
+          "speaker": "SPEAKER_00",
+          "start": 0.0,
+          "end": 2.64
+        },
+        {
+          "speaker": "SPEAKER_00",
+          "start": 5.92,
+          "end": 6.08
+        },
+        {
+          "speaker": "SPEAKER_00",
+          "start": 7.52,
+          "end": 9.44
+        }
+      ],
+      "num_ref_speakers": 2,
+      "num_hyp_speakers": 1,
+      "hyp_to_ref_map": {
+        "SPEAKER_00": "FEE016"
+      },
+      "der": 1.2402912621359223,
+      "jer": 0.7573839662447257,
+      "miss_sec": 6.46,
+      "false_alarm_sec": 1.8800000000000001,
+      "confusion_sec": 1.8800000000000001,
+      "latency_sec": 1.737285500013968
+    },
+    {
+      "index": 10,
+      "sample_id": "diarization-mix-0009",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/diarization-audio/diarization-mix-0009.wav",
+      "language": "English",
+      "duration_sec": 6.11,
+      "reference_speaker_segments": [
+        {
+          "speaker": "FEO072",
+          "start": 0.0,
+          "end": 3.74
+        },
+        {
+          "speaker": "FIO084",
+          "start": 3.94,
+          "end": 6.11
+        }
+      ],
+      "hypothesis_speaker_segments": [
+        {
+          "speaker": "SPEAKER_00",
+          "start": 0.0,
+          "end": 1.28
+        },
+        {
+          "speaker": "SPEAKER_00",
+          "start": 2.32,
+          "end": 6.0
+        }
+      ],
+      "num_ref_speakers": 2,
+      "num_hyp_speakers": 1,
+      "hyp_to_ref_map": {
+        "SPEAKER_00": "FEO072"
+      },
+      "der": 1.2295081967213115,
+      "jer": 0.7733333333333333,
+      "miss_sec": 2.68,
+      "false_alarm_sec": 1.6600000000000001,
+      "confusion_sec": 1.6600000000000001,
+      "latency_sec": 1.689814417011803
+    },
+    {
+      "index": 11,
+      "sample_id": "diarization-mix-0010",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/diarization-audio/diarization-mix-0010.wav",
+      "language": "English",
+      "duration_sec": 10.39,
+      "reference_speaker_segments": [
+        {
+          "speaker": "FIO089",
+          "start": 0.0,
+          "end": 3.79
+        },
+        {
+          "speaker": "MEE014",
+          "start": 3.99,
+          "end": 10.39
+        }
+      ],
+      "hypothesis_speaker_segments": [
+        {
+          "speaker": "SPEAKER_00",
+          "start": 0.0,
+          "end": 2.8
+        },
+        {
+          "speaker": "SPEAKER_00",
+          "start": 4.0,
+          "end": 9.28
+        }
+      ],
+      "num_ref_speakers": 2,
+      "num_hyp_speakers": 1,
+      "hyp_to_ref_map": {
+        "SPEAKER_00": "MEE014"
+      },
+      "der": 1.0043572984749456,
+      "jer": 0.7136659436008677,
+      "miss_sec": 4.14,
+      "false_alarm_sec": 2.54,
+      "confusion_sec": 2.54,
+      "latency_sec": 1.9521926669985987
+    },
+    {
+      "index": 12,
+      "sample_id": "diarization-mix-0011",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/diarization-audio/diarization-mix-0011.wav",
+      "language": "English",
+      "duration_sec": 7.86,
+      "reference_speaker_segments": [
+        {
+          "speaker": "MEE071",
+          "start": 0.0,
+          "end": 6.44
+        },
+        {
+          "speaker": "MEE073",
+          "start": 6.64,
+          "end": 7.86
+        }
+      ],
+      "hypothesis_speaker_segments": [
+        {
+          "speaker": "SPEAKER_00",
+          "start": 0.0,
+          "end": 3.76
+        }
+      ],
+      "num_ref_speakers": 2,
+      "num_hyp_speakers": 1,
+      "hyp_to_ref_map": {
+        "SPEAKER_00": "MEE071"
+      },
+      "der": 0.47129909365558914,
+      "jer": 0.7080745341614907,
+      "miss_sec": 3.12,
+      "false_alarm_sec": 0.0,
+      "confusion_sec": 0.0,
+      "latency_sec": 1.0311662919993978
+    },
+    {
+      "index": 13,
+      "sample_id": "diarization-mix-0012",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/diarization-audio/diarization-mix-0012.wav",
+      "language": "English",
+      "duration_sec": 18.2501875,
+      "reference_speaker_segments": [
+        {
+          "speaker": "MEO015",
+          "start": 0.0,
+          "end": 1.31
+        },
+        {
+          "speaker": "4420696",
+          "start": 1.51,
+          "end": 18.250188
+        }
+      ],
+      "hypothesis_speaker_segments": [
+        {
+          "speaker": "SPEAKER_00",
+          "start": 0.08,
+          "end": 0.16
+        },
+        {
+          "speaker": "SPEAKER_00",
+          "start": 1.6,
+          "end": 18.16
+        }
+      ],
+      "num_ref_speakers": 2,
+      "num_hyp_speakers": 1,
+      "hyp_to_ref_map": {
+        "SPEAKER_00": "4420696"
+      },
+      "der": 0.04694835680751174,
+      "jer": 0.5083135391923993,
+      "miss_sec": 0.8,
+      "false_alarm_sec": 0.0,
+      "confusion_sec": 0.0,
+      "latency_sec": 3.1334148749883752
+    },
+    {
+      "index": 14,
+      "sample_id": "diarization-mix-0013",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/diarization-audio/diarization-mix-0013.wav",
+      "language": "English",
+      "duration_sec": 15.2004375,
+      "reference_speaker_segments": [
+        {
+          "speaker": "4443920",
+          "start": 0.0,
+          "end": 8.96
+        },
+        {
+          "speaker": "4461799",
+          "start": 9.16,
+          "end": 15.200437
+        }
+      ],
+      "hypothesis_speaker_segments": [
+        {
+          "speaker": "SPEAKER_00",
+          "start": 0.0,
+          "end": 3.2
+        },
+        {
+          "speaker": "SPEAKER_00",
+          "start": 4.16,
+          "end": 8.96
+        },
+        {
+          "speaker": "SPEAKER_00",
+          "start": 9.92,
+          "end": 15.04
+        }
+      ],
+      "num_ref_speakers": 2,
+      "num_hyp_speakers": 1,
+      "hyp_to_ref_map": {
+        "SPEAKER_00": "4443920"
+      },
+      "der": 1.1833810888252148,
+      "jer": 0.7156028368794327,
+      "miss_sec": 6.48,
+      "false_alarm_sec": 5.0200000000000005,
+      "confusion_sec": 5.0200000000000005,
+      "latency_sec": 2.96063766698353
+    },
+    {
+      "index": 15,
+      "sample_id": "diarization-mix-0014",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/diarization-audio/diarization-mix-0014.wav",
+      "language": "English",
+      "duration_sec": 14.8,
+      "reference_speaker_segments": [
+        {
+          "speaker": "4468654",
+          "start": 0.0,
+          "end": 4.020062
+        },
+        {
+          "speaker": "4468678",
+          "start": 4.220063,
+          "end": 14.8
+        }
+      ],
+      "hypothesis_speaker_segments": [
+        {
+          "speaker": "SPEAKER_00",
+          "start": 0.0,
+          "end": 3.44
+        },
+        {
+          "speaker": "SPEAKER_01",
+          "start": 3.44,
+          "end": 4.8
+        },
+        {
+          "speaker": "SPEAKER_00",
+          "start": 4.96,
+          "end": 6.4
+        },
+        {
+          "speaker": "SPEAKER_01",
+          "start": 6.56,
+          "end": 8.64
+        },
+        {
+          "speaker": "SPEAKER_00",
+          "start": 8.64,
+          "end": 12.8
+        },
+        {
+          "speaker": "SPEAKER_01",
+          "start": 12.8,
+          "end": 14.56
+        }
+      ],
+      "num_ref_speakers": 2,
+      "num_hyp_speakers": 2,
+      "hyp_to_ref_map": {
+        "SPEAKER_00": "4468654",
+        "SPEAKER_01": "4468678"
+      },
+      "der": 1.3333333333333335,
+      "jer": 0.6270345099643505,
+      "miss_sec": 6.24,
+      "false_alarm_sec": 5.92,
+      "confusion_sec": 5.92,
+      "latency_sec": 5.116772457986372
+    },
+    {
+      "index": 16,
+      "sample_id": "diarization-mix-0015",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/diarization-audio/diarization-mix-0015.wav",
+      "language": "English",
+      "duration_sec": 18.3799375,
+      "reference_speaker_segments": [
+        {
+          "speaker": "4482249",
+          "start": 0.0,
+          "end": 16.599937
+        },
+        {
+          "speaker": "4482311",
+          "start": 16.799937,
+          "end": 18.379937
+        }
+      ],
+      "hypothesis_speaker_segments": [
+        {
+          "speaker": "SPEAKER_00",
+          "start": 0.16,
+          "end": 10.24
+        },
+        {
+          "speaker": "SPEAKER_00",
+          "start": 11.36,
+          "end": 18.32
+        }
+      ],
+      "num_ref_speakers": 2,
+      "num_hyp_speakers": 1,
+      "hyp_to_ref_map": {
+        "SPEAKER_00": "4482249"
+      },
+      "der": 0.2508751458576429,
+      "jer": 0.5818777292576419,
+      "miss_sec": 2.18,
+      "false_alarm_sec": 1.06,
+      "confusion_sec": 1.06,
+      "latency_sec": 3.6339476660068613
+    },
+    {
+      "index": 17,
+      "sample_id": "diarization-mix-0016",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/diarization-audio/diarization-mix-0016.wav",
+      "language": "English",
+      "duration_sec": 31.18025,
+      "reference_speaker_segments": [
+        {
+          "speaker": "4483297",
+          "start": 0.0,
+          "end": 8.560187
+        },
+        {
+          "speaker": "4483589",
+          "start": 8.760187,
+          "end": 31.18025
+        }
+      ],
+      "hypothesis_speaker_segments": [
+        {
+          "speaker": "SPEAKER_00",
+          "start": 0.0,
+          "end": 8.0
+        },
+        {
+          "speaker": "SPEAKER_01",
+          "start": 8.8,
+          "end": 14.48
+        },
+        {
+          "speaker": "SPEAKER_01",
+          "start": 15.52,
+          "end": 16.64
+        },
+        {
+          "speaker": "SPEAKER_01",
+          "start": 17.84,
+          "end": 31.04
+        }
+      ],
+      "num_ref_speakers": 2,
+      "num_hyp_speakers": 2,
+      "hyp_to_ref_map": {
+        "SPEAKER_00": "4483297",
+        "SPEAKER_01": "4483589"
+      },
+      "der": 0.08483633934535738,
+      "jer": 0.08816673522555862,
+      "miss_sec": 2.54,
+      "false_alarm_sec": 0.0,
+      "confusion_sec": 0.0,
+      "latency_sec": 6.564717417000793
+    },
+    {
+      "index": 18,
+      "sample_id": "diarization-mix-0017",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/diarization-audio/diarization-mix-0017.wav",
+      "language": "English",
+      "duration_sec": 10.73025,
+      "reference_speaker_segments": [
+        {
+          "speaker": "4485192",
+          "start": 0.0,
+          "end": 7.38025
+        },
+        {
+          "speaker": "FEE013",
+          "start": 7.58025,
+          "end": 10.73025
+        }
+      ],
+      "hypothesis_speaker_segments": [
+        {
+          "speaker": "SPEAKER_00",
+          "start": 0.0,
+          "end": 6.16
+        },
+        {
+          "speaker": "SPEAKER_01",
+          "start": 6.16,
+          "end": 10.0
+        }
+      ],
+      "num_ref_speakers": 2,
+      "num_hyp_speakers": 2,
+      "hyp_to_ref_map": {
+        "SPEAKER_00": "4485192",
+        "SPEAKER_01": "FEE013"
+      },
+      "der": 0.35368421052631577,
+      "jer": 0.31959164404579254,
+      "miss_sec": 1.44,
+      "false_alarm_sec": 0.96,
+      "confusion_sec": 0.96,
+      "latency_sec": 2.44374787498964
+    },
+    {
+      "index": 19,
+      "sample_id": "diarization-mix-0018",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/diarization-audio/diarization-mix-0018.wav",
+      "language": "English",
+      "duration_sec": 4.79,
+      "reference_speaker_segments": [
+        {
+          "speaker": "FEE016",
+          "start": 0.0,
+          "end": 3.08
+        },
+        {
+          "speaker": "FEO070",
+          "start": 3.28,
+          "end": 4.79
+        }
+      ],
+      "hypothesis_speaker_segments": [
+        {
+          "speaker": "SPEAKER_00",
+          "start": 0.0,
+          "end": 1.04
+        },
+        {
+          "speaker": "SPEAKER_01",
+          "start": 2.48,
+          "end": 4.4
+        }
+      ],
+      "num_ref_speakers": 2,
+      "num_hyp_speakers": 2,
+      "hyp_to_ref_map": {
+        "SPEAKER_00": "FEE016",
+        "SPEAKER_01": "FEO070"
+      },
+      "der": 0.7303370786516854,
+      "jer": 0.5897895208240036,
+      "miss_sec": 1.92,
+      "false_alarm_sec": 0.34,
+      "confusion_sec": 0.34,
+      "latency_sec": 0.7316311250033323
+    },
+    {
+      "index": 20,
+      "sample_id": "diarization-mix-0019",
+      "audio_path": "/Users/dmoon/.cache/mlx-qwen3-asr/datasets/diarization-audio/diarization-mix-0019.wav",
+      "language": "English",
+      "duration_sec": 5.5800625,
+      "reference_speaker_segments": [
+        {
+          "speaker": "FEO072",
+          "start": 0.0,
+          "end": 3.210062
+        },
+        {
+          "speaker": "FIO084",
+          "start": 3.410062,
+          "end": 5.580063
+        }
+      ],
+      "hypothesis_speaker_segments": [
+        {
+          "speaker": "SPEAKER_00",
+          "start": 0.0,
+          "end": 5.52
+        }
+      ],
+      "num_ref_speakers": 2,
+      "num_hyp_speakers": 1,
+      "hyp_to_ref_map": {
+        "SPEAKER_00": "FEO072"
+      },
+      "der": 1.1336405529953917,
+      "jer": 0.7083333333333333,
+      "miss_sec": 1.6400000000000001,
+      "false_alarm_sec": 1.6400000000000001,
+      "confusion_sec": 1.6400000000000001,
+      "latency_sec": 2.5092089590034448
+    }
+  ]
+}

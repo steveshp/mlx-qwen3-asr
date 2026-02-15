@@ -164,6 +164,16 @@ Release-gate quality-lane artifact (2026-02-15):
 
 - `docs/benchmarks/2026-02-15-librispeech-release-gate-20.json`
 
+Diarization quality artifacts (2026-02-15):
+
+- `docs/benchmarks/2026-02-15-diarization-manifest-20.jsonl`
+- `docs/benchmarks/2026-02-15-diarization-quality-20.json` (initial baseline)
+- `docs/benchmarks/2026-02-15-diarization-quality-20.md` (summary + run history)
+- `docs/benchmarks/2026-02-15-diarization-quality-20-v2.json` (regressed experiment; rejected)
+- `docs/benchmarks/2026-02-15-diarization-quality-20-v3.json` (post-rollback verification)
+- `docs/benchmarks/2026-02-15-diarization-quality-20-v4.json` (accepted quality+latency improvement)
+- `docs/benchmarks/2026-02-15-diarization-quality-20-v5.json` (accepted quality+latency improvement)
+
 Manifest quality artifacts (2026-02-15):
 
 - `docs/benchmarks/2026-02-15-manifest-quality-longform10.json`

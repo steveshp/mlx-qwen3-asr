@@ -13,7 +13,7 @@ from .config import DEFAULT_MODEL_ID
 from .generate import _detect_repetition
 from .load_models import _ModelHolder
 from .model import Qwen3ASRModel
-from .tokenizer import Tokenizer, _TokenizerHolder, parse_asr_output
+from .tokenizer import Tokenizer, _TokenizerHolder, canonicalize_language, parse_asr_output
 
 # Streaming constants (from official repo)
 UNFIXED_CHUNK_NUM = 2     # Trailing chunks considered unfixed
@@ -61,6 +61,7 @@ class StreamingState:
     audio_accum: np.ndarray = field(default_factory=lambda: np.array([], dtype=np.float32))
     text: str = ""
     language: str = "unknown"
+    forced_language: Optional[str] = None
     chunk_id: int = 0
     unfixed_chunk_num: int = UNFIXED_CHUNK_NUM
     unfixed_token_num: int = UNFIXED_TOKEN_NUM
@@ -102,6 +103,7 @@ def init_streaming(
     endpoint_lookback_sec: float = 0.3,
     endpoint_frame_ms: float = 20.0,
     endpoint_min_chunk_sec: float = 0.5,
+    language: Optional[str] = None,
 ) -> StreamingState:
     """Initialize a streaming ASR session."""
     if chunk_size_sec <= 0:
@@ -160,6 +162,7 @@ def init_streaming(
         endpoint_lookback_samples=max(0, int(endpoint_lookback_sec * sample_rate)),
         endpoint_frame_samples=max(1, int((endpoint_frame_ms / 1000.0) * sample_rate)),
         endpoint_min_chunk_samples=max(1, int(endpoint_min_chunk_sec * sample_rate)),
+        forced_language=canonicalize_language(language),
     )
 
 
@@ -397,12 +400,15 @@ def _decode_chunk_incremental(
         state._cache = model_obj.create_cache()
 
     if state._next_position == 0:
+        initial_language = state.forced_language
         prompt_tokens = tokenizer.build_prompt_tokens(
             n_audio_tokens=n_audio_tokens,
-            language=None,
+            language=initial_language,
         )
     else:
-        follow_lang = state.language if state.language != "unknown" else None
+        follow_lang = state.forced_language or (
+            state.language if state.language != "unknown" else None
+        )
         prompt_tokens = tokenizer.build_followup_prompt_tokens(
             n_audio_tokens=n_audio_tokens,
             language=follow_lang,
@@ -430,7 +436,7 @@ def _decode_chunk_incremental(
     state._next_position += int(input_ids.shape[1]) + len(generated)
 
     raw_text = tokenizer.decode(generated)
-    lang, text = parse_asr_output(raw_text, user_language=None)
+    lang, text = parse_asr_output(raw_text, user_language=state.forced_language)
     return text, lang
 
 

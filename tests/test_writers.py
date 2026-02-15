@@ -9,6 +9,7 @@ from mlx_qwen3_asr.writers import (
     _format_timestamp_srt,
     _format_timestamp_vtt,
     get_writer,
+    group_subtitle_segments,
     write_json,
     write_srt,
     write_tsv,
@@ -89,6 +90,26 @@ class TestWriteJson:
         assert data["segments"][0]["start"] == 0.0
         assert data["segments"][1]["end"] == 5.0
 
+    def test_json_with_speaker_segments(self, tmp_path):
+        result = TranscriptionResult(
+            text="Hello world",
+            language="English",
+            speaker_segments=[
+                {
+                    "speaker": "SPEAKER_00",
+                    "start": 0.0,
+                    "end": 1.0,
+                    "text": "Hello world",
+                }
+            ],
+        )
+        path = str(tmp_path / "output.json")
+        write_json(result, path)
+        with open(path) as f:
+            data = json.load(f)
+        assert "speaker_segments" in data
+        assert data["speaker_segments"][0]["speaker"] == "SPEAKER_00"
+
 
 # ---------------------------------------------------------------------------
 # write_srt
@@ -114,15 +135,10 @@ class TestWriteSrt:
         assert "Hello world." in content
         assert "How are you?" in content
 
-    def test_fallback_without_segments(self, simple_result, tmp_path):
+    def test_raises_without_segments(self, simple_result, tmp_path):
         path = str(tmp_path / "output.srt")
-        write_srt(simple_result, path)
-        with open(path) as f:
-            content = f.read()
-
-        assert "1\n" in content
-        assert "00:00:00,000 --> 99:59:59,999" in content
-        assert "Hello world" in content
+        with pytest.raises(ValueError, match="requires timestamp segments"):
+            write_srt(simple_result, path)
 
 
 # ---------------------------------------------------------------------------
@@ -149,14 +165,25 @@ class TestWriteVtt:
         assert "00:00:00.000 --> 00:00:02.500" in content
         assert "00:00:02.500 --> 00:00:05.000" in content
 
-    def test_fallback_without_segments(self, simple_result, tmp_path):
+    def test_raises_without_segments(self, simple_result, tmp_path):
         path = str(tmp_path / "output.vtt")
-        write_vtt(simple_result, path)
-        with open(path) as f:
-            content = f.read()
-        assert "WEBVTT\n" in content
-        assert "00:00:00.000 --> 99:59:59.999" in content
-        assert "Hello world" in content
+        with pytest.raises(ValueError, match="requires timestamp segments"):
+            write_vtt(simple_result, path)
+
+
+class TestSubtitleGrouping:
+    def test_groups_word_level_segments_into_phrases(self):
+        segments = [
+            {"text": "Hello", "start": 0.0, "end": 0.4},
+            {"text": "world.", "start": 0.41, "end": 0.8},
+            {"text": "How", "start": 1.2, "end": 1.5},
+            {"text": "are", "start": 1.51, "end": 1.7},
+            {"text": "you?", "start": 1.71, "end": 2.0},
+        ]
+        grouped = group_subtitle_segments(segments, language="English")
+        assert len(grouped) == 2
+        assert grouped[0]["text"] == "Hello world."
+        assert grouped[1]["text"] == "How are you?"
 
 
 # ---------------------------------------------------------------------------
