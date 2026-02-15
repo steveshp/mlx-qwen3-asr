@@ -6,7 +6,7 @@
 
 Run [Qwen3-ASR](https://huggingface.co/collections/Qwen/qwen3-asr) — one of the strongest open-source speech recognition models — natively on Apple Silicon.
 
-A ground-up reimplementation of the [official PyTorch model](https://github.com/QwenLM/Qwen3-ASR) using Apple's [MLX](https://github.com/ml-explore/mlx) framework. Same weights, same output quality, optimized for Mac GPUs via Metal. No PyTorch dependency for core transcription.
+A ground-up reimplementation of the [official PyTorch model](https://github.com/QwenLM/Qwen3-ASR) using Apple's [MLX](https://github.com/ml-explore/mlx) framework. Same weights, benchmarked against official/reference outputs and ground-truth eval sets, optimized for Mac GPUs via Metal. No PyTorch dependency for core transcription.
 
 ## Why this exists
 
@@ -17,7 +17,7 @@ This project rewrites every layer for MLX so the same model runs natively on M1/
 ### What's included
 
 - **Full encoder-decoder pipeline** — audio encoder (Conv2d stem + windowed transformer) and text decoder (Qwen3-style with interleaved MRoPE), reimplemented from scratch for MLX
-- **Whisper-parity mel frontend** — native log-mel spectrogram computation validated against HuggingFace WhisperFeatureExtractor, with cached filterbank and Hann window
+- **Whisper-compatible mel frontend** — native log-mel spectrogram computation with cached filterbank and Hann window
 - **Both model sizes** — 0.6B (fast, default) and 1.7B (higher accuracy)
 - **Long audio support** — energy-based chunking up to 20 minutes per chunk, no 30-second feature truncation
 - **Word-level timestamps** — native MLX forced aligner (default, 2.6x faster than PyTorch alternative) with O(n log n) LIS-based timestamp correction
@@ -27,8 +27,8 @@ This project rewrites every layer for MLX so the same model runs natively on M1/
 - **Speculative decoding** — experimental opt-in path (0.6B drafts for 1.7B target), parity-verified
 - **Streaming** — experimental rolling decode with bounded context window
 - **Native WAV fast-path** — custom binary WAV parser bypasses ffmpeg for PCM/float WAV files
-- **349 tests** — every optimization is benchmark-gated with committed JSON artifacts
-- **Minimal dependencies** — mlx, numpy, huggingface-hub, transformers (tokenizer only)
+- **382 tests** — every optimization is benchmark-gated with committed JSON artifacts
+- **Minimal dependencies** — mlx, numpy, regex, huggingface-hub
 
 ## Requirements
 
@@ -148,7 +148,16 @@ Measured on Apple M4 Pro, macOS 26.2. All numbers from controlled runs with benc
 | **8-bit** (q8, group 64) | 0.11s | 0.27s | 0.03x | 3.11x faster |
 | **4-bit** (q4, group 64) | 0.13s | 0.18s | 0.02x | **4.68x faster** |
 
-### Quality (0.6B, LibriSpeech test-clean, 100 speaker-balanced samples)
+### English quality refresh (0.6B fp16, 100 speaker-balanced samples per subset)
+
+| Subset | WER | CER | Mean eval latency | RTF |
+|---|---|---|---|---|
+| test-clean | 2.29% | 0.59% | 0.86s | 0.0957 |
+| test-other | 4.20% | 2.09% | 0.71s | 0.0985 |
+
+Artifacts: `docs/benchmarks/2026-02-15-librispeech-test-clean-100.json`, `docs/benchmarks/2026-02-15-librispeech-test-other-100.json`.
+
+### Quantization quality (0.6B, LibriSpeech test-clean, 100 speaker-balanced samples)
 
 | Configuration | WER | CER | Mean eval latency | vs fp16 Speed |
 |---|---|---|---|---|
@@ -162,10 +171,12 @@ Measured on Apple M4 Pro, macOS 26.2. All numbers from controlled runs with benc
 
 | Model | Primary Error Rate | Mean Latency | Best Languages | Weakest |
 |---|---|---|---|---|
-| **0.6B** fp16 | 9.37% | 1.35s | Spanish 3.0%, English 4.6%, Chinese 4.4% | Arabic 21.5%, French 18.2% |
-| **1.7B** fp16 | **6.70%** | 3.86s | Spanish 0.7%, Japanese 3.6%, French 4.1% | Hindi 17.4%, Arabic 16.5% |
+| **0.6B** fp16 | 9.37% | 1.44s | Spanish 3.0%, Chinese 4.4%, English 4.6% | Hindi 16.7%, French 18.2%, Arabic 21.5% |
+| **1.7B** fp16 | **6.70%** | 4.12s | Spanish 0.7%, Japanese 3.6%, French 4.1% | Chinese 8.5%, Arabic 16.5%, Hindi 17.4% |
 
 The 1.7B delivers a 28% relative improvement, with the biggest gains on French (-14.1pp), Japanese (-4.9pp), and Arabic (-5.0pp). The 1.7B runs ~2.86x slower.
+
+Artifacts: `docs/benchmarks/2026-02-15-manifest-quality-multilingual100-0p6b-refresh.json`, `docs/benchmarks/2026-02-15-manifest-quality-multilingual100-1p7b-refresh.json`.
 
 ### MLX vs PyTorch quality (0.6B, Multilingual-100)
 
@@ -186,11 +197,11 @@ On long-form audio (75-90s clips), **MLX is 4.19x faster** than PyTorch on the s
 - **Hybrid encoder windowing** — dense block-diagonal mask for short audio, segmented per-window execution for long contexts (up to 4.2x faster on long audio)
 - **Cached mel filterbank and Hann window** — computed once, reused across calls
 - **Native WAV fast-path** — custom binary parser bypasses ffmpeg process startup for PCM/float WAV files (up to 25% faster on quantized short clips)
-- **Direct Qwen2Tokenizer loading** — skips AutoTokenizer dynamic dispatch, reduces cold-start by ~1.7x
+- **Native in-repo BPE tokenizer** — no `transformers` dependency in runtime transcription path
 - **Cached model and tokenizer instances** — repeated `transcribe()` calls skip reload overhead
 - **4-bit / 8-bit quantization** — up to 4.7x speed gain with explicit per-profile quality reporting
 
-Full benchmark report: `docs/benchmarks/2026-02-14-quant-matrix-speaker100.md`. All 90+ benchmark artifacts are committed under `docs/benchmarks/` for reproducibility.
+Full benchmark report: `docs/BENCHMARKS.md`. Latest refresh snapshot: `docs/benchmarks/2026-02-15-quality-matrix-refresh.md`. All benchmark artifacts are committed under `docs/benchmarks/` for reproducibility.
 
 ## Model quality
 
@@ -230,8 +241,8 @@ GPT-4o-Transcribe leads on clean English read speech (1.39 WER). Parakeet-TDT-0.
 
 This implementation is validated against the official PyTorch model via multiple parity gates:
 
-- **MLX vs PyTorch head-to-head** — on 100 multilingual samples, MLX matches or exceeds PyTorch quality (9.54% vs 10.34% primary error rate)
-- **Token-level greedy parity** — 67% exact text match, 64% exact token match across 10 languages. Remaining differences are minor lexical/numeric surface form variations, not quality regressions
+- **MLX vs PyTorch head-to-head** — on the current multilingual-100 artifact, MLX shows lower aggregate primary error than PyTorch (9.54% vs 10.34%)
+- **Token-level greedy parity** — current multilingual-100 parity artifact shows 67% exact text match and 64% exact token match across 10 languages; remaining diffs are mostly lexical/numeric surface-form differences
 - **Expanded parity suite** — tested across LibriSpeech test-clean, test-other, synthetic long mixes, and noise variants (SNR 10dB, 5dB)
 - **Long-form parity** — 10 multilingual clips (75-90s each) transcribed correctly with no chunking artifacts, 4.19x faster than PyTorch
 - **Mel spectrogram parity** — custom MLX mel matches HuggingFace WhisperFeatureExtractor with MAE < 3e-7
@@ -429,7 +440,7 @@ Frozen dataclass:
 This project enforces parity with the official PyTorch implementation. No optimization lands without passing quality gates and committing benchmark artifacts.
 
 ```bash
-# Unit tests (349 tests, ~3s)
+# Unit tests (382 tests)
 pytest -q
 
 # Fast quality gate
@@ -505,7 +516,7 @@ mlx_qwen3_asr/           # 5,058 lines of source
 ├── attention.py          # Attention utilities (67 lines)
 └── convert.py            # Weight remapping (67 lines)
 
-tests/                    # 4,873 lines, 349 tests
+tests/                    # 4,873 lines, 382 tests
 scripts/                  # Benchmarks, evaluation, conversion, publishing
 docs/                     # Architecture, decisions, benchmarks, roadmap
 docs/benchmarks/          # 90+ committed JSON artifacts for reproducibility
@@ -517,7 +528,7 @@ docs/benchmarks/          # 90+ committed JSON artifacts for reproducibility
 git clone https://github.com/moona3k/mlx-qwen3-asr.git
 cd mlx-qwen3-asr
 pip install -e ".[dev]"
-pytest -q                 # 349 tests, ~3s
+pytest -q                 # 382 tests
 ```
 
 ## Acknowledgments

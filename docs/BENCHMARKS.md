@@ -6,12 +6,26 @@ Comprehensive benchmark results for mlx-qwen3-asr on Apple Silicon. All numbers 
 
 | Metric | 0.6B fp16 | 0.6B 4-bit | 0.6B 8-bit | 1.7B fp16 |
 |---|---|---|---|---|
-| LibriSpeech WER | 2.29% | 2.72% | 2.33% | — |
+| LibriSpeech test-clean WER | 2.29% | 2.72% | 2.33% | — |
+| LibriSpeech test-other WER | 4.20% | — | — | — |
 | Multilingual primary | 9.37% | — | — | 6.70% |
 | Short clip latency (~2.5s) | 0.46s | 0.13s | 0.11s | — |
 | 10s clip latency | 0.83s | 0.18s | 0.27s | — |
-| Multilingual mean latency | 1.35s | — | — | 3.86s |
+| Multilingual mean latency | 1.44s | — | — | 4.12s |
 | MLX vs PyTorch speed (long-form) | 4.19x faster | — | — | — |
+
+---
+
+## English Quality (0.6B fp16, LibriSpeech, 100 samples/subset)
+
+| Subset | WER | CER | Mean Latency | RTF |
+|---|---:|---:|---:|---:|
+| test-clean | 2.29% | 0.59% | 0.86s | 0.0957 |
+| test-other | 4.20% | 2.09% | 0.71s | 0.0985 |
+
+Artifacts:
+- `2026-02-15-librispeech-test-clean-100.json`
+- `2026-02-15-librispeech-test-other-100.json`
 
 ---
 
@@ -51,52 +65,52 @@ Primary metric rule: CER for Chinese/Japanese/Korean; WER for all others.
 
 | Language | Samples | WER | CER | Primary | Latency |
 |---|---:|---:|---:|---:|---:|
-| Arabic | 10 | 21.5% | 7.0% | 21.5% | 1.21s |
-| Chinese | 10 | 90.0% | 4.4% | 4.4% | 0.76s |
-| English | 10 | 4.6% | 1.9% | 4.6% | 0.87s |
-| French | 10 | 18.2% | 9.2% | 18.2% | 1.07s |
-| German | 10 | 8.0% | 4.7% | 8.0% | 1.25s |
-| Hindi | 10 | 16.7% | 9.8% | 16.7% | 3.54s |
-| Japanese | 10 | 82.1% | 8.5% | 8.5% | 1.12s |
-| Korean | 10 | 17.2% | 6.7% | 6.7% | 1.09s |
-| Russian | 10 | 8.8% | 3.4% | 8.8% | 1.37s |
-| Spanish | 10 | 3.0% | 0.6% | 3.0% | 1.20s |
-| **Aggregate** | **100** | **15.9%** | **5.4%** | **9.37%** | **1.35s** |
+| Arabic | 10 | 21.5% | 7.0% | 21.5% | 1.30s |
+| Chinese | 10 | 90.0% | 4.4% | 4.4% | 0.81s |
+| English | 10 | 4.6% | 1.9% | 4.6% | 0.81s |
+| French | 10 | 18.2% | 9.2% | 18.2% | 1.14s |
+| German | 10 | 8.0% | 4.7% | 8.0% | 1.38s |
+| Hindi | 10 | 16.7% | 9.8% | 16.7% | 3.80s |
+| Japanese | 10 | 82.1% | 8.5% | 8.5% | 1.23s |
+| Korean | 10 | 17.2% | 6.7% | 6.7% | 1.17s |
+| Russian | 10 | 8.8% | 3.4% | 8.8% | 1.47s |
+| Spanish | 10 | 3.0% | 0.6% | 3.0% | 1.31s |
+| **Aggregate** | **100** | **15.9%** | **5.4%** | **9.37%** | **1.44s** |
 
-Artifact: `2026-02-15-manifest-quality-multilingual100.md`
+Artifact: `2026-02-15-manifest-quality-multilingual100-0p6b-refresh.json`
 
 ### 1.7B (fp16)
 
 | Language | Samples | Primary | Latency |
 |---|---:|---:|---:|
-| Arabic | 10 | 16.5% | 3.55s |
-| Chinese | 10 | 8.5% | 2.15s |
-| English | 10 | 4.2% | 2.24s |
-| French | 10 | 4.1% | 3.07s |
-| German | 10 | 5.8% | 3.55s |
-| Hindi | 10 | 17.4% | 10.50s |
-| Japanese | 10 | 3.6% | 3.12s |
-| Korean | 10 | 5.5% | 3.10s |
-| Russian | 10 | 4.9% | 3.90s |
-| Spanish | 10 | 0.7% | 3.41s |
-| **Aggregate** | **100** | **6.70%** | **3.86s** |
+| Arabic | 10 | 16.5% | 3.78s |
+| Chinese | 10 | 8.5% | 2.38s |
+| English | 10 | 4.2% | 2.22s |
+| French | 10 | 4.1% | 3.25s |
+| German | 10 | 5.8% | 3.74s |
+| Hindi | 10 | 17.4% | 11.06s |
+| Japanese | 10 | 3.6% | 3.43s |
+| Korean | 10 | 5.5% | 3.25s |
+| Russian | 10 | 4.9% | 4.23s |
+| Spanish | 10 | 0.7% | 3.91s |
+| **Aggregate** | **100** | **6.70%** | **4.12s** |
 
-Artifact: `2026-02-15-manifest-quality-multilingual100-compare-0p6b-vs-1p7b.md`
+Artifact: `2026-02-15-manifest-quality-multilingual100-1p7b-refresh.json`
 
 ### 0.6B vs 1.7B Comparison
 
 | Language | 0.6B Primary | 1.7B Primary | Delta | Latency Ratio |
 |---|---:|---:|---:|---:|
-| Arabic | 21.5% | 16.5% | -5.0pp | 2.93x |
-| Chinese | 4.4% | 8.5% | +4.1pp* | 2.83x |
-| English | 4.6% | 4.2% | -0.5pp | 2.58x |
-| French | 18.2% | 4.1% | **-14.1pp** | 2.87x |
-| German | 8.0% | 5.8% | -2.2pp | 2.84x |
-| Hindi | 16.7% | 17.4% | +0.7pp | 2.97x |
-| Japanese | 8.5% | 3.6% | -4.9pp | 2.79x |
-| Korean | 6.7% | 5.5% | -1.2pp | 2.85x |
-| Russian | 8.8% | 4.9% | -3.9pp | 2.84x |
-| Spanish | 3.0% | 0.7% | -2.2pp | 2.84x |
+| Arabic | 21.5% | 16.5% | -5.0pp | 2.90x |
+| Chinese | 4.4% | 8.5% | +4.1pp* | 2.94x |
+| English | 4.6% | 4.2% | -0.5pp | 2.74x |
+| French | 18.2% | 4.1% | **-14.1pp** | 2.85x |
+| German | 8.0% | 5.8% | -2.2pp | 2.70x |
+| Hindi | 16.7% | 17.4% | +0.7pp | 2.91x |
+| Japanese | 8.5% | 3.6% | -4.9pp | 2.78x |
+| Korean | 6.7% | 5.5% | -1.2pp | 2.79x |
+| Russian | 8.8% | 4.9% | -3.9pp | 2.88x |
+| Spanish | 3.0% | 0.7% | -2.2pp | 2.98x |
 | **Overall** | **9.37%** | **6.70%** | **-2.66pp** | **2.86x** |
 
 *Chinese +4.1pp is a numeric surface form artifact — the 1.7B spells out numbers in Chinese characters (e.g., `二十九` instead of `29`) while ground truth uses Arabic numerals. Both are correct. A number-aware normalizer would eliminate this gap.

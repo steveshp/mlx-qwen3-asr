@@ -1,0 +1,107 @@
+{
+  "suite": "quality-matrix-refresh-v1",
+  "date": "2026-02-15",
+  "machine": "Apple M4 Pro",
+  "runs": {
+    "librispeech_test_clean_100": {
+      "artifact": "docs/benchmarks/2026-02-15-librispeech-test-clean-100.json",
+      "subset": "test-clean",
+      "samples": 100,
+      "unique_speakers": 40,
+      "wer": 0.022874406560207165,
+      "cer": 0.005865102639296188,
+      "mean_latency_sec": 0.8575929899996845,
+      "rtf": 0.09573432502964126
+    },
+    "librispeech_test_other_100": {
+      "artifact": "docs/benchmarks/2026-02-15-librispeech-test-other-100.json",
+      "subset": "test-other",
+      "samples": 100,
+      "unique_speakers": 33,
+      "wer": 0.04195432819968136,
+      "cer": 0.020948180815876516,
+      "mean_latency_sec": 0.7078913437289884,
+      "rtf": 0.09851184532504698
+    },
+    "multilingual100_0p6b": {
+      "artifact": "docs/benchmarks/2026-02-15-manifest-quality-multilingual100-0p6b-refresh.json",
+      "model": "Qwen/Qwen3-ASR-0.6B",
+      "samples": 100,
+      "primary_error_rate": 0.09366576819407008,
+      "wer": 0.15890850722311398,
+      "cer": 0.054088316078597085,
+      "latency_sec_mean": 1.44178512045939
+    },
+    "multilingual100_1p7b": {
+      "artifact": "docs/benchmarks/2026-02-15-manifest-quality-multilingual100-1p7b-refresh.json",
+      "model": "Qwen/Qwen3-ASR-1.7B",
+      "samples": 100,
+      "primary_error_rate": 0.06704851752021564,
+      "wer": 0.16265382557517388,
+      "cer": 0.03222057891400803,
+      "latency_sec_mean": 4.123104056248849
+    }
+  },
+  "derived": {
+    "multilingual_primary_relative_improvement_1p7b_vs_0p6b": 0.28417266187050355,
+    "multilingual_latency_ratio_1p7b_vs_0p6b": 2.859721603268538
+  },
+  "multilingual_best_worst": {
+    "0p6b_best3": [
+      {
+        "language": "Spanish",
+        "primary_error_rate": 0.0299625468164794
+      },
+      {
+        "language": "Chinese",
+        "primary_error_rate": 0.043731778425655975
+      },
+      {
+        "language": "English",
+        "primary_error_rate": 0.046296296296296294
+      }
+    ],
+    "0p6b_worst3": [
+      {
+        "language": "Hindi",
+        "primary_error_rate": 0.16666666666666666
+      },
+      {
+        "language": "French",
+        "primary_error_rate": 0.18181818181818182
+      },
+      {
+        "language": "Arabic",
+        "primary_error_rate": 0.215
+      }
+    ],
+    "1p7b_best3": [
+      {
+        "language": "Spanish",
+        "primary_error_rate": 0.00749063670411985
+      },
+      {
+        "language": "Japanese",
+        "primary_error_rate": 0.03553299492385787
+      },
+      {
+        "language": "French",
+        "primary_error_rate": 0.04090909090909091
+      }
+    ],
+    "1p7b_worst3": [
+      {
+        "language": "Chinese",
+        "primary_error_rate": 0.08454810495626822
+      },
+      {
+        "language": "Arabic",
+        "primary_error_rate": 0.165
+      },
+      {
+        "language": "Hindi",
+        "primary_error_rate": 0.1736111111111111
+      }
+    ]
+  }
+}

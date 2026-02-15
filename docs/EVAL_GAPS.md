@@ -19,8 +19,11 @@ make broad "production-grade across languages/conditions" quality claims.
 - WER/CER lane:
   - LibriSpeech test-clean, 100 samples, speaker-balanced, 0.6B model
     (`fp16`, `4-bit`, `8-bit`).
+  - LibriSpeech test-other, 100 samples, speaker-balanced, 0.6B model
+    (`fp16`).
   - FLEURS multilingual manifest-quality lane:
     - 100 short-form samples (10 languages x 10),
+    - refreshed for both 0.6B and 1.7B (`fp16`),
     - Unicode-safe WER/CER + language-aware primary metric.
   - Long-form multilingual manifest-quality lane:
     - 10 synthetic concatenated clips (~75-90s each, 10 languages),
@@ -29,13 +32,14 @@ make broad "production-grade across languages/conditions" quality claims.
 
 ## Valid Gaps (prioritized)
 
-1. `P0` WER/CER on `Qwen/Qwen3-ASR-1.7B`
-- Why: verifies larger-model quality envelope, not just 0.6B.
-- Status: not yet run in committed artifacts.
+1. `P0` WER/CER on `Qwen/Qwen3-ASR-1.7B` for English lanes
+- Why: verifies larger-model quality envelope on LibriSpeech, not only multilingual manifests.
+- Status: partially closed. FLEURS multilingual-100 is covered for 1.7B; LibriSpeech
+  test-clean/test-other for 1.7B remains open.
 
 2. `P0` WER/CER on LibriSpeech `test-other`
 - Why: harder-noise/accent lane needed for robustness claims.
-- Status: parity exists; WER lane not yet expanded.
+- Status: closed for 0.6B fp16 (100 speaker-balanced samples).
 
 3. `P0` Non-English quality lane (beyond token parity)
 - Why: token parity != ground-truth accuracy. Need quality metrics per language.
@@ -50,7 +54,8 @@ make broad "production-grade across languages/conditions" quality claims.
 
 5. `P1` Direct MLX-vs-PyTorch quality comparison on same samples
 - Why: closes the loop on backend parity at transcript quality level.
-- Status: token parity is in place; WER-side backend comparison lane missing.
+- Status: partially closed. Multilingual-100 head-to-head artifact exists; broader
+  domains (test-other, long-form real-world) still missing.
 
 6. `P1` Real-world audio lane (meetings/podcasts/accented speech)
 - Why: LibriSpeech-only is too clean for deployment confidence.
@@ -58,9 +63,9 @@ make broad "production-grade across languages/conditions" quality claims.
 
 ## Follow-up Order
 
-1. Add `test-other` WER/CER (0.6B, fp16 + key quant profiles).
-2. Add 1.7B WER/CER on test-clean + test-other.
-3. Add long-form lane with deterministic multi-minute concatenations and WER/CER.
-4. Add multilingual quality lane with a pinned dataset/manifest and language-wise scores.
-5. Add backend quality comparison lane (MLX vs PyTorch, same eval set).
+1. Add 1.7B WER/CER on LibriSpeech test-clean + test-other.
+2. Expand test-other to quantized profiles (`4-bit`, `8-bit`) for robustness-speed tradeoff tracking.
+3. Add larger and/or real-world long-form ground-truth lane (multi-minute, non-synthetic).
+4. Expand multilingual quality beyond 10-language x 10-sample manifest.
+5. Expand backend quality comparison lanes (MLX vs PyTorch) beyond multilingual-100.
 6. Add real-world curated lane with fixed artifact set and versioned manifests.
