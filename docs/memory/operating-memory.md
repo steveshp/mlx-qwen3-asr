@@ -52,6 +52,9 @@ Promote to distilled learnings when:
    velocity.
    - refs: `MEM-2026-02-16-001`, `MEM-2026-02-16-002`,
      `MEM-2026-02-16-003`
+4. Keep `CLAUDE.md` canonical and keep `AGENTS.md` as a thin compatibility
+   delegator.
+   - refs: `MEM-2026-02-16-004`
 
 ## Distilled Learnings
 
@@ -59,6 +62,9 @@ Promote to distilled learnings when:
    in the same commit to avoid drift.
    - refs: `MEM-2026-02-16-001`, `MEM-2026-02-16-002`,
      `MEM-2026-02-16-003`
+2. For multi-agent compatibility, prefer one canonical guide plus one thin
+   delegator file.
+   - refs: `MEM-2026-02-16-004`
 
 ## Open Risks
 
