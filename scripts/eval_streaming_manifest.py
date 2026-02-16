@@ -4,11 +4,14 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import statistics
+import subprocess
 import sys
 import time
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 import mlx.core as mx
@@ -30,6 +33,31 @@ class ManifestSample:
     speaker_id: str
     language: str | None
     audio_path: Path
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _git_head_commit(repo_root: Path) -> str | None:
+    try:
+        out = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=str(repo_root),
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return out if out else None
+
+
+def _iso_utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _dtype_from_name(name: str) -> mx.Dtype:
@@ -271,9 +299,14 @@ def main() -> int:
 
     summary = _summarize_rows(rows)
     aggregate = summary["aggregate"]
+    repo_root = Path(__file__).resolve().parents[1]
     payload = {
+        "schema_version": "streaming-manifest-quality-v1.1",
         "suite": "streaming-manifest-quality-v1",
+        "generated_at_utc": _iso_utc_now(),
+        "git_commit": _git_head_commit(repo_root),
         "manifest_jsonl": str(manifest_path),
+        "manifest_sha256": _sha256_file(manifest_path),
         "model": args.model,
         "dtype": args.dtype,
         "endpointing_modes": endpointing_modes,

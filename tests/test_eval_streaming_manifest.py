@@ -39,6 +39,15 @@ def test_parse_manifest_requires_audio_path(tmp_path: Path):
         mod._parse_manifest(manifest)  # noqa: SLF001
 
 
+def test_sha256_file(tmp_path: Path):
+    mod = _load_script_module()
+    data = tmp_path / "data.bin"
+    data.write_bytes(b"abc123")
+    assert mod._sha256_file(data) == (
+        "6ca13d52ca70c883e0f0bb101e425a89e8624de51db2d2392593af6a84118090"
+    )
+
+
 def test_main_emits_multifile_payload(monkeypatch, tmp_path: Path):
     mod = _load_script_module()
 
@@ -99,6 +108,8 @@ def test_main_emits_multifile_payload(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(mod, "feed_audio", _fake_feed_audio)
     monkeypatch.setattr(mod, "finish_streaming", _fake_finish_streaming)
     monkeypatch.setattr(mod, "streaming_metrics", _fake_streaming_metrics)
+    monkeypatch.setattr(mod, "_git_head_commit", lambda _repo_root: "deadbeef")
+    monkeypatch.setattr(mod, "_iso_utc_now", lambda: "2026-02-16T11:22:33+00:00")
 
     output = tmp_path / "streaming_manifest.json"
     monkeypatch.setattr(
@@ -119,7 +130,11 @@ def test_main_emits_multifile_payload(monkeypatch, tmp_path: Path):
     assert rc == 0
 
     payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == "streaming-manifest-quality-v1.1"
     assert payload["suite"] == "streaming-manifest-quality-v1"
+    assert payload["generated_at_utc"] == "2026-02-16T11:22:33+00:00"
+    assert payload["git_commit"] == "deadbeef"
+    assert payload["manifest_sha256"] == mod._sha256_file(manifest)  # noqa: SLF001
     assert payload["samples"] == 2
     assert payload["evaluations"] == 4
     assert set(payload["by_mode"].keys()) == {"fixed", "energy"}

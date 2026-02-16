@@ -1,6 +1,10 @@
 {
+  "schema_version": "streaming-manifest-quality-v1.1",
   "suite": "streaming-manifest-quality-v1",
+  "generated_at_utc": "2026-02-16T20:02:21.988112+00:00",
+  "git_commit": "497eaa4fad22fff38b2e75d01ce7eed46a2c0dac",
   "manifest_jsonl": "/Users/dmoon/code/mlx-qwen3-asr/docs/benchmarks/2026-02-16-streaming-manifest-smoke2.jsonl",
+  "manifest_sha256": "15731de80cf6b9db0e02bb05c2b920d08a95d6b15010e4439a631d5ca024e3c3",
   "model": "Qwen/Qwen3-ASR-0.6B",
   "dtype": "float16",
   "endpointing_modes": [
@@ -22,10 +26,10 @@
     "rewrite_rate_max": 0.0,
     "finalization_delta_chars_mean": 4.0,
     "finalization_delta_chars_max": 4,
-    "latency_sec_mean": 1.1275413537478016,
-    "latency_sec_p95": 1.2962576661499041,
-    "rtf_mean": 0.44509675466211457,
-    "rtf_p95": 0.5116974898450228
+    "latency_sec_mean": 1.3610962814964296,
+    "latency_sec_p95": 1.4550257588933164,
+    "rtf_mean": 0.5372925220552373,
+    "rtf_p95": 0.5743711670357511
   },
   "by_mode": {
     "energy": {
@@ -36,10 +40,10 @@
       "rewrite_rate_max": 0.0,
       "finalization_delta_chars_mean": 4.0,
       "finalization_delta_chars_max": 4,
-      "latency_sec_mean": 1.0496039165009279,
-      "latency_sec_p95": 1.0752932919582237,
-      "rtf_mean": 0.41433096476894427,
-      "rtf_p95": 0.4244718412940782
+      "latency_sec_mean": 1.308964270996512,
+      "latency_sec_p95": 1.3328228020909592,
+      "rtf_mean": 0.516713419913752,
+      "rtf_p95": 0.5261315709428438
     },
     "fixed": {
       "evaluations": 2,
@@ -49,10 +53,10 @@
       "rewrite_rate_max": 0.0,
       "finalization_delta_chars_mean": 4.0,
       "finalization_delta_chars_max": 4,
-      "latency_sec_mean": 1.2054787909946754,
-      "latency_sec_p95": 1.3218207784979312,
-      "rtf_mean": 0.47586254455528487,
-      "rtf_p95": 0.5217885240295791
+      "latency_sec_mean": 1.4132282919963473,
+      "latency_sec_p95": 1.4669678922924505,
+      "rtf_mean": 0.5578716241967225,
+      "rtf_p95": 0.5790853221326164
     }
   },
   "rows": [
@@ -69,8 +73,8 @@
       "partial_stability": 1.0,
       "rewrite_rate": 0.0,
       "finalization_delta_chars": 4,
-      "latency_sec": 1.334747665998293,
-      "rtf": 0.5268914106378341,
+      "latency_sec": 1.4729389589920174,
+      "rtf": 0.581442399681049,
       "final_text": "The quick brown fox jumps over the lazy dog.",
       "final_language": "English"
     },
@@ -87,8 +91,8 @@
       "partial_stability": 1.0,
       "rewrite_rate": 0.0,
       "finalization_delta_chars": 4,
-      "latency_sec": 1.0210601659928216,
-      "rtf": 0.40306332418546204,
+      "latency_sec": 1.2824547920026816,
+      "rtf": 0.5062488076592053,
       "final_text": "The quick brown fox jumps over the lazy dog.",
       "final_language": "English"
     },
@@ -105,8 +109,8 @@
       "partial_stability": 1.0,
       "rewrite_rate": 0.0,
       "finalization_delta_chars": 4,
-      "latency_sec": 1.0762099159910576,
-      "rtf": 0.42483367847273573,
+      "latency_sec": 1.353517625000677,
+      "rtf": 0.534300848712396,
       "final_text": "The quick brown fox jumps over the lazy dog.",
       "final_language": "English"
     },
@@ -123,11 +127,11 @@
       "partial_stability": 1.0,
       "rewrite_rate": 0.0,
       "finalization_delta_chars": 4,
-      "latency_sec": 1.0781476670090342,
-      "rtf": 0.42559860535242644,
+      "latency_sec": 1.3354737499903422,
+      "rtf": 0.5271780321682985,
       "final_text": "The quick brown fox jumps over the lazy dog.",
       "final_language": "English"
     }
   ],
-  "elapsed_sec": 4.844947833989863
+  "elapsed_sec": 5.865001250000205
 }

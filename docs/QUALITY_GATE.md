@@ -160,6 +160,8 @@ streaming thresholds over the manifest:
 - `partial_stability_mean >= threshold`
 - `rewrite_rate_mean <= threshold`
 - `finalization_delta_chars_max <= threshold`
+- Artifact payload also includes provenance fields:
+  - `schema_version`, `generated_at_utc`, `git_commit`, `manifest_sha256`.
 
 ### Nightly Regression Lane (scheduled/manual)
 
