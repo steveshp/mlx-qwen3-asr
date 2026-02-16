@@ -217,3 +217,85 @@ def test_realworld_longform_quality_gate_passes_and_uses_strict_default(
     assert isinstance(cmd, list)
     idx = cmd.index("--fail-primary-above")
     assert cmd[idx + 1] == "0.20"
+
+
+def test_streaming_manifest_quality_gate_requires_manifest(monkeypatch, tmp_path):
+    qg = _load_quality_gate_module()
+    monkeypatch.delenv("STREAMING_MANIFEST_QUALITY_EVAL_JSONL", raising=False)
+
+    step = qg._run_streaming_manifest_quality_gate(
+        repo=tmp_path,
+        python_bin="python",
+        strict_release=False,
+    )
+
+    assert not step.passed
+    assert "requires STREAMING_MANIFEST_QUALITY_EVAL_JSONL" in step.note
+
+
+def test_streaming_manifest_quality_gate_fails_missing_audio(monkeypatch, tmp_path):
+    qg = _load_quality_gate_module()
+    manifest = tmp_path / "streaming_manifest.jsonl"
+    row = {
+        "sample_id": "s1",
+        "subset": "manifest",
+        "speaker_id": "spk",
+        "audio_path": str(tmp_path / "missing.wav"),
+    }
+    manifest.write_text(json.dumps(row) + "\n", encoding="utf-8")
+    monkeypatch.setenv("STREAMING_MANIFEST_QUALITY_EVAL_JSONL", str(manifest))
+
+    step = qg._run_streaming_manifest_quality_gate(
+        repo=tmp_path,
+        python_bin="python",
+        strict_release=False,
+    )
+
+    assert not step.passed
+    assert "missing local audio files" in step.note
+
+
+def test_streaming_manifest_quality_gate_passes_and_uses_threshold_defaults(
+    monkeypatch,
+    tmp_path,
+):
+    qg = _load_quality_gate_module()
+    manifest = tmp_path / "streaming_manifest.jsonl"
+    audio = tmp_path / "sample.wav"
+    audio.write_bytes(b"RIFF")
+    row = {
+        "sample_id": "s1",
+        "subset": "manifest",
+        "speaker_id": "spk",
+        "audio_path": str(audio),
+    }
+    manifest.write_text(json.dumps(row) + "\n", encoding="utf-8")
+    monkeypatch.setenv("STREAMING_MANIFEST_QUALITY_EVAL_JSONL", str(manifest))
+
+    called: dict[str, object] = {}
+
+    def _fake_run(cmd, _cwd, env=None):  # noqa: ANN001, ANN002, ARG001
+        called["cmd"] = cmd
+        return qg.StepResult(
+            name="python",
+            cmd=" ".join(cmd),
+            passed=True,
+            duration_sec=0.01,
+            returncode=0,
+        )
+
+    monkeypatch.setattr(qg, "_run", _fake_run)
+
+    step = qg._run_streaming_manifest_quality_gate(
+        repo=tmp_path,
+        python_bin="python",
+        strict_release=True,
+    )
+
+    assert step.passed
+    cmd = called["cmd"]
+    assert isinstance(cmd, list)
+    idx = cmd.index("--fail-partial-stability-below")
+    assert cmd[idx + 1] == "0.85"
+    idx = cmd.index("--fail-rewrite-rate-above")
+    assert cmd[idx + 1] == "0.30"

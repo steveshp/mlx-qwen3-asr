@@ -15,6 +15,7 @@
 - `scripts/eval/analyze_reference_parity_mismatches.py` — parity mismatch categorization.
 - `scripts/eval/benchmark_quantization_matrix.py` — quantization sweep + eval/latency matrix.
 - `scripts/eval_streaming_metrics.py` — streaming stability/rollback/finalization diagnostics.
+- `scripts/eval_streaming_manifest.py` — multi-file streaming quality lane from JSONL manifest.
 - `scripts/eval_diarization.py` — DER/JER evaluation from diarization manifests.
 - `scripts/build_diarization_manifest.py` — deterministic multi-speaker mix manifest builder.
 - `scripts/build_realworld_manifest.py` — deterministic AMI/Earnings real-world manifest curation.

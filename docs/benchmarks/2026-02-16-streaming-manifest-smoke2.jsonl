@@ -1,0 +1,2 @@
+{"sample_id":"fixture-001","subset":"streaming-smoke","speaker_id":"fixture","language":"English","audio_path":"tests/fixtures/test_speech.wav"}
+{"sample_id":"fixture-002","subset":"streaming-smoke","speaker_id":"fixture","language":"English","audio_path":"tests/fixtures/test_speech.wav"}

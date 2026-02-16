@@ -624,6 +624,7 @@ Additional quality lanes available:
 - **Aligner parity**: `RUN_ALIGNER_PARITY=1` — validates MLX aligner against official backend
 - **Expanded parity suite**: `RUN_REFERENCE_PARITY_SUITE=1` — test-clean, test-other, long mixes, noise variants with Unicode-safe text comparison
 - **Multilingual parity**: manifest-driven workflow via `scripts/build_multilingual_manifest.py` for cross-language validation
+- **Streaming manifest quality**: `RUN_STREAMING_MANIFEST_QUALITY_EVAL=1` with `STREAMING_MANIFEST_QUALITY_EVAL_JSONL=...` — multi-file streaming stability/rewrite/finalization lane via `scripts/eval_streaming_manifest.py`
 - **Real-world long-form quality**: `RUN_REALWORLD_LONGFORM_EVAL=1` on full-recording Earnings22 manifests
 - **Diarization quality**: `RUN_DIARIZATION_QUALITY_EVAL=1` with `DIARIZATION_QUALITY_EVAL_JSONL=...` — DER/JER lane via `scripts/eval_diarization.py`
 

@@ -121,7 +121,7 @@ Near-term work should remain correctness-gated and benchmark-driven:
 
 4. Evaluation coverage expansion (quality lanes)
 - Goal: close remaining WER/quality gaps tracked in `docs/EVAL_GAPS.md`
-  (`test-other`, 1.7B, multilingual quality, backend quality compare, real-world audio).
+  (currently centered on publishing streaming-manifest artifacts from maintained datasets).
 - Gate: each lane must produce versioned benchmark artifacts and remain reproducible.
 
 5. Decode API cleanliness and cache lifecycle rigor
@@ -141,6 +141,8 @@ Near-term work should remain correctness-gated and benchmark-driven:
 7. Streaming policy (deprioritized)
 - Keep streaming explicitly experimental and avoid major roadmap allocation
   until the core offline quality/speed/timestamp track is fully production-grade.
+- Current lane status: multi-file streaming evaluator and optional gate hook are
+  implemented; remaining work is artifact publication cadence.
 
 8. Speaker diarization (optional extra)
 - Status: shipped as optional offline integration in API/CLI runtime.

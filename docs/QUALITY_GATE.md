@@ -96,6 +96,9 @@ What strict profile turns on by default:
     - `STREAMING_QUALITY_FAIL_PARTIAL_STABILITY_BELOW=0.85`
     - `STREAMING_QUALITY_FAIL_REWRITE_RATE_ABOVE=0.30`
     - `STREAMING_QUALITY_FAIL_FINALIZATION_DELTA_CHARS_ABOVE=32`
+- Streaming manifest quality lane remains opt-in:
+  - enable with `RUN_STREAMING_MANIFEST_QUALITY_EVAL=1`
+  - requires `STREAMING_MANIFEST_QUALITY_EVAL_JSONL` with local `audio_path`s.
 
 Relevant perf env overrides:
 - `PERF_BENCH_AUDIO`
@@ -122,6 +125,41 @@ Relevant streaming-quality env overrides:
 - `STREAMING_QUALITY_FAIL_PARTIAL_STABILITY_BELOW`
 - `STREAMING_QUALITY_FAIL_REWRITE_RATE_ABOVE`
 - `STREAMING_QUALITY_FAIL_FINALIZATION_DELTA_CHARS_ABOVE`
+
+Relevant streaming-manifest-quality env overrides:
+- `RUN_STREAMING_MANIFEST_QUALITY_EVAL`
+- `STREAMING_MANIFEST_QUALITY_EVAL_JSONL`
+- `STREAMING_MANIFEST_QUALITY_EVAL_MODEL`
+- `STREAMING_MANIFEST_QUALITY_EVAL_DTYPE`
+- `STREAMING_MANIFEST_QUALITY_EVAL_ENDPOINTING_MODES`
+- `STREAMING_MANIFEST_QUALITY_EVAL_CHUNK_SIZE_SEC`
+- `STREAMING_MANIFEST_QUALITY_EVAL_MAX_CONTEXT_SEC`
+- `STREAMING_MANIFEST_QUALITY_EVAL_FINALIZATION_MODE`
+- `STREAMING_MANIFEST_QUALITY_EVAL_UNFIXED_CHUNK_NUM`
+- `STREAMING_MANIFEST_QUALITY_EVAL_UNFIXED_TOKEN_NUM`
+- `STREAMING_MANIFEST_QUALITY_EVAL_FAIL_PARTIAL_STABILITY_BELOW`
+- `STREAMING_MANIFEST_QUALITY_EVAL_FAIL_REWRITE_RATE_ABOVE`
+- `STREAMING_MANIFEST_QUALITY_EVAL_FAIL_FINALIZATION_DELTA_CHARS_ABOVE`
+- `STREAMING_MANIFEST_QUALITY_EVAL_LIMIT`
+- `STREAMING_MANIFEST_QUALITY_EVAL_JSON_OUTPUT`
+
+### Optional Streaming Manifest Quality Gate
+
+Use this lane to generate and gate multi-file streaming artifacts from a
+manifest (higher-signal follow-up to the single-fixture streaming gate):
+
+```bash
+RUN_STREAMING_MANIFEST_QUALITY_EVAL=1 \
+STREAMING_MANIFEST_QUALITY_EVAL_JSONL=/abs/path/manifest.jsonl \
+STREAMING_MANIFEST_QUALITY_EVAL_JSON_OUTPUT=docs/benchmarks/streaming-manifest-quality.json \
+python scripts/quality_gate.py --mode release
+```
+
+This runs `scripts/eval_streaming_manifest.py` and enforces aggregate
+streaming thresholds over the manifest:
+- `partial_stability_mean >= threshold`
+- `rewrite_rate_mean <= threshold`
+- `finalization_delta_chars_max <= threshold`
 
 ### Nightly Regression Lane (scheduled/manual)
 

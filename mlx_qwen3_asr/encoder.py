@@ -360,28 +360,41 @@ class AudioEncoder(nn.Module):
         total_frames = mel.shape[1]
 
         # --- Per-chunk Conv2d processing ---
+        # Batch full-size chunks together so long audio avoids many Python-level
+        # Conv2d calls while keeping tail-chunk semantics identical.
         chunk_token_lens: list[int] = []
         chunk_conv_outputs: list[mx.array] = []
+        n_full_chunks = total_frames // chunk_size
 
-        for start in range(0, total_frames, chunk_size):
-            end = min(start + chunk_size, total_frames)
-            chunk_mel = mel[:, start:end]  # (n_mels, chunk_len)
+        if n_full_chunks > 0:
+            full_frames = n_full_chunks * chunk_size
+            full_mel = mel[:, :full_frames]  # (n_mels, n_full * chunk_size)
+            full_mel = full_mel.reshape(
+                int(mel.shape[0]),
+                n_full_chunks,
+                chunk_size,
+            ).transpose(1, 0, 2)  # (n_full, n_mels, chunk_size)
 
-            # MLX NHWC: (1, H=n_mels, W=chunk_len, C=1)
-            x = chunk_mel[None, :, :, None]
-
-            # Conv2d stem: output is (1, mel_down, time_down, dhs) in NHWC
-            x = self._apply_conv_stem(x)
+            # MLX NHWC batch: (n_full, H=n_mels, W=chunk_size, C=1)
+            x_full = self._apply_conv_stem(full_mel[:, :, :, None])
 
             # Channel-major reshape to match conv_out weight layout.
             # PyTorch does: (B,C,F,T) -> permute(0,3,1,2) -> (B,T,C,F) -> view(B,T,C*F)
-            # MLX NHWC:    (1,F',T',C) -> transpose(0,2,3,1) -> (1,T',C,F')
-            _, F_d, T_d, C_d = x.shape
-            x = x.transpose(0, 2, 3, 1)  # (1, T', C=dhs, F'=freq_down)
-            x = x.reshape(1, T_d, C_d * F_d)  # (1, T', dhs*freq_down)
+            # MLX NHWC:    (B,F',T',C) -> transpose(0,2,3,1) -> (B,T',C,F')
+            _, F_d, T_d, C_d = x_full.shape
+            x_full = x_full.transpose(0, 2, 3, 1)  # (n_full, T', C=dhs, F'=freq_down)
+            x_full = x_full.reshape(n_full_chunks, T_d, C_d * F_d)
+            chunk_conv_outputs.append(x_full.reshape(n_full_chunks * T_d, C_d * F_d))
+            chunk_token_lens.extend([int(T_d)] * n_full_chunks)
 
-            chunk_token_lens.append(T_d)
-            chunk_conv_outputs.append(x[0])  # (T', dhs*freq_down)
+        # Tail chunk uses exact per-chunk semantics (no extra right-padding).
+        if n_full_chunks * chunk_size < total_frames:
+            chunk_mel = mel[:, n_full_chunks * chunk_size :]  # (n_mels, chunk_len)
+            x_tail = self._apply_conv_stem(chunk_mel[None, :, :, None])
+            _, F_d, T_d, C_d = x_tail.shape
+            x_tail = x_tail.transpose(0, 2, 3, 1).reshape(1, T_d, C_d * F_d)
+            chunk_token_lens.append(int(T_d))
+            chunk_conv_outputs.append(x_tail[0])
 
         # Concatenate all chunks and project to d_model
         x = mx.concatenate(chunk_conv_outputs, axis=0)  # (total_tokens, dhs*freq_down)

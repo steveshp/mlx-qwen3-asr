@@ -330,6 +330,105 @@ def _run_streaming_quality_gate(
     )
 
 
+def _run_streaming_manifest_quality_gate(
+    *,
+    repo: Path,
+    python_bin: str,
+    strict_release: bool,
+) -> StepResult:
+    manifest_jsonl = os.environ.get("STREAMING_MANIFEST_QUALITY_EVAL_JSONL")
+    if not manifest_jsonl:
+        return StepResult(
+            name="streaming-manifest-quality",
+            cmd="scripts/eval_streaming_manifest.py --manifest-jsonl <path>",
+            passed=False,
+            duration_sec=0.0,
+            returncode=1,
+            note=(
+                "RUN_STREAMING_MANIFEST_QUALITY_EVAL=1 requires "
+                "STREAMING_MANIFEST_QUALITY_EVAL_JSONL"
+            ),
+        )
+
+    manifest_path = Path(manifest_jsonl).expanduser().resolve()
+    if not manifest_path.exists():
+        return StepResult(
+            name="streaming-manifest-quality",
+            cmd="scripts/eval_streaming_manifest.py --manifest-jsonl <path>",
+            passed=False,
+            duration_sec=0.0,
+            returncode=1,
+            note=f"Manifest not found: {manifest_path}",
+        )
+
+    try:
+        missing_audio = _missing_manifest_audio_paths(manifest_path)
+    except RuntimeError as exc:
+        return StepResult(
+            name="streaming-manifest-quality",
+            cmd="scripts/eval_streaming_manifest.py --manifest-jsonl <path>",
+            passed=False,
+            duration_sec=0.0,
+            returncode=1,
+            note=str(exc),
+        )
+
+    if missing_audio:
+        return StepResult(
+            name="streaming-manifest-quality",
+            cmd="scripts/eval_streaming_manifest.py --manifest-jsonl <path>",
+            passed=False,
+            duration_sec=0.0,
+            returncode=1,
+            note=(
+                "Streaming manifest references missing local audio files "
+                f"(example: {missing_audio[0]}). Build/capture the dataset manifest first."
+            ),
+        )
+
+    cmd = [
+        python_bin,
+        str(repo / "scripts" / "eval_streaming_manifest.py"),
+        "--manifest-jsonl",
+        str(manifest_path),
+        "--model",
+        os.environ.get("STREAMING_MANIFEST_QUALITY_EVAL_MODEL", "Qwen/Qwen3-ASR-0.6B"),
+        "--dtype",
+        os.environ.get("STREAMING_MANIFEST_QUALITY_EVAL_DTYPE", "float16"),
+        "--endpointing-modes",
+        os.environ.get(
+            "STREAMING_MANIFEST_QUALITY_EVAL_ENDPOINTING_MODES",
+            "fixed,energy",
+        ),
+        "--chunk-size-sec",
+        os.environ.get("STREAMING_MANIFEST_QUALITY_EVAL_CHUNK_SIZE_SEC", "2.0"),
+        "--max-context-sec",
+        os.environ.get("STREAMING_MANIFEST_QUALITY_EVAL_MAX_CONTEXT_SEC", "30.0"),
+        "--finalization-mode",
+        os.environ.get("STREAMING_MANIFEST_QUALITY_EVAL_FINALIZATION_MODE", "accuracy"),
+        "--unfixed-chunk-num",
+        os.environ.get("STREAMING_MANIFEST_QUALITY_EVAL_UNFIXED_CHUNK_NUM", "2"),
+        "--unfixed-token-num",
+        os.environ.get("STREAMING_MANIFEST_QUALITY_EVAL_UNFIXED_TOKEN_NUM", "5"),
+        "--fail-partial-stability-below",
+        os.environ.get("STREAMING_MANIFEST_QUALITY_EVAL_FAIL_PARTIAL_STABILITY_BELOW", "0.85"),
+        "--fail-rewrite-rate-above",
+        os.environ.get("STREAMING_MANIFEST_QUALITY_EVAL_FAIL_REWRITE_RATE_ABOVE", "0.30"),
+        "--fail-finalization-delta-chars-above",
+        os.environ.get(
+            "STREAMING_MANIFEST_QUALITY_EVAL_FAIL_FINALIZATION_DELTA_CHARS_ABOVE",
+            "32",
+        ),
+    ]
+    limit = os.environ.get("STREAMING_MANIFEST_QUALITY_EVAL_LIMIT")
+    if limit:
+        cmd.extend(["--limit", limit])
+    json_output = os.environ.get("STREAMING_MANIFEST_QUALITY_EVAL_JSON_OUTPUT")
+    if json_output:
+        cmd.extend(["--json-output", json_output])
+    return _run(cmd, repo)
+
+
 def _missing_manifest_audio_paths(
     manifest_jsonl: Path,
     *,
@@ -788,6 +887,17 @@ def run_gate(mode: str, repo: Path, python_bin: str) -> tuple[list[StepResult], 
         ) == "1":
             steps.append(
                 _run_streaming_quality_gate(
+                    repo=repo,
+                    python_bin=python_bin,
+                    strict_release=strict_release,
+                )
+            )
+        if os.environ.get(
+            "RUN_STREAMING_MANIFEST_QUALITY_EVAL",
+            "0",
+        ) == "1":
+            steps.append(
+                _run_streaming_manifest_quality_gate(
                     repo=repo,
                     python_bin=python_bin,
                     strict_release=strict_release,

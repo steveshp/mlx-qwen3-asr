@@ -87,11 +87,15 @@ make broad "production-grade across languages/conditions" quality claims.
 
 ## Remaining Gaps (prioritized)
 
-1. `P1` Streaming quality dataset lane (committed artifacts)
-   - Why: instrumentation is in place but no versioned benchmark dataset.
-   - Status: strict release now gates fixture-level streaming quality; next step
-     is multi-file versioned dataset artifacts.
+1. `P1` Streaming quality dataset artifact publication
+   - Why: the lane is now command-complete, but we still need regularly
+     published/versioned benchmark artifacts from maintained manifests.
+   - Status:
+     - implemented multi-file evaluator: `scripts/eval_streaming_manifest.py`,
+     - quality-gate hook available: `RUN_STREAMING_MANIFEST_QUALITY_EVAL=1`,
+     - strict release still gates single-fixture streaming by default.
 
 ## Follow-up Order
 
-1. Commit streaming-quality versioned artifacts.
+1. Run the streaming-manifest lane on maintained manifests and commit the
+   resulting benchmark artifacts under `docs/benchmarks/`.

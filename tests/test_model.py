@@ -5,9 +5,11 @@ fast and avoid needing real model weights.
 """
 
 import mlx.core as mx
+import mlx.nn as nn
 import numpy as np
 import pytest
 
+import mlx_qwen3_asr.encoder as encoder_module
 from mlx_qwen3_asr.config import AudioEncoderConfig, Qwen3ASRConfig, TextDecoderConfig
 from mlx_qwen3_asr.model import (
     AudioAttention,
@@ -282,6 +284,94 @@ class TestAudioEncoderGetOutputLengths:
             mx.eval(encoded, predicted)
             assert int(predicted.item()) == encoded.shape[0]
 
+
+# ---------------------------------------------------------------------------
+# AudioEncoder._encode_single optimization parity
+# ---------------------------------------------------------------------------
+
+
+def _encode_single_reference_loop(
+    encoder: AudioEncoder,
+    mel: mx.array,
+    *,
+    chunk_size: int,
+    n_window_infer: int,
+) -> mx.array:
+    """Reference chunk-by-chunk implementation for encoder parity tests."""
+    total_frames = mel.shape[1]
+    chunk_token_lens: list[int] = []
+    chunk_conv_outputs: list[mx.array] = []
+
+    for start in range(0, total_frames, chunk_size):
+        end = min(start + chunk_size, total_frames)
+        chunk_mel = mel[:, start:end]
+        x = encoder._apply_conv_stem(chunk_mel[None, :, :, None])
+        _, F_d, T_d, C_d = x.shape
+        x = x.transpose(0, 2, 3, 1).reshape(1, T_d, C_d * F_d)
+        chunk_token_lens.append(int(T_d))
+        chunk_conv_outputs.append(x[0])
+
+    x = mx.concatenate(chunk_conv_outputs, axis=0)
+    x = encoder.conv_out(x)
+
+    max_chunk_tokens = max(chunk_token_lens)
+    pe = encoder.embed_positions(max_chunk_tokens)
+    pe_parts = [pe[:ct] for ct in chunk_token_lens]
+    x = x + mx.concatenate(pe_parts, axis=0)
+
+    total_tokens = int(x.shape[0])
+    tokens_per_full_chunk = int(chunk_token_lens[0])
+    tokens_per_window = tokens_per_full_chunk * (n_window_infer // chunk_size)
+
+    cu_seqlens: list[int] = [0]
+    pos = 0
+    while pos < total_tokens:
+        window_end = min(pos + tokens_per_window, total_tokens)
+        cu_seqlens.append(window_end)
+        pos = window_end
+
+    x = x[None, :, :]
+    num_windows = len(cu_seqlens) - 1
+    if num_windows >= encoder_module._WINDOWED_SEGMENT_MIN_WINDOWS:
+        x = _apply_windowed_encoder_layers(x, encoder.layers, cu_seqlens)
+    else:
+        mask = _create_windowed_mask(total_tokens, cu_seqlens, x.dtype)
+        for layer in encoder.layers:
+            x = layer(x, mask=mask)
+
+    x = x[0]
+    x = encoder.ln_post(x)
+    x = nn.gelu(encoder.proj1(x))
+    x = encoder.proj2(x)
+    return x
+
+
+class TestAudioEncoderEncodeSingleOptimized:
+    def test_matches_reference_loop_with_tail_chunk(self):
+        cfg = _tiny_audio_config()
+        encoder = AudioEncoder(cfg)
+        chunk_size = cfg.n_window * 2
+
+        # Force multiple full chunks + a tail chunk.
+        mel = mx.random.normal((cfg.num_mel_bins, chunk_size * 3 + 37))
+        optimized = encoder._encode_single(
+            mel,
+            chunk_size=chunk_size,
+            n_window_infer=cfg.n_window_infer,
+        )
+        reference = _encode_single_reference_loop(
+            encoder,
+            mel,
+            chunk_size=chunk_size,
+            n_window_infer=cfg.n_window_infer,
+        )
+        mx.eval(optimized, reference)
+        np.testing.assert_allclose(
+            np.array(optimized),
+            np.array(reference),
+            atol=1e-5,
+            rtol=1e-5,
+        )
 
 # ---------------------------------------------------------------------------
 # TextAttention
