@@ -10,7 +10,7 @@
 
 ## Agent Memory
 
-- [ ] Non-trivial work was logged in `docs/memory/events/YYYY-MM.md`
+- [ ] Non-trivial and meaningful work was logged in `docs/memory/events/YYYY-MM.md`
 - [ ] `docs/memory/operating-memory.md` updated if active guidance changed
 - Event IDs referenced in this PR:
 

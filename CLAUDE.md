@@ -222,7 +222,8 @@ Start memory workflow at `docs/memory/operating-memory.md` (single front door).
 
 Guidance:
 
-1. For non-trivial work, append an event in `docs/memory/events/YYYY-MM.md`.
+1. For non-trivial and meaningful work, append an event in
+   `docs/memory/events/YYYY-MM.md`.
 2. Minimum bar for event entries: include `Decision`, `Reuse next time`, and
    `Evidence`.
 3. Update `docs/memory/operating-memory.md` only when active guidance changes.
