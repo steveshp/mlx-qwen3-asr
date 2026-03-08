@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Qwen3 ASR Mic Console</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero-card">
+        <p class="eyebrow">애플 실리콘 로컬 ASR</p>
+        <h1>타미온 인공지능 ASR Server</h1>
+        <p class="hero-copy">
+          브라우저 마이크로 녹음한 뒤 로컬 추론 서버로 전송하고,
+          감지 언어와 처리 시간을 포함한 전사 결과를 바로 확인할 수 있습니다.
+        </p>
+        <div class="status-row">
+          <span id="server-status" class="pill pill-muted">서버 확인 중</span>
+          <span id="recorder-status" class="pill pill-muted">녹음 대기</span>
+        </div>
+      </section>
+
+      <section class="panel-grid">
+        <div class="panel control-panel">
+          <div class="panel-header">
+            <h2>녹음</h2>
+            <p>마이크 녹음은 브라우저 안에서 로컬로 처리됩니다.</p>
+          </div>
+
+          <label class="field">
+            <span>언어</span>
+            <select id="language">
+              <option value="">자동 감지</option>
+              <option value="Korean">한국어</option>
+              <option value="English">영어</option>
+              <option value="Chinese">중국어</option>
+              <option value="Japanese">일본어</option>
+            </select>
+          </label>
+
+          <div class="button-row">
+            <button id="record-btn" class="primary-button" type="button">녹음 시작</button>
+            <button id="clear-btn" class="ghost-button" type="button">지우기</button>
+          </div>
+          <div class="button-row">
+            <button id="stream-btn" class="primary-button secondary-accent" type="button">스트리밍 시작</button>
+            <span id="stream-status" class="pill pill-muted">스트리밍 대기</span>
+          </div>
+
+          <div class="meter-wrap">
+            <div id="level-meter" class="level-meter"></div>
+          </div>
+
+          <div class="meta-grid">
+            <div class="meta-card">
+              <span class="meta-label">녹음 길이</span>
+              <strong id="clip-length">0.0s</strong>
+            </div>
+            <div class="meta-card">
+              <span class="meta-label">감지 언어</span>
+              <strong id="detected-language">-</strong>
+            </div>
+            <div class="meta-card">
+              <span class="meta-label">추론 시간</span>
+              <strong id="inference-time">-</strong>
+            </div>
+            <div class="meta-card">
+              <span class="meta-label">부분 전사</span>
+              <strong id="partial-mode">비활성</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel transcript-panel">
+          <div class="panel-header">
+            <h2>전사 결과</h2>
+            <p><code>/transcribe</code> 응답 결과입니다.</p>
+          </div>
+          <textarea
+            id="transcript"
+            class="transcript-box"
+            placeholder="녹음을 마치면 전사 결과가 여기에 표시됩니다."
+            spellcheck="false"
+          ></textarea>
+          <p id="message" class="message-line">녹음 시작을 누른 뒤 마이크에 말해 주세요.</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+  </html>
