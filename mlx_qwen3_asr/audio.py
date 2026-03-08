@@ -144,13 +144,15 @@ def _load_audio_file(path: str, sr: int) -> np.ndarray:
     if wav_audio is not None:
         return wav_audio.astype(np.float32, copy=False)
 
+    # Prefix relative paths starting with "-" to prevent ffmpeg argument injection
+    safe_path = f"./{path}" if path.startswith("-") else path
     cmd = [
         "ffmpeg",
         "-nostdin",
         "-threads",
         "0",
         "-i",
-        path,
+        safe_path,
         "-f",
         "s16le",
         "-ac",

@@ -682,7 +682,7 @@ def main():
                 print(f"\n{result.text}")
         elapsed = time.time() - mic_started
         if args.verbose:
-            duration = elapsed
+            duration = len(state.audio_accum) / args.mic_sample_rate
             rtf = (elapsed / duration) if duration > 0 else 0.0
             print(f"\nLanguage: {result.language}", file=sys.stderr)
             print(f"Time: {elapsed:.2f}s", file=sys.stderr)

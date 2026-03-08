@@ -127,10 +127,42 @@ def _load_model_with_resolved_path(
             group_size = int(quant_cfg.get("group_size", 64))
         else:
             bits, group_size = _infer_quantization_params(weights, model)
-        nn.quantize(model, bits=bits, group_size=group_size)
 
-    # Load weights into model
-    model.load_weights(list(weights.items()))
+        # Detect partial quantization (e.g. mlx-community models: decoder only)
+        encoder_quantized = any(
+            k.startswith("audio_tower.") and k.endswith(".scales") for k in weights
+        )
+        if encoder_quantized:
+            # Fully quantized — quantize entire model
+            nn.quantize(model, bits=bits, group_size=group_size)
+        else:
+            # Partially quantized — skip encoder (audio_tower)
+            nn.quantize(
+                model,
+                bits=bits,
+                group_size=group_size,
+                class_predicate=lambda path, m: (
+                    isinstance(m, (nn.Linear, nn.Embedding))
+                    and not path.startswith("audio_tower")
+                ),
+            )
+
+    # Handle weight-tied lm_head: if lm_head weights are absent,
+    # load other weights first then tie from embed_tokens.
+    lm_head_missing = "lm_head.weight" not in weights and "model.embed_tokens.weight" in weights
+    if lm_head_missing:
+        # Remove any stale lm_head keys and load non-lm_head weights
+        load_items = [(k, v) for k, v in weights.items() if not k.startswith("lm_head.")]
+        model.load_weights(load_items, strict=False)
+        # Re-tie lm_head from quantized embed_tokens
+        model.lm_head.weight = model.model.embed_tokens.weight
+        if hasattr(model.model.embed_tokens, "scales"):
+            model.lm_head.scales = model.model.embed_tokens.scales
+        if hasattr(model.model.embed_tokens, "biases"):
+            model.lm_head.biases = model.model.embed_tokens.biases
+    else:
+        # Load weights into model
+        model.load_weights(list(weights.items()))
 
     # Cast to target dtype
     if dtype != mx.float32 and not quantized:

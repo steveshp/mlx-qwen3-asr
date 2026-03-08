@@ -1,0 +1,13 @@
+# MLX Qwen3-ASR API Server dependencies
+# Install: pip install -r requirements.txt
+
+# Core ASR
+mlx>=0.18.0
+numpy
+regex
+huggingface-hub>=0.20.0
+
+# API Server
+fastapi>=0.100.0
+uvicorn>=0.20.0
+python-multipart

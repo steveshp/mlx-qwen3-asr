@@ -6,22 +6,8 @@ import json
 import re
 from typing import Callable
 
+from .transcribe import CJK_LANG_ALIASES as _CJK_LANG_ALIASES
 from .transcribe import TranscriptionResult
-
-_CJK_LANG_ALIASES = {
-    "chinese",
-    "zh",
-    "zh-cn",
-    "zh-tw",
-    "cantonese",
-    "yue",
-    "japanese",
-    "ja",
-    "jp",
-    "korean",
-    "ko",
-    "kr",
-}
 
 
 def write_txt(result: TranscriptionResult, output_path: str) -> None:
