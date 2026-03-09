@@ -31,6 +31,12 @@ let allCapturedPcm = [];
 let batchCorrectionTimer = null;
 let batchInFlight = false;
 
+// Sliding window: transcribe all audio up to MAX_WINDOW_SEC.
+// When buffer exceeds this, trim oldest audio & lock previous text as confirmed.
+let confirmedText = "";
+const MAX_WINDOW_SEC = 30;
+const MAX_WINDOW_SAMPLES = MAX_WINDOW_SEC * 16000;
+
 const BATCH_INTERVAL_MS = 3000;
 
 function setStatus(element, text, tone) {
@@ -232,6 +238,7 @@ function cleanupStreaming() {
   if (batchCorrectionTimer) { clearInterval(batchCorrectionTimer); batchCorrectionTimer = null; }
   allCapturedPcm = [];
   batchInFlight = false;
+  confirmedText = "";
   if (vadInstance && vadListening) { vadInstance.pause(); vadListening = false; }
   streamButton.disabled = false;
   streamButton.textContent = "스트리밍 시작";
@@ -249,8 +256,21 @@ async function doBatchCorrection() {
 
   batchInFlight = true;
 
-  // Merge all PCM
-  const merged = new Float32Array(totalLen);
+  // If buffer exceeds window, trim oldest audio and lock current text
+  if (totalLen > MAX_WINDOW_SAMPLES) {
+    const excess = totalLen - MAX_WINDOW_SAMPLES;
+    let dropped = 0;
+    while (allCapturedPcm.length > 0 && dropped + allCapturedPcm[0].length <= excess) {
+      dropped += allCapturedPcm.shift().length;
+    }
+    // Lock whatever was on screen as confirmed text (will be prepended)
+    confirmedText = transcriptBox.value;
+    console.log(`[batch] trimmed ${(dropped/16000).toFixed(1)}s, locked ${confirmedText.length} chars`);
+  }
+
+  // Merge all remaining PCM (up to ~30s)
+  const windowLen = allCapturedPcm.reduce((sum, f) => sum + f.length, 0);
+  const merged = new Float32Array(windowLen);
   let offset = 0;
   for (const f of allCapturedPcm) {
     merged.set(f, offset);
@@ -264,17 +284,23 @@ async function doBatchCorrection() {
   const endpoint = language ? `/transcribe?language=${encodeURIComponent(language)}` : "/transcribe";
 
   try {
-    console.log(`[batch] sending ${(totalLen/16000).toFixed(1)}s audio...`);
-    partialMode.textContent = "보정 중...";
+    console.log(`[batch] sending ${(windowLen/16000).toFixed(1)}s audio...`);
+    partialMode.textContent = "전사 중...";
     const response = await fetch(endpoint, { method: "POST", body: formData });
     if (!response.ok) throw new Error(`batch failed: ${response.status}`);
     const payload = await response.json();
 
-    transcriptBox.value = payload.text || "";
+    const windowText = (payload.text || "").trim();
+    // Display: confirmed (locked old text) + window result
+    if (confirmedText) {
+      transcriptBox.value = confirmedText + "\n" + windowText;
+    } else {
+      transcriptBox.value = windowText;
+    }
     detectedLanguage.textContent = payload.language || "-";
     inferenceTime.textContent = payload.inference_time ? `${payload.inference_time}s` : "-";
-    partialMode.textContent = "보정 완료";
-    console.log(`[batch] result: ${(payload.text || "").slice(0, 80)}`);
+    partialMode.textContent = "전사 완료";
+    console.log(`[batch] result: ${windowText.slice(0, 80)}`);
   } catch (error) {
     console.error("[batch] error:", error.message);
   } finally {
@@ -294,8 +320,9 @@ async function startStreaming() {
 
     allCapturedPcm = [];
     batchInFlight = false;
+    confirmedText = "";
 
-    // Periodic batch correction every 5 seconds
+    // Periodic batch transcription every 3 seconds
     batchCorrectionTimer = setInterval(() => {
       if (streamingActive && !batchInFlight) {
         doBatchCorrection();
@@ -364,6 +391,7 @@ async function stopStreaming() {
 
   allCapturedPcm = [];
   batchInFlight = false;
+  // confirmedText is intentionally kept so transcript remains visible after stop
 }
 
 // ── Event listeners ──
@@ -394,6 +422,7 @@ streamButton.addEventListener("click", async () => {
 
 clearButton.addEventListener("click", () => {
   transcriptBox.value = "";
+  confirmedText = "";
   clipLength.textContent = "0.0s";
   detectedLanguage.textContent = "-";
   inferenceTime.textContent = "-";
