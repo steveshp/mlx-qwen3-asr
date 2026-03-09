@@ -21,13 +21,15 @@ MODEL_PATH = os.environ.get(
 )
 
 session: Any | None = None
+_inference_lock: asyncio.Lock | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global session
+    global session, _inference_lock
     from mlx_qwen3_asr import Session
 
+    _inference_lock = asyncio.Lock()
     print(f"Loading model from {MODEL_PATH} ...")
     start = time.time()
     session = Session(model=MODEL_PATH)
@@ -62,7 +64,8 @@ async def transcribe_audio(
         tmp_path = tmp.name
 
     try:
-        result = await asyncio.to_thread(session.transcribe, tmp_path, language=language)
+        async with _inference_lock:
+            result = await asyncio.to_thread(session.transcribe, tmp_path, language=language)
         elapsed = time.time() - start
 
         return JSONResponse(content={
@@ -92,7 +95,8 @@ async def transcribe_batch(
 
         try:
             start = time.time()
-            result = await asyncio.to_thread(session.transcribe, tmp_path, language=language)
+            async with _inference_lock:
+                result = await asyncio.to_thread(session.transcribe, tmp_path, language=language)
             elapsed = time.time() - start
             results.append({
                 "filename": file.filename,
