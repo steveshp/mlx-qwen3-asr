@@ -24,8 +24,7 @@ export default function HeroCard({ serverStatus, modelName, recorderStatus, reco
       <p className="eyebrow">애플 실리콘 로컬 ASR</p>
       <h1>타미온 인공지능 ASR Server</h1>
       <p className="hero-copy">
-        Apple Silicon에서 실행되는 로컬 음성 인식 서버입니다.
-        Qwen3-ASR {modelName} 모델을 사용하여 실시간 전사를 제공합니다.
+        브라우저 마이크로 녹음하거나 실시간 스트리밍으로 음성을 전사합니다.
       </p>
       <div className="status-row">
         <Pill variant={server.variant}>{server.label}</Pill>

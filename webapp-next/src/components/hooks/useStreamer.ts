@@ -5,19 +5,18 @@ import type { ASRAction } from './useASRState';
 
 const BATCH_INTERVAL_MS = 3000;
 const SEGMENT_SEC = 30;
-const SEGMENT_SAMPLES = SEGMENT_SEC * 16000;
 const SAMPLE_RATE = 16000;
 
-/** Convert Float32 PCM to 16-bit WAV Blob. */
+/** Convert Float32 PCM to 16-bit WAV Blob. Uses Int16Array for fast conversion. */
 function pcmToWavBlob(float32: Float32Array, sampleRate: number): Blob {
   const numSamples = float32.length;
-  const buffer = new ArrayBuffer(44 + numSamples * 2);
-  const view = new DataView(buffer);
 
+  // WAV header (44 bytes)
+  const header = new ArrayBuffer(44);
+  const view = new DataView(header);
   const writeStr = (off: number, s: string) => {
     for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i));
   };
-
   writeStr(0, 'RIFF');
   view.setUint32(4, 36 + numSamples * 2, true);
   writeStr(8, 'WAVE');
@@ -32,24 +31,24 @@ function pcmToWavBlob(float32: Float32Array, sampleRate: number): Blob {
   writeStr(36, 'data');
   view.setUint32(40, numSamples * 2, true);
 
-  let offset = 44;
+  // PCM data — typed array avoids per-sample DataView.setInt16 overhead
+  const pcm16 = new Int16Array(numSamples);
   for (let i = 0; i < numSamples; i++) {
     const s = Math.max(-1, Math.min(1, float32[i]));
-    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
-    offset += 2;
+    pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
   }
 
-  return new Blob([buffer], { type: 'audio/wav' });
+  return new Blob([header, pcm16.buffer], { type: 'audio/wav' });
 }
 
 /** Transcribe a PCM buffer via POST /transcribe. Supports AbortSignal for cancellation. */
 async function transcribeBuffer(
   pcm: Float32Array[],
+  totalLen: number,
   language: string,
   sampleRate: number,
   signal?: AbortSignal,
 ): Promise<{ text: string; language: string; inferenceTime: string } | null> {
-  const totalLen = pcm.reduce((sum, f) => sum + f.length, 0);
   if (totalLen < sampleRate) return null;
 
   const merged = new Float32Array(totalLen);
@@ -140,7 +139,7 @@ export function useStreamer(dispatch: Dispatch<ASRAction>, language: string): St
         const bufferSnapshot = [...pcmChunksRef.current];
         pcmChunksRef.current = []; // Clear immediately so new audio goes to new segment
 
-        const result = await transcribeBuffer(bufferSnapshot, languageRef.current, sr, abortRef.current.signal);
+        const result = await transcribeBuffer(bufferSnapshot, totalLen, languageRef.current, sr, abortRef.current.signal);
         // Only update display if still active (not stopped)
         if (result?.text && activeRef.current) {
           segmentsRef.current.push(result.text);
@@ -160,7 +159,7 @@ export function useStreamer(dispatch: Dispatch<ASRAction>, language: string): St
 
     try {
       const bufferSnapshot = [...pcmChunksRef.current];
-      const result = await transcribeBuffer(bufferSnapshot, languageRef.current, sr, abortRef.current.signal);
+      const result = await transcribeBuffer(bufferSnapshot, totalLen, languageRef.current, sr, abortRef.current.signal);
       // Only update display if still active (not stopped while awaiting)
       if (result && activeRef.current) {
         displayText(result.text, result.language, result.inferenceTime, '전사 완료');
@@ -243,8 +242,7 @@ export function useStreamer(dispatch: Dispatch<ASRAction>, language: string): St
           peak = Math.max(peak, Math.abs(sample - 128));
         }
         const pct = Math.max(1, Math.min(100, Math.round((peak / 128) * 100)));
-        dispatch({ type: 'SET_LEVEL', pct });
-        dispatch({ type: 'SET_DURATION', seconds: (Date.now() - startTimeRef.current) / 1000 });
+        dispatch({ type: 'SET_METER', pct, seconds: (Date.now() - startTimeRef.current) / 1000 });
       }, 80);
 
       timerRef.current = setInterval(() => {
@@ -283,7 +281,7 @@ export function useStreamer(dispatch: Dispatch<ASRAction>, language: string): St
       if (totalLen >= sr) {
         dispatch({ type: 'STREAM_STATUS', partialMode: '최종 전사 중...' });
         try {
-          const result = await transcribeBuffer(pcmChunksRef.current, languageRef.current, sr);
+          const result = await transcribeBuffer(pcmChunksRef.current, totalLen, languageRef.current, sr);
           if (result?.text) {
             segmentsRef.current.push(result.text);
             displayText('', result.language, result.inferenceTime, '전사 완료');

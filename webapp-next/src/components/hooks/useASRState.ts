@@ -32,6 +32,7 @@ export type ASRAction =
   | { type: 'RECORD_DONE'; text: string; language: string; inferenceTime: string }
   | { type: 'SET_LEVEL'; pct: number }
   | { type: 'SET_DURATION'; seconds: number }
+  | { type: 'SET_METER'; pct: number; seconds: number }
   | { type: 'SET_LANGUAGE'; value: string }
   | { type: 'CLEAR_TRANSCRIPT' }
   | { type: 'STREAM_START' }
@@ -64,7 +65,8 @@ function asrReducer(state: AppState, action: ASRAction): AppState {
         ...state,
         serverStatus: 'ok',
         modelName: action.modelName,
-        message: `모델 로드 완료: ${action.modelName}`,
+        message: `모델 로드 완료: TAMION ASR`,
+        // message: `모델 로드 완료: ${action.modelName}`,
       };
 
     case 'SERVER_ERROR':
@@ -108,6 +110,9 @@ function asrReducer(state: AppState, action: ASRAction): AppState {
 
     case 'SET_DURATION':
       return { ...state, clipDuration: action.seconds };
+
+    case 'SET_METER':
+      return { ...state, levelPct: action.pct, clipDuration: action.seconds };
 
     case 'SET_LANGUAGE':
       return { ...state, language: action.value };
