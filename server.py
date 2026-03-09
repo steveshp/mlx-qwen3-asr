@@ -86,7 +86,7 @@ async def stream_transcribe(websocket: WebSocket):
 
                 if action == "start":
                     language = payload.get("language") or None
-                    chunk_size_ms = max(250, int(payload.get("chunk_size_ms", 2000)))
+                    chunk_size_ms = max(250, int(payload.get("chunk_size_ms", 4000)))
                     state = session.init_streaming(
                         language=language,
                         sample_rate=16000,
