@@ -10,8 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 import uvicorn
 from fastapi import FastAPI, File, Query, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 
 if TYPE_CHECKING:
     from mlx_qwen3_asr import Session
@@ -20,7 +19,6 @@ MODEL_PATH = os.environ.get(
     "ASR_MODEL_PATH",
     os.path.expanduser("~/Downloads/Qwen3-ASR-1.7B-8bit"),
 )
-STATIC_DIR = Path(__file__).parent / "webapp"
 
 session: Any | None = None
 
@@ -44,15 +42,6 @@ app = FastAPI(
     version="0.2.0",
     lifespan=lifespan,
 )
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-
-
-@app.get("/", include_in_schema=False)
-def index():
-    """Serve the microphone transcription web app."""
-    return FileResponse(STATIC_DIR / "index.html")
-
-
 @app.get("/health")
 def health():
     return {"status": "ok", "model": MODEL_PATH}

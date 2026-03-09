@@ -7,6 +7,22 @@ const BATCH_INTERVAL_MS = 3000;
 const SEGMENT_SEC = 30;
 const SAMPLE_RATE = 16000;
 
+/** Audio constraints matching MicVAD defaults for consistent noise handling. */
+const AUDIO_CONSTRAINTS: MediaTrackConstraints = {
+  channelCount: 1,
+  echoCancellation: true,
+  autoGainControl: true,
+  noiseSuppression: true,
+};
+
+// MicVAD type (dynamic import to avoid SSR issues)
+type MicVADInstance = {
+  start: () => Promise<void>;
+  pause: () => Promise<void>;
+  destroy: () => Promise<void>;
+  listening: boolean;
+};
+
 /** Convert Float32 PCM to 16-bit WAV Blob. Uses Int16Array for fast conversion. */
 function pcmToWavBlob(float32: Float32Array, sampleRate: number): Blob {
   const numSamples = float32.length;
@@ -100,6 +116,9 @@ export function useStreamer(dispatch: Dispatch<ASRAction>, language: string): St
   const levelTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef(0);
   const languageRef = useRef(language);
+  const vadRef = useRef<MicVADInstance | null>(null);
+  const isSpeakingRef = useRef(false);
+  const speechEndBatchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   languageRef.current = language;
 
@@ -140,7 +159,6 @@ export function useStreamer(dispatch: Dispatch<ASRAction>, language: string): St
         pcmChunksRef.current = []; // Clear immediately so new audio goes to new segment
 
         const result = await transcribeBuffer(bufferSnapshot, totalLen, languageRef.current, sr, abortRef.current.signal);
-        // Only update display if still active (not stopped)
         if (result?.text && activeRef.current) {
           segmentsRef.current.push(result.text);
           displayText('', result.language, result.inferenceTime, '세그먼트 확정');
@@ -160,7 +178,6 @@ export function useStreamer(dispatch: Dispatch<ASRAction>, language: string): St
     try {
       const bufferSnapshot = [...pcmChunksRef.current];
       const result = await transcribeBuffer(bufferSnapshot, totalLen, languageRef.current, sr, abortRef.current.signal);
-      // Only update display if still active (not stopped while awaiting)
       if (result && activeRef.current) {
         displayText(result.text, result.language, result.inferenceTime, '전사 완료');
       }
@@ -175,12 +192,15 @@ export function useStreamer(dispatch: Dispatch<ASRAction>, language: string): St
   const cleanup = useCallback(() => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (levelTimerRef.current) { clearInterval(levelTimerRef.current); levelTimerRef.current = null; }
+    if (speechEndBatchRef.current) { clearTimeout(speechEndBatchRef.current); speechEndBatchRef.current = null; }
+    if (vadRef.current) { vadRef.current.destroy(); vadRef.current = null; }
     if (processorRef.current) { processorRef.current.disconnect(); processorRef.current = null; }
     if (sourceRef.current) { sourceRef.current.disconnect(); sourceRef.current = null; }
     if (streamRef.current) { streamRef.current.getTracks().forEach((t) => t.stop()); streamRef.current = null; }
     if (ctxRef.current) { ctxRef.current.close(); ctxRef.current = null; }
     analyserRef.current = null;
     activeRef.current = false;
+    isSpeakingRef.current = false;
     pcmChunksRef.current = [];
     segmentsRef.current = [];
     batchInFlightRef.current = false;
@@ -196,7 +216,46 @@ export function useStreamer(dispatch: Dispatch<ASRAction>, language: string): St
     if (!navigator.mediaDevices?.getUserMedia) return;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // If VAD exists from previous session, resume it instead of creating new
+      if (vadRef.current && streamRef.current) {
+        activeRef.current = true;
+        isSpeakingRef.current = false;
+        startTimeRef.current = Date.now();
+        pcmChunksRef.current = [];
+        segmentsRef.current = [];
+
+        dispatch({ type: 'STREAM_START' });
+
+        await vadRef.current.start();
+        console.log('VAD resumed');
+
+        // Restart timers
+        const analyser = analyserRef.current;
+        if (analyser) {
+          const data = new Uint8Array(analyser.frequencyBinCount);
+          levelTimerRef.current = setInterval(() => {
+            if (!analyserRef.current) return;
+            analyserRef.current.getByteTimeDomainData(data);
+            let peak = 0;
+            for (const sample of data) {
+              peak = Math.max(peak, Math.abs(sample - 128));
+            }
+            const pct = Math.max(1, Math.min(100, Math.round((peak / 128) * 100)));
+            dispatch({ type: 'SET_METER', pct, seconds: (Date.now() - startTimeRef.current) / 1000 });
+          }, 80);
+        }
+
+        timerRef.current = setInterval(() => {
+          if (activeRef.current && !batchInFlightRef.current && isSpeakingRef.current) {
+            batchPromiseRef.current = doBatch();
+          }
+        }, BATCH_INTERVAL_MS);
+
+        return;
+      }
+
+      // First time: create stream, audio pipeline, and VAD
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: AUDIO_CONSTRAINTS });
       streamRef.current = stream;
 
       const ctx = new AudioContext({ sampleRate: SAMPLE_RATE });
@@ -222,16 +281,74 @@ export function useStreamer(dispatch: Dispatch<ASRAction>, language: string): St
 
       processor.onaudioprocess = (e: AudioProcessingEvent) => {
         if (!activeRef.current) return;
+        // VAD gate: only accumulate PCM when speech is detected
+        if (!isSpeakingRef.current) return;
         const input = e.inputBuffer.getChannelData(0);
         pcmChunksRef.current.push(new Float32Array(input));
       };
 
       activeRef.current = true;
+      isSpeakingRef.current = false;
       startTimeRef.current = Date.now();
       pcmChunksRef.current = [];
       segmentsRef.current = [];
 
       dispatch({ type: 'STREAM_START' });
+
+      // Initialize Silero VAD — shared stream, custom pause/resume to keep tracks alive
+      try {
+        const { MicVAD } = await import('@ricky0123/vad-web');
+        const sharedStream = stream;
+        const vad = await MicVAD.new({
+          baseAssetPath: '/',
+          onnxWASMBasePath: '/',
+          startOnLoad: false,
+          // Share AudioContext and mic stream — single context, single stream
+          audioContext: ctx,
+          getStream: () => Promise.resolve(sharedStream),
+          // Custom pause: don't stop tracks (shared stream stays alive)
+          pauseStream: async () => { /* noop — keep stream alive */ },
+          // Custom resume: return the same shared stream
+          resumeStream: async () => sharedStream,
+          onSpeechStart: () => {
+            console.log('VAD: speech start');
+            isSpeakingRef.current = true;
+            if (speechEndBatchRef.current) {
+              clearTimeout(speechEndBatchRef.current);
+              speechEndBatchRef.current = null;
+            }
+            if (activeRef.current) {
+              dispatch({ type: 'STREAM_STATUS', partialMode: '음성 감지' });
+            }
+          },
+          onSpeechEnd: (audio) => {
+            console.log('VAD: speech end', audio.length, 'samples');
+            isSpeakingRef.current = false;
+            if (activeRef.current) {
+              dispatch({ type: 'STREAM_STATUS', partialMode: '대기 중' });
+              // Trigger batch after speech ends for responsiveness
+              if (!batchInFlightRef.current && pcmChunksRef.current.length > 0) {
+                speechEndBatchRef.current = setTimeout(() => {
+                  speechEndBatchRef.current = null;
+                  if (activeRef.current && !batchInFlightRef.current) {
+                    batchPromiseRef.current = doBatch();
+                  }
+                }, 300);
+              }
+            }
+          },
+          onVADMisfire: () => {
+            console.log('VAD: misfire');
+            isSpeakingRef.current = false;
+          },
+        });
+        await vad.start();
+        vadRef.current = vad;
+        console.log('VAD initialized (shared stream, default thresholds)');
+      } catch (err) {
+        console.warn('VAD init failed, falling back to always-on capture:', err);
+        isSpeakingRef.current = true;
+      }
 
       const data = new Uint8Array(analyser.frequencyBinCount);
       levelTimerRef.current = setInterval(() => {
@@ -246,7 +363,7 @@ export function useStreamer(dispatch: Dispatch<ASRAction>, language: string): St
       }, 80);
 
       timerRef.current = setInterval(() => {
-        if (activeRef.current && !batchInFlightRef.current) {
+        if (activeRef.current && !batchInFlightRef.current && isSpeakingRef.current) {
           batchPromiseRef.current = doBatch();
         }
       }, BATCH_INTERVAL_MS);
@@ -256,10 +373,16 @@ export function useStreamer(dispatch: Dispatch<ASRAction>, language: string): St
   }, [dispatch, doBatch, cleanup]);
 
   const stopStreaming = useCallback(async () => {
-    // 1. Stop capturing new audio
+    // 1. Stop capturing new audio, pause VAD (keep it alive for resume)
     activeRef.current = false;
+    isSpeakingRef.current = false;
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (levelTimerRef.current) { clearInterval(levelTimerRef.current); levelTimerRef.current = null; }
+    if (speechEndBatchRef.current) { clearTimeout(speechEndBatchRef.current); speechEndBatchRef.current = null; }
+    if (vadRef.current) {
+      await vadRef.current.pause();
+      console.log('VAD paused');
+    }
 
     // 2. Cancel any in-flight batch request
     if (abortRef.current) {
@@ -292,12 +415,6 @@ export function useStreamer(dispatch: Dispatch<ASRAction>, language: string): St
       }
     }
 
-    // 5. Cleanup audio resources
-    if (processorRef.current) { processorRef.current.disconnect(); processorRef.current = null; }
-    if (sourceRef.current) { sourceRef.current.disconnect(); sourceRef.current = null; }
-    if (streamRef.current) { streamRef.current.getTracks().forEach((t) => t.stop()); streamRef.current = null; }
-    if (ctxRef.current) { ctxRef.current.close(); ctxRef.current = null; }
-    analyserRef.current = null;
     pcmChunksRef.current = [];
     batchInFlightRef.current = false;
 
