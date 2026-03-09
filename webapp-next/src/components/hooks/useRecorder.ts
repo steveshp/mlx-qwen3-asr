@@ -75,7 +75,13 @@ export function useRecorder(dispatch: Dispatch<ASRAction>, language: string): Re
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          autoGainControl: true,
+          noiseSuppression: true,
+        },
+      });
       audioStreamRef.current = stream;
 
       const ctx = new AudioContext();
