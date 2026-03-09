@@ -3,15 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "postinstall": "node scripts/copy-vad-assets.js",
     "dev": "next dev",
     "build": "next build",
     "start": "next start"
   },
   "dependencies": {
-    "@ricky0123/vad-react": "^0.0.36",
     "next": "16.1.6",
-    "onnxruntime-web": "^1.24.3",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },

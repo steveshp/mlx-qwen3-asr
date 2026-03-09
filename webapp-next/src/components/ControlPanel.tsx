@@ -1,9 +1,7 @@
 'use client';
 
-import Pill from './Pill';
 import LevelMeter from './LevelMeter';
 import MetaCard from './MetaCard';
-import type { PillVariant } from './Pill';
 
 interface ControlPanelProps {
   language: string;
@@ -16,13 +14,11 @@ interface ControlPanelProps {
   streamDisabled: boolean;
   streamActive: boolean;
   onStream: () => void;
-  streamStatusVariant: PillVariant;
-  streamStatusLabel: string;
+  streamPartialMode: string;
   levelPct: number;
   clipDuration: string;
   detectedLanguage: string;
   inferenceTime: string;
-  partialMode: string;
   onClear: () => void;
 }
 
@@ -45,20 +41,18 @@ export default function ControlPanel({
   streamDisabled,
   streamActive,
   onStream,
-  streamStatusVariant,
-  streamStatusLabel,
+  streamPartialMode,
   levelPct,
   clipDuration,
   detectedLanguage,
   inferenceTime,
-  partialMode,
   onClear,
 }: ControlPanelProps) {
   return (
     <div className="panel">
       <div className="panel-header">
         <h2>음성 입력</h2>
-        <p>녹음 또는 스트리밍 모드를 선택하세요</p>
+        <p>녹음 또는 실시간 스트리밍 전사</p>
       </div>
 
       {/* Language selector */}
@@ -76,14 +70,21 @@ export default function ControlPanel({
         </select>
       </div>
 
-      {/* Record + Clear buttons */}
-      <div className="button-row">
+      {/* Record + Stream + Clear buttons */}
+      <div className="button-row-3">
         <button
           className={`primary-button${recordActive ? ' recording' : ''}`}
           disabled={recordDisabled}
           onClick={onRecord}
         >
           {recordLabel}
+        </button>
+        <button
+          className={`primary-button secondary-accent${streamActive ? ' recording' : ''}`}
+          disabled={streamDisabled}
+          onClick={onStream}
+        >
+          {streamLabel}
         </button>
         <button
           className="ghost-button"
@@ -93,17 +94,12 @@ export default function ControlPanel({
         </button>
       </div>
 
-      {/* Stream button + status */}
-      <div className="button-row" style={{ marginTop: 10 }}>
-        <button
-          className={`primary-button secondary-accent${streamActive ? ' recording' : ''}`}
-          disabled={streamDisabled}
-          onClick={onStream}
-        >
-          {streamLabel}
-        </button>
-        <Pill variant={streamStatusVariant}>{streamStatusLabel}</Pill>
-      </div>
+      {/* Stream partial mode indicator */}
+      {streamPartialMode && (
+        <div style={{ marginTop: 8 }}>
+          <span className="pill pill-warn">{streamPartialMode}</span>
+        </div>
+      )}
 
       {/* Level meter */}
       <LevelMeter pct={levelPct} />
@@ -113,7 +109,6 @@ export default function ControlPanel({
         <MetaCard label="길이" value={clipDuration} />
         <MetaCard label="언어" value={detectedLanguage} />
         <MetaCard label="추론" value={inferenceTime} />
-        <MetaCard label="모드" value={partialMode} />
       </div>
     </div>
   );

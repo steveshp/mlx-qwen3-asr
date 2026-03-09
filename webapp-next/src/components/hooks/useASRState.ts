@@ -4,14 +4,7 @@ import { useReducer } from 'react';
 
 // ── State types ──
 
-export type Mode =
-  | 'idle'
-  | 'recording'
-  | 'streaming_ready'
-  | 'speaking'
-  | 'silence_countdown'
-  | 'finalizing'
-  | 'refining';
+export type Mode = 'idle' | 'recording' | 'transcribing' | 'streaming';
 
 export type ServerStatus = 'checking' | 'ok' | 'error';
 
@@ -25,8 +18,8 @@ export interface AppState {
   clipDuration: number;
   levelPct: number;
   language: string;
-  partialMode: string;
   modelName: string;
+  streamPartialMode: string;
 }
 
 // ── Action types ──
@@ -37,19 +30,14 @@ export type ASRAction =
   | { type: 'RECORD_START' }
   | { type: 'RECORD_STOP' }
   | { type: 'RECORD_DONE'; text: string; language: string; inferenceTime: string }
-  | { type: 'STREAM_READY' }
-  | { type: 'STREAM_PARTIAL'; text: string; language: string }
-  | { type: 'STREAM_FINAL'; text: string; language: string }
-  | { type: 'STREAM_REFINED'; text: string; language: string }
-  | { type: 'STREAM_ERROR'; message: string }
-  | { type: 'STREAM_CLEANUP' }
-  | { type: 'VAD_SPEECH_START' }
-  | { type: 'VAD_SPEECH_END' }
-  | { type: 'VAD_MISFIRE' }
   | { type: 'SET_LEVEL'; pct: number }
   | { type: 'SET_DURATION'; seconds: number }
   | { type: 'SET_LANGUAGE'; value: string }
-  | { type: 'CLEAR_TRANSCRIPT' };
+  | { type: 'CLEAR_TRANSCRIPT' }
+  | { type: 'STREAM_START' }
+  | { type: 'STREAM_PARTIAL'; text: string; language: string; inferenceTime: string; partialMode: string }
+  | { type: 'STREAM_STATUS'; partialMode: string }
+  | { type: 'STREAM_STOP' };
 
 // ── Initial state ──
 
@@ -63,8 +51,8 @@ const initialState: AppState = {
   clipDuration: 0,
   levelPct: 0,
   language: '',
-  partialMode: '',
   modelName: '',
+  streamPartialMode: '',
 };
 
 // ── Reducer ──
@@ -76,7 +64,7 @@ function asrReducer(state: AppState, action: ASRAction): AppState {
         ...state,
         serverStatus: 'ok',
         modelName: action.modelName,
-        message: `Model loaded: ${action.modelName}`,
+        message: `모델 로드 완료: ${action.modelName}`,
       };
 
     case 'SERVER_ERROR':
@@ -94,13 +82,14 @@ function asrReducer(state: AppState, action: ASRAction): AppState {
         levelPct: 0,
         detectedLanguage: '',
         inferenceTime: '',
-        message: 'Recording... press stop when finished.',
+        message: '녹음 중... 완료되면 정지를 누르세요.',
       };
 
     case 'RECORD_STOP':
       return {
         ...state,
-        message: 'Uploading audio to ASR server...',
+        mode: 'transcribing',
+        message: '서버에 음성을 전송 중...',
       };
 
     case 'RECORD_DONE':
@@ -111,80 +100,7 @@ function asrReducer(state: AppState, action: ASRAction): AppState {
         detectedLanguage: action.language,
         inferenceTime: action.inferenceTime,
         levelPct: 0,
-        message: 'Transcription complete.',
-      };
-
-    case 'STREAM_READY':
-      return {
-        ...state,
-        mode: 'streaming_ready',
-        partialMode: 'VAD waiting',
-        message: 'Silero VAD active. Speak to begin transcription.',
-      };
-
-    case 'STREAM_PARTIAL':
-      return {
-        ...state,
-        transcript: action.text,
-        detectedLanguage: action.language,
-        partialMode: 'Live transcription',
-        message: 'Partial transcription updating...',
-      };
-
-    case 'STREAM_FINAL':
-      return {
-        ...state,
-        mode: 'refining',
-        transcript: action.text,
-        detectedLanguage: action.language,
-        partialMode: 'Refining',
-        message: 'Streaming complete. Batch refinement in progress...',
-      };
-
-    case 'STREAM_REFINED':
-      return {
-        ...state,
-        mode: 'idle',
-        transcript: action.text,
-        detectedLanguage: action.language,
-        partialMode: 'Refined',
-        message: 'Batch refinement complete.',
-      };
-
-    case 'STREAM_ERROR':
-      return {
-        ...state,
-        message: `Streaming error: ${action.message}`,
-      };
-
-    case 'STREAM_CLEANUP':
-      return {
-        ...state,
-        mode: 'idle',
-        levelPct: 0,
-        partialMode: '',
-        message: state.mode === 'idle' ? state.message : 'Streaming stopped.',
-      };
-
-    case 'VAD_SPEECH_START':
-      return {
-        ...state,
-        mode: 'speaking',
-        message: 'Speech detected.',
-      };
-
-    case 'VAD_SPEECH_END':
-      return {
-        ...state,
-        mode: 'streaming_ready',
-        message: '무음 감지. 계속 말씀하세요...',
-      };
-
-    case 'VAD_MISFIRE':
-      return {
-        ...state,
-        mode: 'streaming_ready',
-        message: 'Speech too short, ignoring.',
+        message: action.text ? '전사 완료.' : '전사 결과가 없습니다.',
       };
 
     case 'SET_LEVEL':
@@ -203,7 +119,41 @@ function asrReducer(state: AppState, action: ASRAction): AppState {
         clipDuration: 0,
         detectedLanguage: '',
         inferenceTime: '',
-        message: 'Transcript cleared.',
+        streamPartialMode: '',
+        message: '초기화 완료.',
+      };
+
+    case 'STREAM_START':
+      return {
+        ...state,
+        mode: 'streaming',
+        clipDuration: 0,
+        levelPct: 0,
+        detectedLanguage: '',
+        inferenceTime: '',
+        streamPartialMode: '캡처 중',
+        message: '마이크 캡처 중. 3초마다 자동 전사합니다.',
+      };
+
+    case 'STREAM_PARTIAL':
+      return {
+        ...state,
+        transcript: action.text,
+        detectedLanguage: action.language,
+        inferenceTime: action.inferenceTime,
+        streamPartialMode: action.partialMode,
+      };
+
+    case 'STREAM_STATUS':
+      return { ...state, streamPartialMode: action.partialMode };
+
+    case 'STREAM_STOP':
+      return {
+        ...state,
+        mode: 'idle',
+        levelPct: 0,
+        streamPartialMode: '',
+        message: state.transcript ? '전사 완료.' : '전사 결과가 없습니다.',
       };
 
     default:

@@ -118,6 +118,13 @@ h1 {
   margin-top: 18px;
 }
 
+.button-row-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 14px;
+  margin-top: 18px;
+}
+
 .meta-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-top: 18px;
@@ -318,7 +325,8 @@ select {
 @media (max-width: 860px) {
   .panel-grid,
   .meta-grid,
-  .button-row {
+  .button-row,
+  .button-row-3 {
     grid-template-columns: 1fr;
   }
 
