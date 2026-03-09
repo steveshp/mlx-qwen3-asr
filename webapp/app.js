@@ -22,22 +22,16 @@ let sourceNode = null;
 let levelTimer = null;
 let recordingStartedAt = 0;
 
-// Streaming state
-let streamSocket = null;
+// Streaming state (batch-only, no WebSocket)
 let streamingActive = false;
 let vadInstance = null;
 let vadListening = false;
-let flushTimer = null;
-let pendingFrames = [];
 
-// Periodic batch correction state
-let allCapturedPcm = [];       // All 16kHz PCM frames since stream start
+let allCapturedPcm = [];
 let batchCorrectionTimer = null;
-let batchInFlight = false;      // Prevent overlapping batch requests
-let correctedText = "";         // Latest batch-corrected text
-let correctedSamples = 0;       // How many samples have been batch-corrected
+let batchInFlight = false;
 
-const BATCH_INTERVAL_MS = 5000; // Batch correct every 5 seconds
+const BATCH_INTERVAL_MS = 3000;
 
 function setStatus(element, text, tone) {
   element.textContent = text;
@@ -124,17 +118,16 @@ function pcmToWavBlob(float32Array, sampleRate) {
   view.setUint32(4, 36 + numSamples * 2, true);
   writeString(8, "WAVE");
   writeString(12, "fmt ");
-  view.setUint32(16, 16, true);         // chunk size
-  view.setUint16(20, 1, true);          // PCM
-  view.setUint16(22, 1, true);          // mono
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
   view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true); // byte rate
-  view.setUint16(32, 2, true);          // block align
-  view.setUint16(34, 16, true);         // bits per sample
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
   writeString(36, "data");
   view.setUint32(40, numSamples * 2, true);
 
-  // Convert float32 [-1,1] to int16
   let offset = 44;
   for (let i = 0; i < numSamples; i++) {
     const s = Math.max(-1, Math.min(1, float32Array[i]));
@@ -228,25 +221,18 @@ async function submitRecording() {
   }
 }
 
-// ── Streaming mode ──
+// ── Streaming mode (batch-only, no WebSocket) ──
 //
-// Dual pipeline:
-//   1. WebSocket streaming → real-time partial text (fast, less accurate)
-//   2. Every 5s → POST accumulated PCM as WAV to /transcribe (accurate batch)
-//      → batch result replaces partial text
-// Manual stop → one final batch correction of all audio
+// No WebSocket streaming — avoids Metal GPU concurrent access crash.
+// VAD captures 16kHz audio. Every 5s, accumulated PCM → WAV → POST /transcribe.
+// Single model access at a time. Simple and stable.
 
 function cleanupStreaming() {
   streamingActive = false;
-  if (flushTimer) { clearInterval(flushTimer); flushTimer = null; }
   if (batchCorrectionTimer) { clearInterval(batchCorrectionTimer); batchCorrectionTimer = null; }
-  pendingFrames = [];
   allCapturedPcm = [];
   batchInFlight = false;
-  correctedText = "";
-  correctedSamples = 0;
   if (vadInstance && vadListening) { vadInstance.pause(); vadListening = false; }
-  if (streamSocket) { streamSocket.close(); streamSocket = null; }
   streamButton.disabled = false;
   streamButton.textContent = "스트리밍 시작";
   streamButton.classList.remove("recording");
@@ -255,7 +241,6 @@ function cleanupStreaming() {
   resetMeter();
 }
 
-// Send accumulated PCM to /transcribe for batch correction
 async function doBatchCorrection() {
   if (batchInFlight || allCapturedPcm.length === 0) return;
 
@@ -263,9 +248,8 @@ async function doBatchCorrection() {
   if (totalLen < 16000) return; // At least 1 second
 
   batchInFlight = true;
-  const snapshotLen = totalLen;
 
-  // Merge all PCM into one array
+  // Merge all PCM
   const merged = new Float32Array(totalLen);
   let offset = 0;
   for (const f of allCapturedPcm) {
@@ -273,7 +257,6 @@ async function doBatchCorrection() {
     offset += f.length;
   }
 
-  // Convert to WAV and POST
   const wavBlob = pcmToWavBlob(merged, 16000);
   const formData = new FormData();
   formData.append("file", wavBlob, "stream-batch.wav");
@@ -281,106 +264,22 @@ async function doBatchCorrection() {
   const endpoint = language ? `/transcribe?language=${encodeURIComponent(language)}` : "/transcribe";
 
   try {
-    console.log(`[batch] sending ${(totalLen/16000).toFixed(1)}s audio for correction...`);
+    console.log(`[batch] sending ${(totalLen/16000).toFixed(1)}s audio...`);
+    partialMode.textContent = "보정 중...";
     const response = await fetch(endpoint, { method: "POST", body: formData });
     if (!response.ok) throw new Error(`batch failed: ${response.status}`);
     const payload = await response.json();
 
-    correctedText = payload.text || "";
-    correctedSamples = snapshotLen;
+    transcriptBox.value = payload.text || "";
     detectedLanguage.textContent = payload.language || "-";
     inferenceTime.textContent = payload.inference_time ? `${payload.inference_time}s` : "-";
-
-    // Replace displayed text with batch-corrected version
-    transcriptBox.value = correctedText;
     partialMode.textContent = "보정 완료";
-    console.log(`[batch] corrected: ${correctedText.slice(0, 80)}`);
+    console.log(`[batch] result: ${(payload.text || "").slice(0, 80)}`);
   } catch (error) {
     console.error("[batch] error:", error.message);
   } finally {
     batchInFlight = false;
   }
-}
-
-function handleStreamMessage(event) {
-  const payload = JSON.parse(event.data);
-
-  if (payload.event === "ready") {
-    streamingActive = true;
-    streamButton.disabled = false;
-    streamButton.textContent = "스트리밍 종료";
-    streamButton.classList.add("recording");
-    setStatus(streamStatus, "실시간 전사 중", "pill-live");
-    partialMode.textContent = "실시간";
-    setMessage("실시간 전사 중. 5초마다 자동 보정합니다.");
-    recordingStartedAt = Date.now();
-    return;
-  }
-
-  if (payload.event === "partial") {
-    // Only show streaming partial if no batch correction yet or streaming is ahead
-    if (!batchInFlight) {
-      const streamText = payload.text || "";
-      // If batch-corrected text exists and streaming text is longer, show corrected + new part
-      if (correctedText && streamText.length > correctedText.length) {
-        transcriptBox.value = correctedText + streamText.slice(correctedText.length);
-      } else if (!correctedText) {
-        transcriptBox.value = streamText;
-      }
-      // If streaming text is shorter/same as corrected, keep corrected (it's more accurate)
-    }
-    updateDuration();
-    return;
-  }
-
-  if (payload.event === "final") {
-    // Streaming final — will be overridden by last batch correction
-    return;
-  }
-
-  if (payload.event === "refined") {
-    // Server-side refined — but we're using our own batch correction, ignore
-    return;
-  }
-
-  if (payload.event === "error") {
-    console.error("[ws] error:", payload.message);
-    setMessage(`스트리밍 오류: ${payload.message}`);
-  }
-}
-
-function openStreamSocket() {
-  return new Promise((resolve, reject) => {
-    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws/stream`);
-    ws.binaryType = "arraybuffer";
-
-    ws.onopen = () => {
-      console.log("[ws] connected, sending start");
-      ws.send(JSON.stringify({
-        action: "start",
-        language: languageSelect.value.trim(),
-        chunk_size_ms: 2000,
-      }));
-    };
-
-    ws.onmessage = (event) => {
-      const payload = JSON.parse(event.data);
-      if (payload.event === "ready" && !streamingActive) {
-        handleStreamMessage(event);
-        resolve(ws);
-        return;
-      }
-      handleStreamMessage(event);
-    };
-
-    ws.onclose = () => {
-      console.log("[ws] closed");
-      if (streamingActive) cleanupStreaming();
-    };
-
-    ws.onerror = () => reject(new Error("WebSocket 연결 실패"));
-  });
 }
 
 async function startStreaming() {
@@ -394,28 +293,7 @@ async function startStreaming() {
     setMessage("오디오 파이프라인 로딩 중...");
 
     allCapturedPcm = [];
-    correctedText = "";
-    correctedSamples = 0;
     batchInFlight = false;
-
-    // Buffer VAD frames, flush to WebSocket every 500ms
-    pendingFrames = [];
-    flushTimer = setInterval(() => {
-      if (!streamingActive || !streamSocket || streamSocket.readyState !== WebSocket.OPEN) return;
-      if (pendingFrames.length === 0) return;
-
-      const totalLen = pendingFrames.reduce((sum, f) => sum + f.length, 0);
-      const merged = new Float32Array(totalLen);
-      let offset = 0;
-      for (const f of pendingFrames) {
-        merged.set(f, offset);
-        offset += f.length;
-      }
-      pendingFrames = [];
-
-      streamSocket.send(merged.buffer);
-      updateDuration();
-    }, 500);
 
     // Periodic batch correction every 5 seconds
     batchCorrectionTimer = setInterval(() => {
@@ -442,19 +320,22 @@ async function startStreaming() {
         levelMeter.style.width = `${width}%`;
 
         if (frame) {
-          const copy = new Float32Array(frame);
-          pendingFrames.push(copy);
-          allCapturedPcm.push(copy);
+          allCapturedPcm.push(new Float32Array(frame));
         }
       },
     });
 
-    // Open WebSocket for streaming partials
-    streamSocket = await openStreamSocket();
-
+    streamingActive = true;
+    recordingStartedAt = Date.now();
     vadInstance.start();
     vadListening = true;
+
     streamButton.disabled = false;
+    streamButton.textContent = "스트리밍 종료";
+    streamButton.classList.add("recording");
+    setStatus(streamStatus, "실시간 캡처 중", "pill-live");
+    partialMode.textContent = "캡처 중";
+    setMessage("마이크 캡처 중. 5초마다 자동 전사합니다.");
   } catch (error) {
     cleanupStreaming();
     setMessage(`스트리밍 시작 실패: ${error.message}`);
@@ -463,34 +344,26 @@ async function startStreaming() {
 
 async function stopStreaming() {
   if (vadInstance && vadListening) { vadInstance.pause(); vadListening = false; }
-  if (flushTimer) { clearInterval(flushTimer); flushTimer = null; }
   if (batchCorrectionTimer) { clearInterval(batchCorrectionTimer); batchCorrectionTimer = null; }
 
-  // Final batch correction of all audio
   streamButton.disabled = true;
-  setMessage("최종 배치 보정 중...");
-  partialMode.textContent = "최종 보정 중";
-
-  // Close WebSocket (don't need streaming anymore)
-  if (streamSocket) { streamSocket.close(); streamSocket = null; }
+  setMessage("최종 전사 중...");
+  partialMode.textContent = "최종 전사 중";
   streamingActive = false;
 
-  // Do final full batch correction
+  // Final batch transcription of all audio
   await doBatchCorrection();
 
-  setMessage("최종 보정 완료.");
-  partialMode.textContent = "최종 보정 완료";
+  setMessage("전사 완료.");
+  partialMode.textContent = "전사 완료";
   streamButton.disabled = false;
   streamButton.textContent = "스트리밍 시작";
   streamButton.classList.remove("recording");
   setStatus(streamStatus, "스트리밍 대기", "pill-muted");
   resetMeter();
 
-  // Cleanup remaining state
   allCapturedPcm = [];
-  correctedText = "";
-  correctedSamples = 0;
-  pendingFrames = [];
+  batchInFlight = false;
 }
 
 // ── Event listeners ──
@@ -524,7 +397,7 @@ clearButton.addEventListener("click", () => {
   clipLength.textContent = "0.0s";
   detectedLanguage.textContent = "-";
   inferenceTime.textContent = "-";
-  partialMode.textContent = streamingActive ? "활성" : "비활성";
+  partialMode.textContent = streamingActive ? "캡처 중" : "비활성";
   setMessage("전사 결과를 지웠습니다.");
 });
 
